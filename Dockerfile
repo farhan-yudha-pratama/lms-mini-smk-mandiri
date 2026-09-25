@@ -22,31 +22,16 @@ RUN npx prisma contract emit
 RUN DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy" npm run build
 
 # =================================================================
-# STAGE 3: Final Web Application (Nginx + Next.js)
+# STAGE 3: Final Web Application (Next.js)
 # =================================================================
 FROM node:22-alpine AS runner
 
-# Install Nginx dan openssl
-RUN apk add --no-cache openssl nginx
+# Install openssl untuk Prisma
+RUN apk add --no-cache openssl
 
 WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3001
-
-RUN echo 'server { \
-    listen 80; \
-    server_name localhost; \
-    location / { \
-    proxy_pass http://127.0.0.1:3001; \
-    proxy_http_version 1.1; \
-    proxy_set_header Upgrade $http_upgrade; \
-    proxy_set_header Connection "upgrade"; \
-    proxy_set_header Host $host; \
-    proxy_cache_bypass $http_upgrade; \
-    } \
-    }' > /etc/nginx/http.d/default.conf
-
-RUN mkdir -p /run/nginx
 
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next ./.next
@@ -54,6 +39,6 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/prisma ./prisma
 
-EXPOSE 80
+EXPOSE 3001
 
-CMD ["sh", "-c", "(npx prisma db migrate && npm start) & nginx -g 'daemon off;'"]
+CMD ["sh", "-c", "npx prisma migrate deploy && npm start"]
