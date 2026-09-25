@@ -31,7 +31,7 @@ RUN apk add --no-cache openssl nginx
 
 WORKDIR /app
 ENV NODE_ENV=production
-ENV PORT=3000
+ENV PORT=3001
 
 RUN echo 'server { \
     listen 80; \
