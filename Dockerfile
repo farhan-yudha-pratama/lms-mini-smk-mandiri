@@ -19,7 +19,7 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 RUN npx prisma contract emit
-RUN npm run build
+RUN DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy" npm run build
 
 # =================================================================
 # STAGE 3: Final Web Application (Nginx + Next.js)
