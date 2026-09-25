@@ -18,7 +18,7 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-RUN npx prisma generate
+RUN npx prisma contract emit
 RUN npm run build
 
 # =================================================================
@@ -30,7 +30,7 @@ FROM node:22-alpine AS runner
 RUN apk add --no-cache openssl nginx
 
 WORKDIR /app
-ENV NODE_ENV production
+ENV NODE_ENV=production
 ENV PORT=3000
 
 RUN echo 'server { \
