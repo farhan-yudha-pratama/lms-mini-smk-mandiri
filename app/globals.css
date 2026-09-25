@@ -1,0 +1,53 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&display=swap');
+@import "tailwindcss";
+
+@theme {
+    /* Colors (Neo Brutalism) */
+    --color-canvas: #EAF4ED;
+    --color-mint-canvas: #EAF4ED;
+    --color-mint-soft: #8BBB92;
+    --color-surface-variant: #8BBB92;
+    --color-jade-vibrant: #2A835F;
+    --color-primary: #2A835F;
+    --color-primary-container: #2A835F;
+    --color-pine-deep: #12544F;
+    --color-secondary: #12544F;
+    --color-forest-teal: #092328;
+    --color-secondary-container: #092328;
+    --color-tertiary: #092328;
+    --color-outline: #000000;
+    --color-black: #000000;
+    --color-white: #FFFFFF;
+
+    /* Hard Drop Shadows */
+    --shadow-neo-sm: 2px 2px 0px 0px #000;
+    --shadow-neo-md: 4px 4px 0px 0px #000;
+    --shadow-neo-lg: 6px 6px 0px 0px #000;
+    --shadow-neo-xl: 8px 8px 0px 0px #000;
+
+    /* Typography */
+    --font-sans: "Space Grotesk", sans-serif;
+    --font-mono: "JetBrains Mono", monospace;
+
+    /* Radius overrides */
+    --radius-sm: 0px;
+    --radius-md: 0px;
+    --radius-lg: 0px;
+    --radius-xl: 0px;
+    --radius-2xl: 0px;
+    --radius-3xl: 0px;
+}
+
+@layer base {
+  body {
+    background-color: var(--color-canvas);
+    color: var(--color-black);
+    font-family: var(--font-sans);
+  }
+}
+
+/* Brutalist Scrollbar */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: var(--color-canvas); border-left: 2px solid var(--color-black); }
+::-webkit-scrollbar-thumb { background: var(--color-forest-teal); border: 2px solid var(--color-black); border-radius: 0; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-jade-vibrant); }

@@ -1,0 +1,261 @@
+// use prisma-8
+
+enum Role {
+  SUPERADMIN
+  GURU
+  MURID
+}
+
+enum QuestionType {
+  PILIHAN_GANDA
+  ESSAY
+}
+
+enum QuizAttemptStatus {
+  IN_PROGRESS
+  COMPLETED
+  GRADED
+}
+
+enum PageAccessStatus {
+  LOCKED
+  UNLOCKED
+  COMPLETED
+}
+
+model Classroom {
+  id          String   @id
+  name        String
+  joinCode    String   @unique
+  maxStudents Int      @default(32)
+  isActive    Boolean  @default(true)
+  createdAt   TimestamptzString @default(now())
+  updatedAt   temporal.updatedAtString()
+  
+  users       User[]
+}
+
+model User {
+  id         String            @id @default(uuid())
+  name       String
+  email      String            @unique
+  password   String
+  role       Role              @default(MURID)
+  avatar     String?
+  isActive             Boolean           @default(true)
+  classId              String?
+  classroom            Classroom?        @relation(fields: [classId], references: [id])
+  failedLoginAttempts  Int               @default(0)
+  lockedUntil          TimestamptzString?
+  createdAt            TimestamptzString @default(now())
+  updatedAt            temporal.updatedAtString()
+
+  quizAttempts QuizAttempt[]
+  pageAccesses PageAccess[]
+  sessions     Session[]
+  auditLogs       AuditLog[]
+  quizAssignments QuizAssignment[]
+}
+
+model MaterialCategory {
+  id          String    @id @default(uuid())
+  name        String
+  slug        String    @unique
+  description String?
+  icon        String?
+  orderIndex  Int       @unique
+  isActive    Boolean   @default(true)
+  createdAt   TimestamptzString @default(now())
+  updatedAt   temporal.updatedAtString()
+
+  pages       Page[]
+}
+
+model Page {
+  id          String   @id @default(uuid())
+  categoryId  String
+  title       String
+  slug        String   @unique
+  description String?
+  orderIndex  Int
+  isPublished Boolean  @default(false)
+  createdAt   TimestamptzString @default(now())
+  updatedAt   temporal.updatedAtString()
+
+  category    MaterialCategory @relation(fields: [categoryId], references: [id])
+  summaries   PageSummary[]
+  quizPackage QuizPackage?
+  pageAccesses PageAccess[]
+
+  // For sequences where this page is the one to be unlocked
+  sequence    PageSequence? @relation("PageToUnlock")
+  // For sequences where this page is the prerequisite
+  isPrerequisiteFor PageSequence[] @relation("PrerequisitePage")
+
+  @@unique([categoryId, orderIndex])
+}
+
+model PageSummary {
+  id          String   @id @default(uuid())
+  pageId      String
+  title       String
+  content     String
+  orderIndex  Int
+  createdAt   TimestamptzString @default(now())
+  updatedAt   temporal.updatedAtString()
+
+  page        Page     @relation(fields: [pageId], references: [id])
+}
+
+model PageSequence {
+  id                 String   @id @default(uuid())
+  pageId             String   @unique
+  prerequisitePageId String?
+  minQuizScore       Float    @default(70.0)
+  createdAt          TimestamptzString @default(now())
+  updatedAt          temporal.updatedAtString()
+
+  page             Page   @relation("PageToUnlock", fields: [pageId], references: [id])
+  prerequisitePage Page?  @relation("PrerequisitePage", fields: [prerequisitePageId], references: [id])
+}
+
+model QuizAssignment {
+  id            String   @id @default(uuid())
+  quizPackageId String
+  quizVariantId String
+  studentId     String
+  assignedAt    TimestamptzString @default(now())
+  
+  package       QuizPackage @relation(fields: [quizPackageId], references: [id])
+  variant       QuizVariant @relation(fields: [quizVariantId], references: [id])
+  student       User        @relation(fields: [studentId], references: [id])
+
+  @@unique([quizPackageId, studentId])
+}
+
+model QuizPackage {
+  id           String   @id @default(uuid())
+  pageId       String   @unique
+  title        String
+  description  String?
+  passingScore     Float    @default(70.0)
+  timeLimit        Int?
+  shuffleQuestions Boolean  @default(false)
+  isActive         Boolean  @default(true)
+  createdAt    TimestamptzString @default(now())
+  updatedAt    temporal.updatedAtString()
+
+  page         Page     @relation(fields: [pageId], references: [id])
+  variants        QuizVariant[]
+  assignments     QuizAssignment[]
+}
+
+model QuizVariant {
+  id             String   @id @default(uuid())
+  quizPackageId  String
+  name           String
+  createdAt      TimestamptzString @default(now())
+  updatedAt      temporal.updatedAtString()
+
+  package        QuizPackage   @relation(fields: [quizPackageId], references: [id])
+  questions      Question[]
+  attempts        QuizAttempt[]
+  assignments     QuizAssignment[]
+}
+
+model Question {
+  id           String       @id @default(uuid())
+  quizVariantId String
+  questionText String
+  questionType QuestionType @default(PILIHAN_GANDA)
+  points       Float        @default(1.0)
+  orderIndex   Int
+  createdAt    TimestamptzString @default(now())
+  updatedAt    temporal.updatedAtString()
+
+  variant      QuizVariant        @relation(fields: [quizVariantId], references: [id])
+  options      QuestionOption[]
+  answers      StudentAnswer[]
+}
+
+model QuestionOption {
+  id          String   @id @default(uuid())
+  questionId  String
+  optionText  String
+  isCorrect   Boolean  @default(false)
+  orderIndex  Int
+
+  question    Question @relation(fields: [questionId], references: [id])
+  answers     StudentAnswer[]
+}
+
+model QuizAttempt {
+  id          String            @id @default(uuid())
+  quizVariantId String
+  studentId   String
+  score       Float?
+  status      QuizAttemptStatus @default(IN_PROGRESS)
+  startedAt   TimestamptzString @default(now())
+  finishedAt  TimestamptzString?
+
+  variant     QuizVariant     @relation(fields: [quizVariantId], references: [id])
+  student     User            @relation(fields: [studentId], references: [id])
+  answers     StudentAnswer[]
+}
+
+model StudentAnswer {
+  id               String   @id @default(uuid())
+  quizAttemptId    String
+  questionId       String
+  selectedOptionId String?
+  essayAnswer      String?
+  isCorrect        Boolean?
+  pointsEarned     Float    @default(0)
+
+  attempt          QuizAttempt     @relation(fields: [quizAttemptId], references: [id])
+  question         Question        @relation(fields: [questionId], references: [id])
+  selectedOption   QuestionOption? @relation(fields: [selectedOptionId], references: [id])
+}
+
+model PageAccess {
+  id          String           @id @default(uuid())
+  pageId      String
+  studentId   String
+  status      PageAccessStatus @default(LOCKED)
+  unlockedAt  TimestamptzString?
+  completedAt TimestamptzString?
+
+  page        Page @relation(fields: [pageId], references: [id])
+  student     User @relation(fields: [studentId], references: [id])
+
+  @@unique([pageId, studentId])
+}
+
+
+
+model Session {
+  id           String            @id @default(uuid())
+  userId       String
+  refreshToken String?           @unique
+  userAgent    String?
+  ipAddress    String?
+  expiresAt    TimestamptzString
+  createdAt    TimestamptzString @default(now())
+
+  user         User              @relation(fields: [userId], references: [id])
+}
+
+model AuditLog {
+  id        String            @id @default(uuid())
+  userId    String?
+  action    String
+  details   String?
+  ipAddress String?
+  createdAt TimestamptzString @default(now())
+
+  user      User?             @relation(fields: [userId], references: [id])
+}
+
+
+
+
