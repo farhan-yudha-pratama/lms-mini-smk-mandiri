@@ -56,4 +56,4 @@ COPY --from=builder /app/prisma ./prisma
 
 EXPOSE 80
 
-CMD ["sh", "-c", "npm start & nginx -g 'daemon off;'"]
+CMD ["sh", "-c", "(npx prisma db migrate && npm start) & nginx -g 'daemon off;'"]
