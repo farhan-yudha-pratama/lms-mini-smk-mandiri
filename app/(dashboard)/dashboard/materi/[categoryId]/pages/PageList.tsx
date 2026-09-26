@@ -1,9 +1,17 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { createPage, updatePage, deletePage, reorderPages } from '@/app/actions/pages';
+import { 
+  createPage, 
+  updatePage, 
+  deletePage, 
+  reorderPages, 
+  getPagesByCategory, 
+  getAllPages 
+} from '@/app/actions/pages';
+import PrerequisiteSection, { BasicPage } from './PrerequisiteSection';
 
 type PageSequence = {
   id: string;
@@ -23,8 +31,6 @@ type PageItem = {
   sequence?: PageSequence | null;
 };
 
-type BasicPage = { id: string; title: string; categoryId: string };
-
 export default function PageList({ 
   initialPages, 
   categoryId, 
@@ -38,6 +44,7 @@ export default function PageList({
 }) {
   const router = useRouter();
   const [pages, setPages] = useState<PageItem[]>(initialPages);
+  const [currentAllPages, setCurrentAllPages] = useState<BasicPage[]>(allPages);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPage, setEditingPage] = useState<PageItem | null>(null);
   const [pageToDelete, setPageToDelete] = useState<PageItem | null>(null);
@@ -45,6 +52,31 @@ export default function PageList({
   const [errorPopup, setErrorPopup] = useState<{ isOpen: boolean; message: string }>({ isOpen: false, message: '' });
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Sinkronisasi data lokal saat props dari server berubah (misal router.refresh)
+  useEffect(() => {
+    setPages(initialPages);
+  }, [initialPages]);
+
+  useEffect(() => {
+    setCurrentAllPages(allPages);
+  }, [allPages]);
+
+  // Fungsi refresh data instan tanpa hard refresh browser
+  const refreshData = async () => {
+    try {
+      const [freshPages, freshAllPages] = await Promise.all([
+        getPagesByCategory(categoryId),
+        getAllPages()
+      ]);
+      setPages(freshPages);
+      setCurrentAllPages(freshAllPages);
+    } catch (err) {
+      console.error('Gagal memperbarui data:', err);
+    } finally {
+      router.refresh();
+    }
+  };
 
   // Desktop Drag & Drop states
   const [draggedPageId, setDraggedPageId] = useState<string | null>(null);
@@ -152,7 +184,7 @@ export default function PageList({
         showToast('success', `Halaman "${title}" berhasil ditambahkan.`);
       }
       closeModal();
-      router.refresh();
+      await refreshData();
     } catch (error: any) {
       setErrorPopup({ isOpen: true, message: error.message || 'Terjadi kesalahan' });
     } finally {
@@ -165,10 +197,9 @@ export default function PageList({
     setLoading(true);
     try {
       await deletePage(pageToDelete.id, categoryId);
-      setPages(prev => prev.filter(p => p.id !== pageToDelete.id));
       showToast('success', `Halaman "${pageToDelete.title}" berhasil dihapus.`);
       setPageToDelete(null);
-      router.refresh();
+      await refreshData();
     } catch (error: any) {
       setErrorPopup({ isOpen: true, message: error.message || 'Terjadi kesalahan saat menghapus halaman.' });
     } finally {
@@ -197,7 +228,7 @@ export default function PageList({
       setLoading(true);
       await reorderPages(categoryId, updates);
       showToast('success', 'Urutan halaman berhasil diperbarui.');
-      router.refresh();
+      await refreshData();
     } catch (error: any) {
       setErrorPopup({ isOpen: true, message: 'Gagal mengurutkan halaman: ' + error.message });
       setPages(pages);
@@ -272,7 +303,7 @@ export default function PageList({
   };
 
   // Prevent circular dependency in prerequisites
-  const availablePrerequisites = allPages.filter(p => !editingPage || p.id !== editingPage.id);
+  const availablePrerequisites = currentAllPages.filter(p => !editingPage || p.id !== editingPage.id);
 
   return (
     <div className="space-y-6">
@@ -696,49 +727,13 @@ export default function PageList({
               </div>
 
               {/* Section Prerequisite / Lock Rules */}
-              <div className="border border-gray-200 bg-gray-50/80 rounded-xl p-4 mt-2 space-y-3">
-                <div className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-sm text-blue-600">lock</span>
-                  <h3 className="text-sm font-bold text-gray-900">
-                    Aturan Akses & Prasyarat
-                  </h3>
-                </div>
-                
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">
-                      Halaman Prasyarat (Harus diselesaikan dulu)
-                    </label>
-                    <select 
-                      value={prerequisitePageId} 
-                      onChange={e => setPrerequisitePageId(e.target.value)} 
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
-                    >
-                      <option value="">-- Tidak ada (Langsung Terbuka) --</option>
-                      {availablePrerequisites.map(p => (
-                        <option key={p.id} value={p.id}>{p.title}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {prerequisitePageId && (
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-1">
-                        Minimum Skor Kuis Prasyarat (%)
-                      </label>
-                      <input 
-                        type="number" 
-                        min="0" 
-                        max="100" 
-                        value={minQuizScore} 
-                        onChange={e => setMinQuizScore(parseFloat(e.target.value) || 0)} 
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white" 
-                      />
-                      <p className="text-[11px] text-gray-500 mt-1">Siswa harus mencapai skor kuis minimal ini untuk membuka materi ini.</p>
-                    </div>
-                  )}
-                </div>
-              </div>
+              <PrerequisiteSection
+                prerequisitePageId={prerequisitePageId}
+                onPrerequisitePageIdChange={setPrerequisitePageId}
+                minQuizScore={minQuizScore}
+                onMinQuizScoreChange={setMinQuizScore}
+                availablePrerequisites={availablePrerequisites}
+              />
 
               <div className="pt-3 border-t border-gray-100 flex justify-end gap-3 shrink-0">
                 <button 
