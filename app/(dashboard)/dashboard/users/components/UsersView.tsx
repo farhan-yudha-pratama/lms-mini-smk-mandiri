@@ -7,6 +7,7 @@ import { bulkResetPassword, bulkChangeRole, bulkToggleActive } from '../actions'
 import UsersToolbar from './UsersToolbar';
 import UsersTable from './UsersTable';
 import UsersPagination from './UsersPagination';
+import ConfirmModal from './ConfirmModal';
 
 interface UsersViewProps {
   initialUsers: UserRow[];
@@ -26,6 +27,14 @@ export default function UsersView({ initialUsers }: UsersViewProps) {
 
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
+
+  const [modalConfig, setModalConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    isDestructive?: boolean;
+    onConfirm: () => void;
+  } | null>(null);
 
   // Apply filter & sort locally
   const displayedUsers = useMemo(() => {
@@ -96,29 +105,52 @@ export default function UsersView({ initialUsers }: UsersViewProps) {
   };
 
   const onBulkResetPassword = () => {
-    if (!confirm(`Yakin mengatur ulang kata sandi ${selectedIds.size} pengguna?`)) return;
-    runAction(() => bulkResetPassword(Array.from(selectedIds)));
+    setModalConfig({
+      isOpen: true,
+      title: 'Atur Ulang Kata Sandi',
+      message: `Yakin mengatur ulang kata sandi ${selectedIds.size} pengguna?`,
+      isDestructive: true,
+      onConfirm: () => {
+        setModalConfig(null);
+        runAction(() => bulkResetPassword(Array.from(selectedIds)));
+      }
+    });
   };
 
   const onBulkChangeRole = (newRole: Role) => {
-    if (!confirm(`Yakin mengubah role ${selectedIds.size} pengguna menjadi ${newRole}?`)) return;
-    runAction(async () => {
-      const res = await bulkChangeRole(Array.from(selectedIds), newRole);
-      if (res.success) {
-        setUsers(prev => prev.map(u => selectedIds.has(u.id) ? { ...u, role: newRole } : u));
+    setModalConfig({
+      isOpen: true,
+      title: 'Ubah Role Pengguna',
+      message: `Yakin mengubah role ${selectedIds.size} pengguna menjadi ${newRole}?`,
+      onConfirm: () => {
+        setModalConfig(null);
+        runAction(async () => {
+          const res = await bulkChangeRole(Array.from(selectedIds), newRole);
+          if (res.success) {
+            setUsers(prev => prev.map(u => selectedIds.has(u.id) ? { ...u, role: newRole } : u));
+          }
+          return res;
+        });
       }
-      return res;
     });
   };
 
   const onBulkToggleActive = (isActive: boolean) => {
-    if (!confirm(`Yakin ${isActive ? 'mengaktifkan' : 'menonaktifkan'} ${selectedIds.size} pengguna?`)) return;
-    runAction(async () => {
-      const res = await bulkToggleActive(Array.from(selectedIds), isActive);
-      if (res.success) {
-        setUsers(prev => prev.map(u => selectedIds.has(u.id) ? { ...u, isActive } : u));
+    setModalConfig({
+      isOpen: true,
+      title: isActive ? 'Aktifkan Pengguna' : 'Non-aktifkan Pengguna',
+      message: `Yakin ${isActive ? 'mengaktifkan' : 'menonaktifkan'} ${selectedIds.size} pengguna?`,
+      isDestructive: !isActive,
+      onConfirm: () => {
+        setModalConfig(null);
+        runAction(async () => {
+          const res = await bulkToggleActive(Array.from(selectedIds), isActive);
+          if (res.success) {
+            setUsers(prev => prev.map(u => selectedIds.has(u.id) ? { ...u, isActive } : u));
+          }
+          return res;
+        });
       }
-      return res;
     });
   };
 
@@ -138,16 +170,21 @@ export default function UsersView({ initialUsers }: UsersViewProps) {
         </div>
       )}
 
-      <UsersToolbar
-        selectedCount={selectedIds.size}
-        isProcessing={isProcessing}
-        onSearchChange={setSearchQuery}
-        onBulkResetPassword={onBulkResetPassword}
-        onBulkChangeRole={onBulkChangeRole}
-        onBulkToggleActive={onBulkToggleActive}
-      />
+      <div className="sticky top-16 z-30">
+        <div className="absolute inset-0 bg-gray-50/80 backdrop-blur-md -m-4 p-4 md:-m-0 md:p-0"></div>
+        <div className="relative">
+          <UsersToolbar
+            selectedCount={selectedIds.size}
+            isProcessing={isProcessing}
+            onSearchChange={setSearchQuery}
+            onBulkResetPassword={onBulkResetPassword}
+            onBulkChangeRole={onBulkChangeRole}
+            onBulkToggleActive={onBulkToggleActive}
+          />
+        </div>
+      </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden flex flex-col">
+      <div className="md:bg-white md:rounded-xl md:border md:border-gray-200 md:shadow-sm flex flex-col">
         <UsersTable
           users={paginatedUsers}
           selectedIds={selectedIds}
@@ -171,6 +208,14 @@ export default function UsersView({ initialUsers }: UsersViewProps) {
           }}
         />
       </div>
+      <ConfirmModal 
+        isOpen={modalConfig?.isOpen ?? false}
+        title={modalConfig?.title ?? ''}
+        message={modalConfig?.message ?? ''}
+        isDestructive={modalConfig?.isDestructive}
+        onConfirm={modalConfig?.onConfirm ?? (() => {})}
+        onCancel={() => setModalConfig(null)}
+      />
     </div>
   );
 }

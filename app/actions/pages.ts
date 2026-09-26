@@ -127,3 +127,18 @@ export async function deletePage(id: string, categoryId: string) {
   revalidatePath(`/dashboard/materi/${categoryId}/pages`);
   return { id };
 }
+
+export async function reorderPages(categoryId: string, updates: { id: string; orderIndex: number }[]) {
+  // Pass 1: Set orderIndex to negative temporary values to avoid unique constraint collisions on @@unique([categoryId, orderIndex])
+  for (const update of updates) {
+    await db.orm.public.Page.where({ id: update.id }).update({ orderIndex: -update.orderIndex });
+  }
+
+  // Pass 2: Set them to the correct positive values
+  for (const update of updates) {
+    await db.orm.public.Page.where({ id: update.id }).update({ orderIndex: update.orderIndex });
+  }
+
+  revalidatePath(`/dashboard/materi/${categoryId}/pages`);
+  return true;
+}

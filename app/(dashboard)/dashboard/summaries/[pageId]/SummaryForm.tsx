@@ -50,6 +50,7 @@ export default function SummaryForm({
 
       if (res.success) {
         router.push(`/dashboard/summaries/${pageId}`);
+        router.refresh();
       } else {
         setError(res.error || 'Terjadi kesalahan saat menyimpan ringkasan.');
       }
@@ -62,20 +63,21 @@ export default function SummaryForm({
 
   const charCount = formData.content.length;
   const isOverLimit = charCount > 3000;
+  const percent = Math.min(100, Math.round((charCount / 3000) * 100));
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
       <form onSubmit={handleSubmit}>
-        <div className="p-6 space-y-6">
+        <div className="p-5 sm:p-6 space-y-5">
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg text-sm flex items-start gap-2">
-              <span className="material-symbols-outlined text-[20px]">error</span>
-              <p>{error}</p>
+            <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl text-sm flex items-start gap-2">
+              <span className="material-symbols-outlined text-lg mt-0.5">error</span>
+              <p className="flex-1">{error}</p>
             </div>
           )}
           
           <div>
-            <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="title" className="block text-sm font-semibold text-gray-700 mb-1">
               Judul Topik / Summary
             </label>
             <input
@@ -85,14 +87,14 @@ export default function SummaryForm({
               required
               value={formData.title}
               onChange={handleChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
-              placeholder="Misal: Pengenalan HTML Dasar"
+              className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
+              placeholder="Misal: Sintaks dan Selektor Utama CSS"
             />
           </div>
 
           <div>
-            <label htmlFor="orderIndex" className="block text-sm font-medium text-gray-700 mb-1">
-              Urutan (Order Index)
+            <label htmlFor="orderIndex" className="block text-sm font-semibold text-gray-700 mb-1">
+              Nomor Urutan Topik (Order Index)
             </label>
             <input
               type="number"
@@ -102,55 +104,67 @@ export default function SummaryForm({
               min="1"
               value={formData.orderIndex}
               onChange={handleChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
+              className="w-full sm:w-48 px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
             />
+            <p className="text-xs text-gray-400 mt-1">Urutan penyajian topik ringkasan.</p>
           </div>
 
           <div>
-            <div className="flex justify-between items-center mb-1">
-              <label htmlFor="content" className="block text-sm font-medium text-gray-700">
-                Konten (Markdown Mendukung)
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 mb-1.5">
+              <label htmlFor="content" className="block text-sm font-semibold text-gray-700">
+                Isi Ringkasan Materi (Mendukung Markdown)
               </label>
-              <span className={`text-xs ${isOverLimit ? 'text-red-600 font-bold' : 'text-gray-500'}`}>
-                {charCount} / 3000 karakter
-              </span>
+              <div className="flex items-center gap-2">
+                <div className="w-20 bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                  <div 
+                    className={`h-full rounded-full ${isOverLimit ? 'bg-red-500' : percent > 80 ? 'bg-amber-500' : 'bg-blue-500'}`}
+                    style={{ width: `${percent}%` }}
+                  />
+                </div>
+                <span className={`text-xs font-mono ${isOverLimit ? 'text-red-600 font-bold' : 'text-gray-500'}`}>
+                  {charCount} / 3000
+                </span>
+              </div>
             </div>
+
             <textarea
               id="content"
               name="content"
               required
-              rows={12}
+              rows={10}
               value={formData.content}
               onChange={handleChange}
-              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 outline-none transition-shadow font-mono text-sm ${
+              className={`w-full p-3.5 border rounded-lg focus:ring-2 outline-none transition-shadow font-mono text-xs sm:text-sm leading-relaxed ${
                 isOverLimit 
-                  ? 'border-red-500 focus:ring-red-500 focus:border-red-500 bg-red-50' 
+                  ? 'border-red-500 focus:ring-red-500 focus:border-red-500 bg-red-50/50' 
                   : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
               }`}
-              placeholder="Tulis ringkasan materi di sini menggunakan format Markdown..."
+              placeholder="Tuliskan intisari materi belajar di sini...&#10;&#10;Contoh:&#10;### Poin Penting:&#10;1. Selektor elemen digunakan untuk...&#10;2. Pseudo-class :hover bereaksi ketika kursor menyentuh target..."
             />
             {isOverLimit && (
-              <p className="mt-1 text-sm text-red-600">Konten melebihi batas maksimum 3000 karakter yang disarankan untuk performa AI.</p>
+              <p className="mt-1 text-xs text-red-600 font-medium">
+                Konten melebihi 3000 karakter. Persingkat rangkuman agar generator AI dapat memproses soal dengan optimal.
+              </p>
             )}
           </div>
         </div>
 
-        <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+        <div className="bg-gray-50 px-5 sm:px-6 py-4 border-t border-gray-100 flex flex-col-reverse sm:flex-row justify-end gap-3">
           <Link
             href={`/dashboard/summaries/${pageId}`}
-            className="bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-lg px-4 py-2 transition-colors flex items-center gap-2 font-medium"
+            className="w-full sm:w-auto px-4 py-2.5 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors flex items-center justify-center text-sm font-medium"
           >
             Batal
           </Link>
           <button
             type="submit"
             disabled={isSubmitting || isOverLimit}
-            className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-4 py-2 transition-colors flex items-center gap-2 font-medium disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+            className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-5 py-2.5 transition-colors flex items-center justify-center gap-2 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
           >
-            <span className="material-symbols-outlined text-[20px]">
+            <span className="material-symbols-outlined text-lg">
               {isSubmitting ? 'sync' : 'save'}
             </span>
-            {isSubmitting ? 'Menyimpan...' : 'Simpan Summary'}
+            <span>{isSubmitting ? 'Menyimpan...' : 'Simpan Summary'}</span>
           </button>
         </div>
       </form>

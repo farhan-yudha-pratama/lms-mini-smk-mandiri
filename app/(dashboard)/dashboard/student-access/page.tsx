@@ -17,7 +17,7 @@ export default async function StudentAccessPage() {
   }));
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
+    <div className="space-y-6 max-w-7xl mx-auto p-4 sm:p-6">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Manajemen Akses Materi Siswa</h1>
