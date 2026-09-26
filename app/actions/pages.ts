@@ -27,13 +27,24 @@ export async function getPagesByCategory(categoryId: string) {
 
 export async function getAllPages() {
   const pages = await db.orm.public.Page.all();
+  const categories = await db.orm.public.MaterialCategory.all();
     
-  return pages.map((p: any) => ({
-    id: p.id,
-    title: p.title,
-    categoryId: p.categoryId,
-    orderIndex: p.orderIndex
-  })).sort((a: any, b: any) => a.orderIndex - b.orderIndex);
+  return pages.map((p: any) => {
+    const category = categories.find((c: any) => c.id === p.categoryId);
+    return {
+      id: p.id,
+      title: p.title,
+      categoryId: p.categoryId,
+      categoryName: category?.name || '',
+      orderIndex: p.orderIndex,
+      createdAt: p.createdAt ? String(p.createdAt) : null,
+    };
+  }).sort((a: any, b: any) => {
+    const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    if (timeB !== timeA) return timeB - timeA;
+    return (b.orderIndex || 0) - (a.orderIndex || 0);
+  });
 }
 
 export async function createPage(data: { 
