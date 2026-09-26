@@ -75,11 +75,19 @@ export default function QuizPackageForm({ initialData, pages, defaultPageId, isE
                 name="pageId" 
                 defaultValue={initialData?.pageId || defaultPageId || ''}
                 required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-sm"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-sm bg-white"
               >
                 <option value="" disabled>Pilih halaman materi</option>
-                {pages.map((p) => (
-                  <option key={p.id} value={p.id}>{p.title}</option>
+                {Array.from(new Set(pages.map(p => p.categoryName || 'Tanpa Kategori'))).map((categoryName) => (
+                  <optgroup key={categoryName} label={`Kategori: ${categoryName}`}>
+                    {pages
+                      .filter(p => (p.categoryName || 'Tanpa Kategori') === categoryName)
+                      .map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.title}
+                        </option>
+                      ))}
+                  </optgroup>
                 ))}
               </select>
               <p className="text-xs text-gray-500 mt-1">Satu halaman hanya bisa memiliki satu kuis.</p>
