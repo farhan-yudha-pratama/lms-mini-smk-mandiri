@@ -29,9 +29,65 @@ export async function createClass(data: CreateClassValues) {
     id: randomUUID(),
     name: data.name,
     joinCode,
-    maxStudents: 32,
+    maxStudents: data.maxStudents || 32,
     isActive: true,
   });
+}
+
+export async function updateClass(id: string, data: {
+  name: string;
+  maxStudents: number;
+  isActive: boolean;
+  regenerateJoinCode?: boolean;
+}) {
+  const existing = await db.orm.public.Classroom.where({ id }).first();
+  if (!existing) {
+    throw new Error('Kelas tidak ditemukan');
+  }
+
+  const updatePayload: Record<string, any> = {
+    name: data.name,
+    maxStudents: data.maxStudents,
+    isActive: data.isActive,
+  };
+
+  if (data.regenerateJoinCode) {
+    let newCode = generateJoinCode();
+    let isUnique = false;
+    while (!isUnique) {
+      const exists = await db.orm.public.Classroom.where({ joinCode: newCode }).first();
+      if (exists) {
+        newCode = generateJoinCode();
+      } else {
+        isUnique = true;
+      }
+    }
+    updatePayload.joinCode = newCode;
+  }
+
+  await db.orm.public.Classroom.where({ id }).update(updatePayload);
+  return await db.orm.public.Classroom.where({ id }).first();
+}
+
+export async function deleteClass(id: string) {
+  const existing = await db.orm.public.Classroom.where({ id }).first();
+  if (!existing) {
+    throw new Error('Kelas tidak ditemukan');
+  }
+
+  // Release all students connected to this class (disconnect relation)
+  const connectedStudents = await db.orm.public.User.where({ classId: id }).all();
+  if (connectedStudents.length > 0) {
+    await Promise.all(
+      connectedStudents.map(student =>
+        db.orm.public.User.where({ id: student.id }).update({ classId: null })
+      )
+    );
+  }
+
+  // Delete classroom
+  await db.orm.public.Classroom.where({ id }).delete();
+  return true;
 }
 
 export async function getAllClasses() {

@@ -48,3 +48,15 @@ export async function updatePageAccess(studentId: string, pageId: string, status
     return handleActionError(error);
   }
 }
+
+export async function bulkUpdatePageAccessAction(studentId: string, pageIds: string[], status: PageAccessStatus): Promise<ActionResponse> {
+  try {
+    for (const pageId of pageIds) {
+      await studentAccessService.updatePageAccess(studentId, pageId, status);
+    }
+    revalidatePath(`/dashboard/student-access/${studentId}`);
+    return { success: true, message: `Berhasil memperbarui ${pageIds.length} materi.` };
+  } catch (error) {
+    return handleActionError(error);
+  }
+}
