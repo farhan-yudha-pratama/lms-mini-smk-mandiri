@@ -23,17 +23,25 @@ export async function getQuizzesWithPageStatus() {
 
     return {
       ...page,
-      categoryName: category?.name || 'Uncategorized',
+      categoryName: category?.name || 'Tanpa Kategori',
+      categoryOrderIndex: category?.orderIndex ?? 999999,
       quizPackage,
       hasQuizPackage: !!quizPackage,
       variantsCount: packageVariants.length,
       unlocks: unlockedPages,
     };
   }).sort((a, b) => {
-    if (a.categoryId === b.categoryId) {
-      return a.orderIndex - b.orderIndex;
+    // 1. Urutkan berdasarkan urutan kategori materi (categoryOrderIndex)
+    if (a.categoryOrderIndex !== b.categoryOrderIndex) {
+      return a.categoryOrderIndex - b.categoryOrderIndex;
     }
-    return a.categoryName.localeCompare(b.categoryName);
+    // 2. Jika urutan kategori sama, urutkan berdasarkan nama kategori
+    const catCompare = a.categoryName.localeCompare(b.categoryName);
+    if (catCompare !== 0) {
+      return catCompare;
+    }
+    // 3. Di dalam kategori yang sama, urutkan berdasarkan urutan halaman materi (orderIndex)
+    return a.orderIndex - b.orderIndex;
   });
 }
 

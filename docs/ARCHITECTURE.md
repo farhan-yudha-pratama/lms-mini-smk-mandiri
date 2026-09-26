@@ -22,15 +22,17 @@ Struktur direktori dipisahkan secara modular untuk memisahkan UI, logika bisnis,
 ```text
 /
 ├── app/                  # Next.js App Router
-│   ├── (arsitektur-web)/ # Route group materi
 │   ├── (auth)/           # Route group untuk halaman Login & Register
-│   ├── (bootstrap)/      # Route group materi
-│   ├── (css)/            # Route group materi
 │   ├── (dashboard)/      # Route group untuk layout Dashboard
-│   ├── (database)/       # Route group materi
-│   ├── (html)/           # Route group materi
-│   ├── (js)/             # Route group materi
-│   ├── (php)/            # Route group materi
+│   ├── (materi)/         # Route group seluruh materi pembelajaran
+│   │   ├── layout.tsx    # Unified layout dengan AccessGuard
+│   │   ├── (arsitektur-web)/
+│   │   ├── (bootstrap)/
+│   │   ├── (css)/
+│   │   ├── (database)/
+│   │   ├── (html)/
+│   │   ├── (js)/
+│   │   └── (php)/
 │   ├── actions/          # Server Actions (access.ts, materi.ts, dll)
 │   ├── globals.css       # Tailwind base styles
 │   ├── layout.tsx        # Root layout
