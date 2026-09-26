@@ -12,7 +12,6 @@ export default function AdvancedQueryPage() {
       <Headbar
         links={[
           { label: 'Materi', href: '/advanced-query-sql', isActive: true },
-          { label: 'Tantangan Filter', href: '/advanced-query-sql/tantangan', isActive: false }
         ]}
       />
 
@@ -30,7 +29,7 @@ export default function AdvancedQueryPage() {
               <div className="absolute -bottom-10 -left-10 z-0">
                 <span className="material-symbols-outlined text-[150px] md:text-[250px] text-white opacity-10 transform -rotate-12">manage_search</span>
               </div>
-              
+
               <div className="relative z-10 pt-8">
                 <h1 className="text-4xl sm:text-5xl md:text-7xl font-black text-mint-soft tracking-tighter uppercase mb-4 md:mb-6 drop-shadow-[4px_4px_0px_rgba(255,255,255,0.2)]">
                   Query Lanjutan: <br className="hidden md:block" /> Memilih & Mencari Data Spesifik
@@ -69,12 +68,12 @@ export default function AdvancedQueryPage() {
                     Gunakan trik <em>Bulk Insert</em> ini untuk memasukkan puluhan, ratusan, atau ribuan data sekaligus hanya dengan mengetik satu perintah saja!
                   </p>
                 </div>
-                
+
                 <div className="lg:w-1/2 bg-black text-white font-mono p-6 border-4 border-black shadow-neo-md transform -rotate-1">
-                  <span className="text-pink-400">INSERT INTO</span> siswa (nama)<br/>
-                  <span className="text-pink-400">VALUES</span> <br/>
-                  &nbsp;&nbsp;(<span className="text-jade-vibrant">'Andi'</span>), <span className="text-gray-500">{"// Koma untuk memisah orang"}</span> <br/>
-                  &nbsp;&nbsp;(<span className="text-jade-vibrant">'Budi'</span>),<br/>
+                  <span className="text-pink-400">INSERT INTO</span> siswa (nama)<br />
+                  <span className="text-pink-400">VALUES</span> <br />
+                  &nbsp;&nbsp;(<span className="text-jade-vibrant">'Andi'</span>), <span className="text-gray-500">{"// Koma untuk memisah orang"}</span> <br />
+                  &nbsp;&nbsp;(<span className="text-jade-vibrant">'Budi'</span>),<br />
                   &nbsp;&nbsp;(<span className="text-jade-vibrant">'Citra'</span>)<span className="text-yellow-400">;</span> <span className="text-gray-500">{"// Titik koma jika sudah selesai"}</span>
                 </div>
               </div>
@@ -99,7 +98,7 @@ export default function AdvancedQueryPage() {
                     Seringkali kita hanya ingat sebagian nama orang saat mau mencari data (misal: cuma ingat kata "Budi"). Untuk kasus seperti ini, kita tidak bisa pakai tanda sama dengan (=), kita harus pakai kata kunci <code className="bg-black text-white px-2 uppercase">LIKE</code>.
                   </p>
                   <div className="bg-black text-white font-mono p-4 border-2 border-black">
-                    <span className="text-pink-400">SELECT</span> * <span className="text-pink-400">FROM</span> siswa <br/>
+                    <span className="text-pink-400">SELECT</span> * <span className="text-pink-400">FROM</span> siswa <br />
                     <span className="text-yellow-400">WHERE</span> nama <span className="text-blue-300">LIKE</span> <span className="text-jade-vibrant">'%Budi%'</span>;
                   </div>
                   <div className="bg-white p-4 border-4 border-black font-bold text-forest-teal">
@@ -128,7 +127,7 @@ export default function AdvancedQueryPage() {
                     <span className="bg-black text-white px-3 py-1 font-black uppercase border-2 border-white text-sm">Syarat Wajib Semua</span>
                   </div>
                   <div className="bg-black text-white font-mono p-4 border-2 border-black text-sm mb-4">
-                    <span className="text-yellow-400">WHERE</span> kota = <span className="text-jade-vibrant">'Bandung'</span> <br/>
+                    <span className="text-yellow-400">WHERE</span> kota = <span className="text-jade-vibrant">'Bandung'</span> <br />
                     <span className="text-blue-300 font-black text-lg">AND</span> umur = <span className="text-orange-400">17</span>;
                   </div>
                   <p className="font-bold text-forest-teal">Data hanya akan muncul <strong>JIKA KEDUA SYARAT</strong> terpenuhi sekaligus. (Harus orang Bandung DAN umurnya tepat 17 tahun).</p>
@@ -141,7 +140,7 @@ export default function AdvancedQueryPage() {
                     <span className="bg-mint-soft text-black px-3 py-1 font-black uppercase border-2 border-black text-sm">Pilih Salah Satu</span>
                   </div>
                   <div className="bg-black text-white font-mono p-4 border-2 border-black text-sm mb-4">
-                    <span className="text-yellow-400">WHERE</span> kota = <span className="text-jade-vibrant">'Bandung'</span> <br/>
+                    <span className="text-yellow-400">WHERE</span> kota = <span className="text-jade-vibrant">'Bandung'</span> <br />
                     <span className="text-pink-400 font-black text-lg">OR</span> kota = <span className="text-jade-vibrant">'Jakarta'</span>;
                   </div>
                   <p className="font-bold text-forest-teal">Data akan muncul <strong>JIKA SALAH SATU</strong> syarat terpenuhi. (Pokoknya orang Bandung ATAU orang Jakarta munculkan semua).</p>
@@ -157,7 +156,7 @@ export default function AdvancedQueryPage() {
               </h2>
 
               <div className="space-y-6">
-                
+
                 {/* ORDER BY */}
                 <div className="bg-canvas border-4 border-black p-6 shadow-neo-md flex flex-col md:flex-row items-center gap-6 hover:translate-x-2 transition-transform">
                   <div className="bg-black text-white w-20 h-20 flex items-center justify-center border-4 border-black shrink-0">
@@ -194,14 +193,14 @@ export default function AdvancedQueryPage() {
               {/* Callout Info */}
               <div className="mt-12 bg-black border-4 border-black p-6 flex items-center justify-center gap-6 text-white shadow-neo-lg rotate-1 hover:rotate-0 transition-transform text-center">
                 <p className="font-black text-xl md:text-3xl uppercase tracking-tighter">
-                  Contoh Penggunaan Lengkap:<br/>
+                  Contoh Penggunaan Lengkap:<br />
                   <span className="text-jade-vibrant text-lg md:text-2xl block mt-2">
                     SELECT * FROM buku WHERE genre='Horor' ORDER BY tahun DESC LIMIT 10;
                   </span>
                 </p>
               </div>
             </section>
-            
+
             {/* Section 5: Praktik Query Perpustakaan */}
             <section className="bg-white border-4 border-black shadow-neo-xl p-6 md:p-12 rotate-1 hover:rotate-0 transition-transform mt-12">
               <h2 className="text-2xl sm:text-3xl md:text-5xl font-black text-black uppercase mb-8 md:mb-10 border-b-4 border-black pb-4 flex items-center gap-3 md:gap-4 tracking-tighter">
@@ -220,9 +219,9 @@ export default function AdvancedQueryPage() {
                     1. Bulk Insert Banyak Buku Sekaligus
                   </h3>
                   <div className="bg-black text-mint-soft font-mono p-4 border-2 border-black text-sm overflow-x-auto mb-2">
-                    <span className="text-pink-400">INSERT INTO</span> buku (judul_buku, stok) <span className="text-pink-400">VALUES</span> <br/>
-                    ('Laskar Pelangi', 5), <br/>
-                    ('Harry Potter dan Batu Bertuah', 2), <br/>
+                    <span className="text-pink-400">INSERT INTO</span> buku (judul_buku, stok) <span className="text-pink-400">VALUES</span> <br />
+                    ('Laskar Pelangi', 5), <br />
+                    ('Harry Potter dan Batu Bertuah', 2), <br />
                     ('Harry Potter dan Kamar Rahasia', 3);
                   </div>
                 </div>
@@ -248,7 +247,7 @@ export default function AdvancedQueryPage() {
                   </div>
                   <p className="font-bold text-gray-700">Kode ini sangat berguna jika ada siswa yang mau meminjam buku. Kita mencari nama bukunya, <strong>DAN</strong> memastikan stoknya tidak sedang kosong (lebih dari 0).</p>
                 </div>
-                
+
                 <div className="bg-canvas border-4 border-black p-6 shadow-neo-md">
                   <h3 className="text-xl font-black uppercase text-black mb-2 flex items-center gap-2">
                     <span className="material-symbols-outlined text-jade-vibrant text-3xl">sort</span>
@@ -261,7 +260,7 @@ export default function AdvancedQueryPage() {
                 </div>
               </div>
             </section>
-            
+
             {/* Footer Nav */}
             <div className="flex flex-col sm:flex-row justify-between items-center pt-8 gap-4">
               <a href="/sql-dasar-ddl-dml" className="bg-white text-black font-black uppercase text-sm md:text-lg px-4 py-3 md:px-6 md:py-4 border-4 border-black shadow-neo-md hover:-translate-y-1 hover:-translate-x-1 hover:shadow-neo-lg active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all flex items-center gap-2 w-full sm:w-auto justify-center">

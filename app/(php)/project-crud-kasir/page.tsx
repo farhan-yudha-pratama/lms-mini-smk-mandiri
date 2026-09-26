@@ -442,7 +442,6 @@ header("Location: index.php");
       <Headbar
         links={[
           { label: 'Proyek Akhir', href: '/project-crud-kasir', isActive: true },
-          { label: 'Kumpulkan Karya', href: '/project-crud-kasir/kumpulkan', isActive: false }
         ]}
       />
 
@@ -495,7 +494,7 @@ header("Location: index.php");
                       <h2 className="text-2xl md:text-4xl font-black uppercase mb-2">{s.num}. {s.title}</h2>
                       <p className="font-bold text-gray-700">{s.desc}</p>
                     </div>
-                    <button 
+                    <button
                       onClick={() => copyToClipboard(s.code, s.num)}
                       className="bg-[#092328] text-[#8BBB92] font-black uppercase px-6 py-3 border-4 border-black shadow-[4px_4px_0px_0px_#000] hover:-translate-y-1 hover:-translate-x-1 active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all flex items-center gap-2 flex-shrink-0"
                     >
@@ -512,16 +511,16 @@ header("Location: index.php");
 
             {/* Navigation Footer */}
             <div className="flex justify-between items-center border-t-4 border-black pt-8">
-              <button 
+              <button
                 onClick={() => setActiveStep(prev => Math.max(1, prev - 1))}
                 disabled={activeStep === 1}
                 className="bg-black text-white font-black uppercase px-6 py-3 border-4 border-black shadow-[4px_4px_0px_0px_#000] disabled:opacity-50 disabled:shadow-none disabled:cursor-not-allowed hover:-translate-y-1 hover:-translate-x-1 active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all"
               >
                 &laquo; Mundur
               </button>
-              
+
               {activeStep < 8 ? (
-                <button 
+                <button
                   onClick={() => setActiveStep(prev => Math.min(8, prev + 1))}
                   className="bg-[#FFD700] text-black font-black uppercase px-6 py-3 border-4 border-black shadow-[4px_4px_0px_0px_#000] hover:-translate-y-1 hover:-translate-x-1 active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all"
                 >

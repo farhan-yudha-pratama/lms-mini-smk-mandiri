@@ -12,7 +12,6 @@ export default function AnatomiTabelPage() {
       <Headbar
         links={[
           { label: 'Materi', href: '/anatomi-tipe-data-tabel', isActive: true },
-          { label: 'Latihan Tipe Data', href: '/anatomi-tipe-data-tabel/latihan', isActive: false }
         ]}
       />
 
@@ -30,7 +29,7 @@ export default function AnatomiTabelPage() {
               <div className="absolute -top-10 -right-10 z-0">
                 <span className="material-symbols-outlined text-[150px] md:text-[250px] text-white opacity-20 transform rotate-12">biotech</span>
               </div>
-              
+
               <div className="relative z-10 pt-8">
                 <h1 className="text-4xl sm:text-5xl md:text-7xl font-black text-mint-soft tracking-tighter uppercase mb-4 md:mb-6 drop-shadow-[4px_4px_0px_rgba(255,255,255,0.2)]">
                   Isi Dalam Tabel: <br className="hidden md:block" /> Kolom & Tipe Data
@@ -167,7 +166,7 @@ export default function AnatomiTabelPage() {
                   </h3>
                   <div className="bg-white border-4 border-black p-4 mt-4 text-lg font-bold shadow-neo-sm">
                     Pemula sering membuat kesalahan dengan mengatur Nomor Telepon dengan tipe <code className="bg-black text-white px-2 uppercase">INT</code> (Angka). Padahal, komputer menganggap angka nol (0) di paling depan itu tidak ada gunanya untuk hitung-hitungan. Alhasil, '0812' akan otomatis dipotong dan berubah wujud menjadi '812' saja!
-                    <br/><br/>
+                    <br /><br />
                     <strong>Aturan Emas:</strong> Jika sebuah deretan angka tidak dipakai untuk hitung-hitungan matematika (seperti Nomor Telepon atau NIK KTP), <strong>selalu gunakan tipe teks <code className="bg-jade-vibrant text-white px-2 uppercase border-2 border-black">VARCHAR</code>!</strong>
                   </div>
                 </div>
@@ -187,7 +186,7 @@ export default function AnatomiTabelPage() {
                     Saat mengintip isi tabel <em>database</em>, kamu mungkin sering melihat tulisan aneh <strong className="bg-black text-white px-2 uppercase border-2 border-black">NULL</strong> di dalam kotak yang kosong. Sebenarnya apa sih artinya?
                   </p>
                   <p className="text-lg md:text-xl font-bold text-forest-teal leading-relaxed">
-                    <code>NULL</code> artinya data tersebut <strong>Kosong, Tidak Ada, atau Belum Diisi sama sekali</strong>. 
+                    <code>NULL</code> artinya data tersebut <strong>Kosong, Tidak Ada, atau Belum Diisi sama sekali</strong>.
                   </p>
                   <div className="bg-mint-soft border-4 border-black p-6 shadow-neo-md">
                     <h3 className="text-xl font-black uppercase mb-2">NULL BUKANLAH Angka 0 atau Teks Kosong</h3>
@@ -206,7 +205,7 @@ export default function AnatomiTabelPage() {
                 </div>
               </div>
             </section>
-            
+
             {/* Section 4: Praktik Tipe Data Perpustakaan */}
             <section className="bg-white border-4 border-black shadow-neo-xl p-6 md:p-12 rotate-1 hover:rotate-0 transition-transform">
               <h2 className="text-2xl sm:text-3xl md:text-5xl font-black text-black uppercase mb-8 md:mb-10 border-b-4 border-black pb-4 flex items-center gap-3 md:gap-4 tracking-tighter">
@@ -256,7 +255,7 @@ export default function AnatomiTabelPage() {
                 </div>
               </div>
             </section>
-            
+
             {/* Footer Nav */}
             <div className="flex flex-col sm:flex-row justify-between items-center pt-8 gap-4">
               <a href="/relasi-tabel" className="bg-white text-black font-black uppercase text-sm md:text-lg px-4 py-3 md:px-6 md:py-4 border-4 border-black shadow-neo-md hover:-translate-y-1 hover:-translate-x-1 hover:shadow-neo-lg active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all flex items-center gap-2 w-full sm:w-auto justify-center">

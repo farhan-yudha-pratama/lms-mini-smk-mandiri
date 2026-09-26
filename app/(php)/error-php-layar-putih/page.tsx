@@ -13,7 +13,6 @@ export default function ErrorLayarPutihPage() {
       <Headbar
         links={[
           { label: 'Materi', href: '/error-php-layar-putih', isActive: true },
-          { label: 'Latihan Fix Error', href: '/error-php-layar-putih/latihan', isActive: false }
         ]}
       />
 
@@ -31,7 +30,7 @@ export default function ErrorLayarPutihPage() {
               <div className="absolute -bottom-10 -right-10 z-0">
                 <span className={`material-symbols-outlined text-[150px] md:text-[250px] opacity-20 transform rotate-12 ${isPanicking ? 'text-black' : 'text-white'}`}>skull</span>
               </div>
-              
+
               <div className="relative z-10 pt-8">
                 <h1 className="text-4xl sm:text-5xl md:text-7xl font-black tracking-tighter uppercase mb-4 md:mb-6 drop-shadow-[4px_4px_0px_rgba(0,0,0,0.5)]">
                   Memecahkan Masalah: <br className="hidden md:block" /> Layar Putih (Blank Putih)
@@ -73,7 +72,7 @@ export default function ErrorLayarPutihPage() {
                     Seringkali, masalah ini disebabkan hal sederhana: Lupa menutup kurung <code>{"}"}</code> atau lupa menulis titik koma <code>;</code> di akhir baris.
                   </p>
                 </div>
-                
+
                 <div className="lg:w-1/3 border-4 border-black shadow-[8px_8px_0px_0px_#000] p-2 flex flex-col transform -rotate-2">
                   <div className="bg-gray-200 border-b-4 border-black p-2 flex gap-2">
                     <div className="w-3 h-3 bg-white border-2 border-black rounded-full"></div>
@@ -136,7 +135,7 @@ export default function ErrorLayarPutihPage() {
                 </div>
 
                 <div className="lg:w-1/2 w-full mt-4 transform -rotate-2">
-                  <CodeBlock 
+                  <CodeBlock
                     language="php"
                     code={`<?php
   $nama = "Budi";
@@ -147,7 +146,7 @@ export default function ErrorLayarPutihPage() {
                 </div>
               </div>
             </section>
-            
+
             {/* Section 4: Praktik Mandiri */}
             <section className="bg-canvas border-4 border-black shadow-neo-xl p-6 md:p-12 rotate-1 hover:rotate-0 transition-transform">
               <h2 className="text-2xl sm:text-3xl md:text-5xl font-black text-black uppercase mb-8 md:mb-10 border-b-4 border-black pb-4 flex items-center gap-3 md:gap-4 tracking-tighter">
@@ -160,7 +159,7 @@ export default function ErrorLayarPutihPage() {
               </p>
 
               <div className="w-full mb-6 text-left">
-                <CodeBlock 
+                <CodeBlock
                   language="php"
                   code={`<?php
   echo "Baris pertama berhasil!"
@@ -186,7 +185,7 @@ export default function ErrorLayarPutihPage() {
                 </div>
               </div>
             </section>
-            
+
             {/* Footer Nav */}
             <div className="flex flex-col sm:flex-row justify-between items-center pt-8 gap-4">
               <a href="/sintaks-dasar-php" className="bg-canvas text-black font-black uppercase text-sm md:text-lg px-4 py-3 md:px-6 md:py-4 border-4 border-black shadow-neo-md hover:-translate-y-1 hover:-translate-x-1 hover:shadow-neo-lg active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all flex items-center gap-2 w-full sm:w-auto justify-center">

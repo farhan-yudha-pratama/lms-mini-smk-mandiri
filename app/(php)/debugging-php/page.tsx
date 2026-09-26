@@ -13,7 +13,6 @@ export default function DebuggingPage() {
       <Headbar
         links={[
           { label: 'Materi', href: '/debugging-php', isActive: true },
-          { label: 'Kasus Detektif', href: '/debugging-php/kasus', isActive: false }
         ]}
       />
 
@@ -31,7 +30,7 @@ export default function DebuggingPage() {
               <div className="absolute -bottom-10 -right-10 z-0">
                 <span className="material-symbols-outlined text-[150px] md:text-[250px] text-white opacity-20 transform rotate-12">policy</span>
               </div>
-              
+
               <div className="relative z-10 pt-8">
                 <h1 className="text-4xl sm:text-5xl md:text-7xl font-black text-[#FFD700] tracking-tighter uppercase mb-4 md:mb-6 drop-shadow-[4px_4px_0px_rgba(0,0,0,1)]">
                   Teknik Debugging: <br className="hidden md:block" /> Mencari Akar Masalah
@@ -79,7 +78,7 @@ export default function DebuggingPage() {
 
             {/* Section 2: var_dump & die */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              
+
               {/* var_dump */}
               <section className="bg-canvas border-4 border-black shadow-neo-xl p-6 md:p-8 -rotate-1 hover:rotate-0 transition-transform flex flex-col">
                 <div className="bg-[#2965F1] text-white w-16 h-16 flex items-center justify-center border-4 border-black shadow-neo-sm text-4xl mb-6">
@@ -125,7 +124,7 @@ die();`} />
                 </p>
 
                 <div className="w-full text-left">
-                  <CodeBlock 
+                  <CodeBlock
                     language="php"
                     code={`<?php
 // 1. Tampilkan datanya ke layar
@@ -144,7 +143,7 @@ die();
                 </div>
               </div>
             </section>
-            
+
             {/* Section 4: Latihan Praktik */}
             <section className="bg-canvas border-4 border-black shadow-neo-xl p-6 md:p-12 rotate-1 hover:rotate-0 transition-transform">
               <h2 className="text-2xl sm:text-3xl md:text-5xl font-black text-black uppercase mb-8 md:mb-10 border-b-4 border-black pb-4 flex items-center gap-3 md:gap-4 tracking-tighter">
@@ -157,7 +156,7 @@ die();
               </p>
 
               <div className="w-full mb-6">
-                <CodeBlock 
+                <CodeBlock
                   language="php"
                   code={`<?php
   $nama = "Siswa Kreatif";
@@ -190,7 +189,7 @@ die();
                 </div>
               </div>
             </section>
-            
+
             {/* Footer Nav */}
             <div className="flex flex-col sm:flex-row justify-between items-center pt-8 gap-4">
               <a href="/error-php-layar-putih" className="bg-canvas text-black font-black uppercase text-sm md:text-lg px-4 py-3 md:px-6 md:py-4 border-4 border-black shadow-neo-md hover:-translate-y-1 hover:-translate-x-1 hover:shadow-neo-lg active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all flex items-center gap-2 w-full sm:w-auto justify-center">

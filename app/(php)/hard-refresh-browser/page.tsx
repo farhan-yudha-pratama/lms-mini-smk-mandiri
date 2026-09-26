@@ -13,7 +13,6 @@ export default function HardRefreshPage() {
       <Headbar
         links={[
           { label: 'Materi', href: '/hard-refresh-browser', isActive: true },
-          { label: 'Praktik Cache', href: '/hard-refresh-browser/praktik', isActive: false }
         ]}
       />
 
@@ -31,7 +30,7 @@ export default function HardRefreshPage() {
               <div className="absolute -top-10 -right-10 z-0 flex gap-4">
                 <span className={`material-symbols-outlined text-[150px] md:text-[250px] text-white opacity-20 transform ${isRefreshing ? 'animate-spin' : 'rotate-12'}`}>cached</span>
               </div>
-              
+
               <div className="relative z-10 pt-8">
                 <h1 className="text-4xl sm:text-5xl md:text-7xl font-black text-white tracking-tighter uppercase mb-4 md:mb-6 drop-shadow-[4px_4px_0px_rgba(0,0,0,1)]">
                   Solusi Kodingan: <br className="hidden md:block" /> Hard Refresh!
@@ -76,7 +75,7 @@ export default function HardRefreshPage() {
                     Tenang, kodenya tidak rusak. Ini terjadi karena Browser memiliki fitur <strong>Cache</strong> (Ingatan). Browser diam-diam menyimpan versi lama websitemu agar proses <em>loading</em> lebih cepat, sehingga ia malas memuat ulang file terbarumu.
                   </p>
                 </div>
-                
+
                 <div className="lg:w-1/3 bg-black text-white p-6 flex flex-col items-center justify-center text-center border-4 border-black shadow-[8px_8px_0px_0px_#000] transform rotate-2">
                   <span className="material-symbols-outlined text-[80px] text-gray-400 mb-4 animate-pulse">memory</span>
                   <h3 className="font-black text-2xl uppercase mb-2 text-[#FFD700]">Cache Browser</h3>
@@ -97,7 +96,7 @@ export default function HardRefreshPage() {
               </p>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                
+
                 {/* Opsi 1 */}
                 <div className="bg-canvas border-4 border-black p-6 md:p-8 shadow-neo-md text-center transform hover:-translate-y-2 transition-transform cursor-pointer">
                   <h3 className="font-black uppercase text-xl md:text-2xl text-black mb-6">Jurus Cepat (Windows)</h3>
@@ -136,7 +135,7 @@ export default function HardRefreshPage() {
                 Trik ini akan memaksa browser membuang "ingatan masa lalu" dan men-<em>download</em> ulang seluruh kodingan terbarumu secara utuh!
               </div>
             </section>
-            
+
             {/* Section 3: Latihan Praktik */}
             <section className="bg-canvas border-4 border-black shadow-neo-xl p-6 md:p-12 rotate-1 hover:rotate-0 transition-transform">
               <h2 className="text-2xl sm:text-3xl md:text-5xl font-black text-black uppercase mb-8 md:mb-10 border-b-4 border-black pb-4 flex items-center gap-3 md:gap-4 tracking-tighter">
@@ -149,7 +148,7 @@ export default function HardRefreshPage() {
               </p>
 
               <div className="w-full mb-6 text-left">
-                <CodeBlock 
+                <CodeBlock
                   language="css"
                   code={`/* Di dalam file style.css */
 body {
@@ -182,7 +181,7 @@ body {
                 </div>
               </div>
             </section>
-            
+
             {/* Footer Nav */}
             <div className="flex flex-col sm:flex-row justify-between items-center pt-8 gap-4">
               <a href="/debugging-php" className="bg-canvas text-black font-black uppercase text-sm md:text-lg px-4 py-3 md:px-6 md:py-4 border-4 border-black shadow-neo-md hover:-translate-y-1 hover:-translate-x-1 hover:shadow-neo-lg active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all flex items-center gap-2 w-full sm:w-auto justify-center">

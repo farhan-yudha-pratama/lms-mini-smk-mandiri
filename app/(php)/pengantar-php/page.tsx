@@ -13,7 +13,6 @@ export default function PengantarPhpPage() {
       <Headbar
         links={[
           { label: 'Materi', href: '/pengantar-php', isActive: true },
-          { label: 'Kuis Pengantar', href: '/pengantar-php/kuis', isActive: false }
         ]}
       />
 
@@ -31,7 +30,7 @@ export default function PengantarPhpPage() {
               <div className="absolute -bottom-10 -right-10 z-0">
                 <span className="material-symbols-outlined text-[150px] md:text-[250px] text-white opacity-20 transform rotate-12">restaurant_menu</span>
               </div>
-              
+
               <div className="relative z-10 pt-8">
                 <h1 className="text-4xl sm:text-5xl md:text-7xl font-black text-white tracking-tighter uppercase mb-4 md:mb-6 drop-shadow-[4px_4px_0px_rgba(0,0,0,1)]">
                   Pengenalan PHP: <br className="hidden md:block" /> Sang Koki di Balik Layar
@@ -71,7 +70,7 @@ export default function PengantarPhpPage() {
                   <h3 className="font-black text-2xl uppercase mb-2">HTML</h3>
                   <p className="font-bold text-gray-700 text-sm md:text-base mt-auto">Ibarat kerangka bangunan restoran, bentuk meja, dan piring kosong tempat makanan akan ditaruh.</p>
                 </div>
-                
+
                 <div className="bg-canvas border-4 border-black p-6 shadow-neo-md hover:-translate-y-2 transition-transform text-center flex flex-col h-full group">
                   <span className="material-symbols-outlined text-[60px] mb-4 text-[#1572B6] group-hover:scale-110 transition-transform">format_paint</span>
                   <h3 className="font-black text-2xl uppercase mb-2">CSS</h3>
@@ -98,7 +97,7 @@ export default function PengantarPhpPage() {
               </p>
 
               <div className="flex flex-col md:flex-row items-center justify-between gap-4 relative">
-                
+
                 {/* Garis koneksi (Desktop) */}
                 <div className="hidden md:block absolute top-1/2 left-10 right-10 h-2 bg-black z-0 border-b-4 border-dashed border-gray-400"></div>
 
@@ -156,8 +155,8 @@ export default function PengantarPhpPage() {
                   <span className="material-symbols-outlined text-[80px] text-[#FFD700] mb-4">visibility_off</span>
                   <p className="font-black uppercase text-2xl text-white mb-2">View Source</p>
                   <div className="text-left w-full mt-4">
-                    <CodeBlock 
-                      language="php" 
+                    <CodeBlock
+                      language="php"
                       code={`<!-- Yang diketik Programmer: -->
 <?php
   echo "Halo Dunia!";
@@ -170,7 +169,7 @@ Halo Dunia!`}
                 </div>
               </div>
             </section>
-            
+
             {/* Footer Nav */}
             <div className="flex flex-col sm:flex-row justify-between items-center pt-8 gap-4">
               <a href="/project-laundry-db" className="bg-canvas text-black font-black uppercase text-sm md:text-lg px-4 py-3 md:px-6 md:py-4 border-4 border-black shadow-neo-md hover:-translate-y-1 hover:-translate-x-1 hover:shadow-neo-lg active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all flex items-center gap-2 w-full sm:w-auto justify-center">

@@ -13,7 +13,6 @@ export default function PulauPhpPage() {
       <Headbar
         links={[
           { label: 'Materi', href: '/aturan-pulau-php', isActive: true },
-          { label: 'Latihan Tag PHP', href: '/aturan-pulau-php/latihan', isActive: false }
         ]}
       />
 
@@ -31,7 +30,7 @@ export default function PulauPhpPage() {
               <div className="absolute -bottom-10 -right-10 z-0">
                 <span className="material-symbols-outlined text-[150px] md:text-[250px] text-white opacity-20 transform rotate-12">sailing</span>
               </div>
-              
+
               <div className="relative z-10 pt-8">
                 <h1 className="text-4xl sm:text-5xl md:text-7xl font-black text-mint-soft tracking-tighter uppercase mb-4 md:mb-6 drop-shadow-[4px_4px_0px_rgba(255,255,255,0.2)]">
                   Menyisipkan PHP <br className="hidden md:block" /> ke Dalam HTML
@@ -70,7 +69,7 @@ export default function PulauPhpPage() {
                     Jangan khawatir! File berakhiran <code>.php</code> (contohnya <code>index.php</code>) akan <strong>tetap menampilkan kode HTML dan CSS lama milikmu secara normal tanpa ada yang rusak</strong>.
                   </p>
                 </div>
-                
+
                 <div className="lg:w-1/3 bg-black text-white p-6 border-4 border-black shadow-neo-md flex flex-col items-center justify-center text-center transform -rotate-2">
                   <span className="material-symbols-outlined text-[60px] text-[#FFD700] mb-2">autorenew</span>
                   <p className="font-black text-2xl uppercase mb-2 line-through text-gray-500">index.html</p>
@@ -92,19 +91,19 @@ export default function PulauPhpPage() {
 
               <div className="bg-canvas p-8 border-4 border-black shadow-neo-lg text-center relative overflow-hidden">
                 <div className="absolute inset-0 bg-[#1572B6] opacity-10"></div>
-                
+
                 <div className="relative z-10">
                   <h3 className="text-2xl md:text-3xl font-black text-black uppercase tracking-tight mb-4 text-left">
                     Area Bebas HTML
                   </h3>
-                  
+
                   {/* Blok PHP */}
                   <div className="bg-[#8B4513] p-4 border-4 border-black shadow-neo-md my-6 rotate-2 mx-auto md:w-2/3">
                     <div className="bg-jade-vibrant border-4 border-black p-4 text-white">
                       <span className="material-symbols-outlined text-4xl mb-2">code_blocks</span>
                       <h4 className="font-black uppercase text-xl mb-2">Blok Kode PHP</h4>
                       <p className="font-bold text-sm">
-                        Agar komputer tahu kapan mulai membaca PHP, kamu wajib membungkus penulisan PHP dengan tag pembuka dan penutup: <br/>
+                        Agar komputer tahu kapan mulai membaca PHP, kamu wajib membungkus penulisan PHP dengan tag pembuka dan penutup: <br />
                         <code className="bg-black px-2 py-1 mt-2 inline-block font-black text-[#FFD700] border-2 border-white">&lt;?php ... ?&gt;</code>
                       </p>
                     </div>
@@ -136,10 +135,10 @@ export default function PulauPhpPage() {
                   <span className="w-3 h-3 bg-jade-vibrant rounded-full"></span>
                   <span className="ml-2">index.php</span>
                 </div>
-                
+
                 <div className="p-6 leading-relaxed w-full">
-                  <CodeBlock 
-                    language="php" 
+                  <CodeBlock
+                    language="php"
                     code={`<!-- Ini kode HTML biasa di bagian atas halaman -->
 <h1>Selamat Datang di Portofolio Saya!</h1>
 
@@ -161,7 +160,7 @@ export default function PulauPhpPage() {
                 </p>
               </div>
             </section>
-            
+
             {/* Section 4: Latihan Mandiri */}
             <section className="bg-canvas border-4 border-black shadow-neo-xl p-6 md:p-12 rotate-1 hover:rotate-0 transition-transform">
               <h2 className="text-2xl sm:text-3xl md:text-5xl font-black text-black uppercase mb-8 md:mb-10 border-b-4 border-black pb-4 flex items-center gap-3 md:gap-4 tracking-tighter">
@@ -196,8 +195,8 @@ export default function PulauPhpPage() {
                     <h3 className="text-lg md:text-xl font-black uppercase mb-2">Sisipkan Kode PHP</h3>
                     <p className="font-bold text-gray-700 mb-4">Di dalam tag <code>&lt;body&gt;</code>, ketikkan blok kode PHP berikut persis seperti ini:</p>
                     <div className="w-full mt-4">
-                      <CodeBlock 
-                        language="php" 
+                      <CodeBlock
+                        language="php"
                         code={`<body>
   <?php
     echo "<h1>Halo, ini halaman PHP pertamaku!</h1>";
@@ -219,7 +218,7 @@ export default function PulauPhpPage() {
                 </div>
               </div>
             </section>
-            
+
             {/* Footer Nav */}
             <div className="flex flex-col sm:flex-row justify-between items-center pt-8 gap-4">
               <a href="/pengantar-php" className="bg-canvas text-black font-black uppercase text-sm md:text-lg px-4 py-3 md:px-6 md:py-4 border-4 border-black shadow-neo-md hover:-translate-y-1 hover:-translate-x-1 hover:shadow-neo-lg active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all flex items-center gap-2 w-full sm:w-auto justify-center">

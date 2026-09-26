@@ -13,7 +13,6 @@ export default function GetVsPostPage() {
       <Headbar
         links={[
           { label: 'Materi', href: '/get-vs-post-php', isActive: true },
-          { label: 'Latihan Form', href: '/get-vs-post-php/latihan', isActive: false }
         ]}
       />
 
@@ -34,7 +33,7 @@ export default function GetVsPostPage() {
               <div className="absolute -top-10 -right-10 z-0">
                 <span className="material-symbols-outlined text-[150px] md:text-[250px] text-white opacity-20 transform rotate-12">lock</span>
               </div>
-              
+
               <div className="relative z-10 pt-8">
                 <h1 className="text-4xl sm:text-5xl md:text-7xl font-black text-[#FFD700] tracking-tighter uppercase mb-4 md:mb-6 drop-shadow-[4px_4px_0px_rgba(255,255,255,0.2)]">
                   Metode Pengiriman: <br className="hidden md:block" /> $_GET vs $_POST
@@ -65,13 +64,13 @@ export default function GetVsPostPage() {
             <section className="bg-pine-deep border-4 border-black shadow-neo-xl p-6 md:p-12 -rotate-1 hover:rotate-0 transition-transform text-white">
               <div className="flex justify-center mb-8">
                 <div className="bg-black border-4 border-black flex shadow-[8px_8px_0px_0px_#000]">
-                  <button 
+                  <button
                     onClick={() => setActiveTab('GET')}
                     className={`font-black text-xl md:text-3xl uppercase px-8 py-4 transition-colors ${activeTab === 'GET' ? 'bg-[#FFD700] text-black' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}
                   >
                     $_GET
                   </button>
-                  <button 
+                  <button
                     onClick={() => setActiveTab('POST')}
                     className={`font-black text-xl md:text-3xl uppercase px-8 py-4 transition-colors ${activeTab === 'POST' ? 'bg-[#FF0000] text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}
                   >
@@ -92,7 +91,7 @@ export default function GetVsPostPage() {
                       <p className="text-lg font-bold leading-relaxed">
                         Metode <code className="bg-[#FFD700] px-2 py-1 border-2 border-black">$_GET</code> digunakan untuk mengirim data dengan cara <strong>menempelkannya langsung di ujung *Address Bar* (URL)</strong> browser.
                       </p>
-                      
+
                       {/* URL Bar Visual */}
                       <div className="bg-white border-4 border-black shadow-neo-sm overflow-hidden mt-6">
                         <div className="bg-gray-200 border-b-4 border-black p-2 flex items-center gap-2">
@@ -135,7 +134,7 @@ export default function GetVsPostPage() {
                       <p className="text-lg font-bold leading-relaxed">
                         Metode <code className="bg-[#FF0000] text-white px-2 py-1 border-2 border-black">$_POST</code> digunakan untuk mengirim data <strong>secara rahasia di balik layar</strong>. Data ini tidak akan terlihat sama sekali di baris URL browsermu!
                       </p>
-                      
+
                       {/* URL Bar Visual */}
                       <div className="bg-white border-4 border-black shadow-neo-sm overflow-hidden mt-6">
                         <div className="bg-gray-200 border-b-4 border-black p-2 flex items-center gap-2">
@@ -166,7 +165,7 @@ export default function GetVsPostPage() {
                 </div>
               )}
             </section>
-            
+
             {/* Section 3: Latihan Praktik */}
             <section className="bg-canvas border-4 border-black shadow-neo-xl p-6 md:p-12 rotate-1 hover:rotate-0 transition-transform">
               <h2 className="text-2xl sm:text-3xl md:text-5xl font-black text-black uppercase mb-8 md:mb-10 border-b-4 border-black pb-4 flex items-center gap-3 md:gap-4 tracking-tighter">
@@ -179,7 +178,7 @@ export default function GetVsPostPage() {
               </p>
 
               <div className="w-full mb-6 text-left">
-                <CodeBlock 
+                <CodeBlock
                   language="html"
                   code={`<!-- 1. Form menggunakan GET -->
 <form method="GET" action="proses.php">
@@ -214,7 +213,7 @@ export default function GetVsPostPage() {
                 </div>
               </div>
             </section>
-            
+
             {/* Footer Nav */}
             <div className="flex flex-col sm:flex-row justify-between items-center pt-8 gap-4">
               <a href="/hard-refresh-browser" className="bg-canvas text-black font-black uppercase text-sm md:text-lg px-4 py-3 md:px-6 md:py-4 border-4 border-black shadow-neo-md hover:-translate-y-1 hover:-translate-x-1 hover:shadow-neo-lg active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all flex items-center gap-2 w-full sm:w-auto justify-center">

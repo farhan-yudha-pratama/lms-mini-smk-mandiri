@@ -13,7 +13,6 @@ export default function KoneksiMysqlPage() {
       <Headbar
         links={[
           { label: 'Materi', href: '/koneksi-mysql-php', isActive: true },
-          { label: 'Simulasi Koneksi', href: '/koneksi-mysql-php/simulasi', isActive: false }
         ]}
       />
 
@@ -31,7 +30,7 @@ export default function KoneksiMysqlPage() {
               <div className="absolute -bottom-10 -right-10 z-0">
                 <span className="material-symbols-outlined text-[150px] md:text-[250px] text-white opacity-20 transform rotate-12">cable</span>
               </div>
-              
+
               <div className="relative z-10 pt-8">
                 <h1 className="text-4xl sm:text-5xl md:text-7xl font-black text-white tracking-tighter uppercase mb-4 md:mb-6 drop-shadow-[4px_4px_0px_rgba(0,0,0,1)]">
                   Menyambungkan <br className="hidden md:block" /> PHP ke MySQL
@@ -73,12 +72,12 @@ export default function KoneksiMysqlPage() {
                     Biasakan untuk menulis kode koneksi ini di file terpisah, biasanya diberi nama <code className="bg-gray-200 px-1 border border-black font-mono">koneksi.php</code>, agar bisa dipanggil berulang kali di file lain tanpa harus mengetik ulang.
                   </p>
                 </div>
-                
+
                 <div className="lg:w-1/3 border-4 border-black shadow-[8px_8px_0px_0px_#000] p-4 flex flex-col items-center justify-center text-center transform -rotate-2 relative overflow-hidden bg-black">
                   {/* Animasi Kabel */}
                   <div className="absolute top-1/2 left-0 w-full h-2 bg-gray-600 z-0"></div>
                   <div className={`absolute top-1/2 left-0 w-1/2 h-2 bg-[#FFD700] z-0 transition-all duration-1000 ${isConnected ? 'w-full' : 'w-0'}`}></div>
-                  
+
                   <div className="flex justify-between w-full relative z-10">
                     <span className="material-symbols-outlined text-[60px] text-[#2965F1] bg-white rounded-full p-2 border-4 border-black">php</span>
                     <span className={`material-symbols-outlined text-[60px] bg-white rounded-full p-2 border-4 border-black transition-colors duration-500 ${isConnected ? 'text-jade-vibrant' : 'text-gray-400'}`}>database</span>
@@ -140,7 +139,7 @@ export default function KoneksiMysqlPage() {
               </p>
 
               <div className="w-full text-left mb-6">
-                <CodeBlock 
+                <CodeBlock
                   language="php"
                   code={`<?php
 // 1. Menyambungkan PHP dengan MySQL
@@ -197,7 +196,7 @@ if (!$koneksi) {
                 </div>
               </div>
             </section>
-            
+
             {/* Footer Nav */}
             <div className="flex flex-col sm:flex-row justify-between items-center pt-8 gap-4">
               <a href="/undefined-array-key" className="bg-canvas text-black font-black uppercase text-sm md:text-lg px-4 py-3 md:px-6 md:py-4 border-4 border-black shadow-neo-md hover:-translate-y-1 hover:-translate-x-1 hover:shadow-neo-lg active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all flex items-center gap-2 w-full sm:w-auto justify-center">

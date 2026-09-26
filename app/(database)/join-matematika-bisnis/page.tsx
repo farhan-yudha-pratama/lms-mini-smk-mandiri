@@ -12,7 +12,6 @@ export default function JoinAgregasiPage() {
       <Headbar
         links={[
           { label: 'Materi', href: '/join-matematika-bisnis', isActive: true },
-          { label: 'Latihan Hitung', href: '/join-matematika-bisnis/latihan', isActive: false }
         ]}
       />
 
@@ -30,7 +29,7 @@ export default function JoinAgregasiPage() {
               <div className="absolute -top-10 -right-10 z-0">
                 <span className="material-symbols-outlined text-[150px] md:text-[250px] text-white opacity-20 transform rotate-12">extension</span>
               </div>
-              
+
               <div className="relative z-10 pt-8">
                 <h1 className="text-4xl sm:text-5xl md:text-7xl font-black text-mint-soft tracking-tighter uppercase mb-4 md:mb-6 drop-shadow-[4px_4px_0px_rgba(255,255,255,0.2)]">
                   Menggabungkan Tabel <br className="hidden md:block" /> & Menghitung Data
@@ -72,7 +71,7 @@ export default function JoinAgregasiPage() {
                     Untuk mengubah angka ID tersebut menjadi teks yang mudah dibaca, kita harus <strong>MENGGABUNGKAN (JOIN)</strong> dua tabel yang terpisah agar datanya utuh dan jelas.
                   </p>
                 </div>
-                
+
                 <div className="lg:w-1/3 w-full bg-canvas border-4 border-black p-4 text-center transform -rotate-2">
                   <div className="bg-white border-2 border-black p-4 mb-4">
                     <span className="text-xs font-black uppercase text-gray-500 block mb-1">Data Mentah</span>
@@ -98,9 +97,9 @@ export default function JoinAgregasiPage() {
 
               <div className="bg-black text-white border-4 border-black shadow-neo-lg p-6 md:p-8 font-mono overflow-x-auto">
                 <div className="text-sm md:text-base leading-relaxed">
-                  <span className="text-pink-400 font-black">SELECT</span> siswa.nama, kelas.nama_kelas <br/>
-                  <span className="text-pink-400 font-black">FROM</span> siswa <br/>
-                  <span className="text-jade-vibrant font-black text-lg bg-gray-800 px-2 my-1 inline-block">INNER JOIN</span> kelas <br/>
+                  <span className="text-pink-400 font-black">SELECT</span> siswa.nama, kelas.nama_kelas <br />
+                  <span className="text-pink-400 font-black">FROM</span> siswa <br />
+                  <span className="text-jade-vibrant font-black text-lg bg-gray-800 px-2 my-1 inline-block">INNER JOIN</span> kelas <br />
                   <span className="text-yellow-400 font-black">ON</span> siswa.id_kelas = kelas.id;
                 </div>
               </div>
@@ -157,9 +156,9 @@ export default function JoinAgregasiPage() {
 
                 <div className="mt-8 bg-black text-mint-soft border-4 border-black shadow-[4px_4px_0px_0px_#000] p-6 text-center">
                   <p className="font-bold text-lg md:text-xl">
-                    <span className="text-white">Fungsi Matematika Lainnya:</span><br/>
-                    <strong className="text-pink-400">AVG()</strong> digunakan untuk menghitung Rata-rata.<br/>
-                    <strong className="text-jade-vibrant">MAX()</strong> digunakan untuk mencari Angka Terbesar.<br/>
+                    <span className="text-white">Fungsi Matematika Lainnya:</span><br />
+                    <strong className="text-pink-400">AVG()</strong> digunakan untuk menghitung Rata-rata.<br />
+                    <strong className="text-jade-vibrant">MAX()</strong> digunakan untuk mencari Angka Terbesar.<br />
                     <strong className="text-yellow-400">MIN()</strong> digunakan untuk mencari Angka Terkecil.
                   </p>
                 </div>
@@ -185,9 +184,9 @@ export default function JoinAgregasiPage() {
                   </h3>
                   <p className="font-bold text-gray-700 mb-2">Tabel Peminjaman aslinya hanya berisi angka <code>id_anggota = 1</code> dan <code>id_buku = 1</code>. Sangat pusing dibaca manusia! Mari kita JOIN agar ketahuan nama orang dan nama bukunya:</p>
                   <div className="bg-black text-mint-soft font-mono p-4 border-2 border-black text-sm overflow-x-auto mb-2">
-                    <span className="text-pink-400">SELECT</span> peminjaman.tanggal_pinjam, anggota.nama_lengkap, buku.judul_buku <br/>
-                    <span className="text-pink-400">FROM</span> peminjaman <br/>
-                    <span className="text-jade-vibrant font-black">INNER JOIN</span> anggota <span className="text-yellow-400">ON</span> peminjaman.id_anggota = anggota.id_anggota <br/>
+                    <span className="text-pink-400">SELECT</span> peminjaman.tanggal_pinjam, anggota.nama_lengkap, buku.judul_buku <br />
+                    <span className="text-pink-400">FROM</span> peminjaman <br />
+                    <span className="text-jade-vibrant font-black">INNER JOIN</span> anggota <span className="text-yellow-400">ON</span> peminjaman.id_anggota = anggota.id_anggota <br />
                     <span className="text-jade-vibrant font-black">INNER JOIN</span> buku <span className="text-yellow-400">ON</span> peminjaman.id_buku = buku.id_buku;
                   </div>
                   <p className="font-bold text-gray-700">Hasilnya akan jauh lebih mudah dibaca: <em>"Tanggal 13 September, Budi Santoso meminjam buku Laskar Pelangi"</em>.</p>
@@ -200,8 +199,8 @@ export default function JoinAgregasiPage() {
                   </h3>
                   <p className="font-bold text-gray-700 mb-2">Berapa kali sih Budi meminjam buku sejauh ini? Kita bisa hitung pakai fungsi <strong>COUNT()</strong>.</p>
                   <div className="bg-black text-mint-soft font-mono p-4 border-2 border-black text-sm overflow-x-auto mb-2">
-                    <span className="text-pink-400">SELECT</span> <span className="text-pink-400 font-black">COUNT</span>(id_pinjam) <span className="text-pink-400">AS</span> total_pinjam <br/>
-                    <span className="text-pink-400">FROM</span> peminjaman <br/>
+                    <span className="text-pink-400">SELECT</span> <span className="text-pink-400 font-black">COUNT</span>(id_pinjam) <span className="text-pink-400">AS</span> total_pinjam <br />
+                    <span className="text-pink-400">FROM</span> peminjaman <br />
                     <span className="text-yellow-400">WHERE</span> id_anggota = 1;
                   </div>
                 </div>
@@ -218,7 +217,7 @@ export default function JoinAgregasiPage() {
                 </div>
               </div>
             </section>
-            
+
             {/* Footer Nav */}
             <div className="flex flex-col sm:flex-row justify-between items-center pt-8 gap-4">
               <a href="/advanced-query-sql" className="bg-canvas text-black font-black uppercase text-sm md:text-lg px-4 py-3 md:px-6 md:py-4 border-4 border-black shadow-neo-md hover:-translate-y-1 hover:-translate-x-1 hover:shadow-neo-lg active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all flex items-center gap-2 w-full sm:w-auto justify-center">

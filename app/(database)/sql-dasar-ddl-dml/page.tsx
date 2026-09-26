@@ -12,7 +12,6 @@ export default function SqlDasarPage() {
       <Headbar
         links={[
           { label: 'Materi', href: '/sql-dasar-ddl-dml', isActive: true },
-          { label: 'Latihan Query', href: '/sql-dasar-ddl-dml/latihan', isActive: false }
         ]}
       />
 
@@ -30,7 +29,7 @@ export default function SqlDasarPage() {
               <div className="absolute -top-10 -right-10 z-0">
                 <span className="material-symbols-outlined text-[150px] md:text-[250px] text-white opacity-20 transform rotate-12">terminal</span>
               </div>
-              
+
               <div className="relative z-10 pt-8">
                 <h1 className="text-4xl sm:text-5xl md:text-7xl font-black text-mint-soft tracking-tighter uppercase mb-4 md:mb-6 drop-shadow-[4px_4px_0px_rgba(255,255,255,0.2)]">
                   Bahasa Database: <br className="hidden md:block" /> Mengenal SQL Dasar
@@ -149,7 +148,7 @@ export default function SqlDasarPage() {
                     <span className="bg-mint-soft px-3 py-1 border-2 border-black font-black uppercase text-sm">Insert</span>
                   </div>
                   <div className="bg-black text-mint-soft font-mono text-sm p-4 border-2 border-black mb-4">
-                    <span className="text-pink-400">INSERT INTO</span> siswa (nama) <br/>
+                    <span className="text-pink-400">INSERT INTO</span> siswa (nama) <br />
                     <span className="text-pink-400">VALUES</span> ('Budi');
                   </div>
                   <p className="font-bold text-forest-teal">Dipakai untuk memasukkan baris data baru ke dalam sebuah tabel.</p>
@@ -174,8 +173,8 @@ export default function SqlDasarPage() {
                     <span className="bg-blue-400 text-white px-3 py-1 border-2 border-black font-black uppercase text-sm">Update</span>
                   </div>
                   <div className="bg-black text-mint-soft font-mono text-sm p-4 border-2 border-black mb-4">
-                    <span className="text-pink-400">UPDATE</span> siswa <br/>
-                    <span className="text-pink-400">SET</span> nama='Andi' <br/>
+                    <span className="text-pink-400">UPDATE</span> siswa <br />
+                    <span className="text-pink-400">SET</span> nama='Andi' <br />
                     <span className="text-yellow-400">WHERE</span> id=1;
                   </div>
                   <p className="font-bold text-forest-teal">Dipakai untuk mengubah atau mengedit data yang sudah ada (misal: mengganti nama siswa yang salah ketik).</p>
@@ -188,7 +187,7 @@ export default function SqlDasarPage() {
                     <span className="bg-[#FF0000] text-white px-3 py-1 border-2 border-black font-black uppercase text-sm">Delete</span>
                   </div>
                   <div className="bg-black text-mint-soft font-mono text-sm p-4 border-2 border-black mb-4">
-                    <span className="text-pink-400">DELETE FROM</span> siswa <br/>
+                    <span className="text-pink-400">DELETE FROM</span> siswa <br />
                     <span className="text-yellow-400">WHERE</span> id=1;
                   </div>
                   <p className="font-bold text-forest-teal">Dipakai untuk menghapus satu (atau beberapa) baris data yang sudah tidak diperlukan lagi.</p>
@@ -208,15 +207,15 @@ export default function SqlDasarPage() {
                   </h2>
                   <ol className="list-decimal pl-6 space-y-6 text-lg font-bold">
                     <li className="pl-2">
-                      <span className="bg-white text-black px-2 py-1 uppercase font-black border-2 border-white">Jangan Lupa Tanda Kutip ('')</span><br/>
+                      <span className="bg-white text-black px-2 py-1 uppercase font-black border-2 border-white">Jangan Lupa Tanda Kutip ('')</span><br />
                       Kalau kamu mau memasukkan data berbentuk Tulisan (Teks) atau Tanggal, tulisannya wajib diapit oleh tanda kutip tunggal (misal: <code>'Andi'</code>). Jika datanya murni Angka (misal: <code>100</code>), kutip tidak diperlukan.
                     </li>
                     <li className="pl-2">
-                      <span className="bg-[#FF0000] text-white px-2 py-1 uppercase font-black border-2 border-white shadow-[2px_2px_0px_0px_#FFF]">Awas Lupa Pasang "WHERE"!</span><br/>
+                      <span className="bg-[#FF0000] text-white px-2 py-1 uppercase font-black border-2 border-white shadow-[2px_2px_0px_0px_#FFF]">Awas Lupa Pasang "WHERE"!</span><br />
                       SANGAT PENTING! Jika kamu menjalankan perintah <code>UPDATE</code> atau <code>DELETE</code>, jangan pernah lupa menambahkan klausa <code>WHERE</code>. Kalau lupa, <strong>SEMUA</strong> data di tabelmu akan ikut berubah/terhapus tanpa ampun!
                     </li>
                     <li className="pl-2">
-                      <span className="bg-jade-vibrant text-white px-2 py-1 uppercase font-black border-2 border-white">Sering-Sering Cek Aplikasi (GUI)</span><br/>
+                      <span className="bg-jade-vibrant text-white px-2 py-1 uppercase font-black border-2 border-white">Sering-Sering Cek Aplikasi (GUI)</span><br />
                       Setelah mengetik perintah SQL dan berhasil sukses, rajin-rajinlah mengecek hasilnya lewat aplikasi visual (seperti phpMyAdmin) untuk memastikan datanya sudah benar-benar masuk atau berubah sesuai keinginanmu.
                     </li>
                   </ol>
@@ -232,7 +231,7 @@ export default function SqlDasarPage() {
               </h2>
 
               <p className="text-lg md:text-xl font-bold text-forest-teal mb-8">
-                Tibalah saatnya kita mempraktikkan desain ERD Perpustakaan kita menjadi kode SQL sungguhan! 
+                Tibalah saatnya kita mempraktikkan desain ERD Perpustakaan kita menjadi kode SQL sungguhan!
               </p>
 
               <div className="space-y-12">
@@ -245,29 +244,29 @@ export default function SqlDasarPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="bg-black text-mint-soft font-mono p-4 border-4 border-black shadow-neo-md text-sm sm:text-base overflow-x-auto">
                       <p className="text-gray-400 mb-2">-- Membuat Tabel Anggota</p>
-                      <span className="text-pink-400">CREATE TABLE</span> anggota (<br/>
-                      &nbsp;&nbsp;id_anggota <span className="text-yellow-400">INT PRIMARY KEY AUTO_INCREMENT</span>,<br/>
-                      &nbsp;&nbsp;nama_lengkap <span className="text-yellow-400">VARCHAR</span>(100),<br/>
-                      &nbsp;&nbsp;nomor_telepon <span className="text-yellow-400">VARCHAR</span>(15)<br/>
+                      <span className="text-pink-400">CREATE TABLE</span> anggota (<br />
+                      &nbsp;&nbsp;id_anggota <span className="text-yellow-400">INT PRIMARY KEY AUTO_INCREMENT</span>,<br />
+                      &nbsp;&nbsp;nama_lengkap <span className="text-yellow-400">VARCHAR</span>(100),<br />
+                      &nbsp;&nbsp;nomor_telepon <span className="text-yellow-400">VARCHAR</span>(15)<br />
                       );
                     </div>
                     <div className="bg-black text-mint-soft font-mono p-4 border-4 border-black shadow-neo-md text-sm sm:text-base overflow-x-auto">
                       <p className="text-gray-400 mb-2">-- Membuat Tabel Buku</p>
-                      <span className="text-pink-400">CREATE TABLE</span> buku (<br/>
-                      &nbsp;&nbsp;id_buku <span className="text-yellow-400">INT PRIMARY KEY AUTO_INCREMENT</span>,<br/>
-                      &nbsp;&nbsp;judul_buku <span className="text-yellow-400">VARCHAR</span>(200),<br/>
-                      &nbsp;&nbsp;stok <span className="text-yellow-400">INT</span><br/>
+                      <span className="text-pink-400">CREATE TABLE</span> buku (<br />
+                      &nbsp;&nbsp;id_buku <span className="text-yellow-400">INT PRIMARY KEY AUTO_INCREMENT</span>,<br />
+                      &nbsp;&nbsp;judul_buku <span className="text-yellow-400">VARCHAR</span>(200),<br />
+                      &nbsp;&nbsp;stok <span className="text-yellow-400">INT</span><br />
                       );
                     </div>
                     <div className="bg-black text-mint-soft font-mono p-4 border-4 border-black shadow-neo-md text-sm sm:text-base md:col-span-2 overflow-x-auto">
                       <p className="text-gray-400 mb-2">-- Membuat Tabel Peminjaman (Tabel Penengah dengan 2 Foreign Key)</p>
-                      <span className="text-pink-400">CREATE TABLE</span> peminjaman (<br/>
-                      &nbsp;&nbsp;id_pinjam <span className="text-yellow-400">INT PRIMARY KEY AUTO_INCREMENT</span>,<br/>
-                      &nbsp;&nbsp;id_anggota <span className="text-yellow-400">INT</span>,<br/>
-                      &nbsp;&nbsp;id_buku <span className="text-yellow-400">INT</span>,<br/>
-                      &nbsp;&nbsp;tanggal_pinjam <span className="text-yellow-400">DATE</span>,<br/>
-                      &nbsp;&nbsp;<span className="text-blue-400">FOREIGN KEY</span> (id_anggota) <span className="text-blue-400">REFERENCES</span> anggota(id_anggota),<br/>
-                      &nbsp;&nbsp;<span className="text-blue-400">FOREIGN KEY</span> (id_buku) <span className="text-blue-400">REFERENCES</span> buku(id_buku)<br/>
+                      <span className="text-pink-400">CREATE TABLE</span> peminjaman (<br />
+                      &nbsp;&nbsp;id_pinjam <span className="text-yellow-400">INT PRIMARY KEY AUTO_INCREMENT</span>,<br />
+                      &nbsp;&nbsp;id_anggota <span className="text-yellow-400">INT</span>,<br />
+                      &nbsp;&nbsp;id_buku <span className="text-yellow-400">INT</span>,<br />
+                      &nbsp;&nbsp;tanggal_pinjam <span className="text-yellow-400">DATE</span>,<br />
+                      &nbsp;&nbsp;<span className="text-blue-400">FOREIGN KEY</span> (id_anggota) <span className="text-blue-400">REFERENCES</span> anggota(id_anggota),<br />
+                      &nbsp;&nbsp;<span className="text-blue-400">FOREIGN KEY</span> (id_buku) <span className="text-blue-400">REFERENCES</span> buku(id_buku)<br />
                       );
                     </div>
                   </div>
@@ -284,7 +283,7 @@ export default function SqlDasarPage() {
                       <h4 className="font-black text-xl uppercase mb-2">1. Menambah Data (Insert)</h4>
                       <p className="font-bold text-gray-700 mb-2">Mendaftarkan 1 anggota baru dan menambah 1 buku baru:</p>
                       <div className="bg-black text-mint-soft font-mono p-4 border-2 border-black text-sm overflow-x-auto">
-                        <span className="text-pink-400">INSERT INTO</span> anggota (nama_lengkap, nomor_telepon) <span className="text-pink-400">VALUES</span> ('Budi Santoso', '08123456789');<br/>
+                        <span className="text-pink-400">INSERT INTO</span> anggota (nama_lengkap, nomor_telepon) <span className="text-pink-400">VALUES</span> ('Budi Santoso', '08123456789');<br />
                         <span className="text-pink-400">INSERT INTO</span> buku (judul_buku, stok) <span className="text-pink-400">VALUES</span> ('Belajar SQL Dasar', 5);
                       </div>
                     </div>
@@ -309,7 +308,7 @@ export default function SqlDasarPage() {
 
               </div>
             </section>
-            
+
             {/* Footer Nav */}
             <div className="flex flex-col sm:flex-row justify-between items-center pt-8 gap-4">
               <a href="/anatomi-tipe-data-tabel" className="bg-white text-black font-black uppercase text-sm md:text-lg px-4 py-3 md:px-6 md:py-4 border-4 border-black shadow-neo-md hover:-translate-y-1 hover:-translate-x-1 hover:shadow-neo-lg active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all flex items-center gap-2 w-full sm:w-auto justify-center">

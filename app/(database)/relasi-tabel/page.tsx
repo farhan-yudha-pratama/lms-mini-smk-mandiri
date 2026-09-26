@@ -12,7 +12,6 @@ export default function RelasiTabelPage() {
       <Headbar
         links={[
           { label: 'Materi', href: '/relasi-tabel', isActive: true },
-          { label: 'Kuis Relasi', href: '/relasi-tabel/kuis', isActive: false }
         ]}
       />
 
@@ -31,7 +30,7 @@ export default function RelasiTabelPage() {
                 <span className="material-symbols-outlined text-[150px] md:text-[200px] text-white opacity-10 transform -rotate-12">link</span>
                 <span className="material-symbols-outlined text-[150px] md:text-[200px] text-white opacity-10 transform rotate-12">join_inner</span>
               </div>
-              
+
               <div className="relative z-10 pt-8">
                 <h1 className="text-4xl sm:text-5xl md:text-7xl font-black text-white tracking-tighter uppercase mb-4 md:mb-6 drop-shadow-[4px_4px_0px_rgba(0,0,0,1)]">
                   Menghubungkan Data: <br className="hidden md:block" /> Cara Kerja Relasi Tabel
@@ -75,7 +74,7 @@ export default function RelasiTabelPage() {
                     </p>
                   </div>
                 </div>
-                
+
                 <div className="lg:w-1/3 bg-black border-4 border-black shadow-neo-md p-6 text-white flex flex-col items-center justify-center -rotate-2 hover:rotate-0 transition-transform">
                   <span className="material-symbols-outlined text-[80px] text-mint-soft mb-4">content_copy</span>
                   <p className="font-black uppercase text-center text-xl">Mencegah Data Kembar</p>
@@ -129,7 +128,7 @@ export default function RelasiTabelPage() {
               </h2>
 
               <div className="space-y-6">
-                
+
                 {/* One to One */}
                 <div className="bg-white border-4 border-black p-6 shadow-neo-md flex flex-col md:flex-row items-start gap-6 hover:translate-x-2 transition-transform">
                   <div className="bg-black text-white font-black text-4xl w-24 h-24 flex items-center justify-center border-4 border-black shrink-0">
@@ -185,7 +184,7 @@ export default function RelasiTabelPage() {
 
               </div>
             </section>
-            
+
             {/* Section 4: Praktik Relasi Perpustakaan */}
             <section className="bg-white border-4 border-black shadow-neo-xl p-6 md:p-12 rotate-1 hover:rotate-0 transition-transform">
               <h2 className="text-2xl sm:text-3xl md:text-5xl font-black text-black uppercase mb-8 md:mb-10 border-b-4 border-black pb-4 flex items-center gap-3 md:gap-4 tracking-tighter">
@@ -223,14 +222,14 @@ export default function RelasiTabelPage() {
                 <div className="bg-pine-deep text-white border-4 border-black p-6 shadow-neo-md mt-6">
                   <h3 className="text-xl font-black uppercase mb-2 text-[#FFD700]">Tunggu Dulu, Berarti Anggota dan Buku itu...</h3>
                   <p className="font-bold text-lg leading-relaxed">
-                    Ya, benar sekali! Relasi antara <strong>Anggota</strong> dan <strong>Buku</strong> sebenarnya adalah <strong>Many-to-Many (N:M)</strong>. Karena satu anggota bisa pinjam banyak buku, dan satu jenis buku bisa dipinjam banyak anggota. 
-                    <br/><br/>
+                    Ya, benar sekali! Relasi antara <strong>Anggota</strong> dan <strong>Buku</strong> sebenarnya adalah <strong>Many-to-Many (N:M)</strong>. Karena satu anggota bisa pinjam banyak buku, dan satu jenis buku bisa dipinjam banyak anggota.
+                    <br /><br />
                     Oleh karena itu, seperti yang kita pelajari di poin ke-3 di atas, kita WAJIB membuat tabel penengah. Nah, tabel <code>Peminjaman</code> itulah yang bertindak sebagai <strong>Tabel Penengah</strong> untuk memecah relasi N:M menjadi dua relasi 1:N yang aman!
                   </p>
                 </div>
               </div>
             </section>
-            
+
             {/* Footer Nav */}
             <div className="flex flex-col sm:flex-row justify-between items-center pt-8 gap-4">
               <a href="/erd-database" className="bg-canvas text-black font-black uppercase text-sm md:text-lg px-4 py-3 md:px-6 md:py-4 border-4 border-black shadow-neo-md hover:-translate-y-1 hover:-translate-x-1 hover:shadow-neo-lg active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all flex items-center gap-2 w-full sm:w-auto justify-center">

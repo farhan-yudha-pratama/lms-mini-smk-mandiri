@@ -13,7 +13,6 @@ export default function SintaksDasarPage() {
       <Headbar
         links={[
           { label: 'Materi', href: '/sintaks-dasar-php', isActive: true },
-          { label: 'Kuis Sintaks', href: '/sintaks-dasar-php/kuis', isActive: false }
         ]}
       />
 
@@ -32,7 +31,7 @@ export default function SintaksDasarPage() {
                 <span className="material-symbols-outlined text-[120px] md:text-[200px] text-[#F7DF1E] opacity-20 transform -rotate-12">javascript</span>
                 <span className="material-symbols-outlined text-[120px] md:text-[200px] text-[#2965F1] opacity-30 transform rotate-12">php</span>
               </div>
-              
+
               <div className="relative z-10 pt-8">
                 <h1 className="text-4xl sm:text-5xl md:text-7xl font-black text-mint-soft tracking-tighter uppercase mb-4 md:mb-6 drop-shadow-[4px_4px_0px_rgba(255,255,255,0.2)]">
                   Transisi Bahasa: <br className="hidden md:block" /> JS Menuju PHP
@@ -67,7 +66,7 @@ export default function SintaksDasarPage() {
               </p>
 
               <div className="space-y-8">
-                
+
                 {/* 1. Variabel */}
                 <div className="border-4 border-black shadow-neo-md">
                   <div className="bg-black text-white p-3 border-b-4 border-black">
@@ -132,7 +131,7 @@ export default function SintaksDasarPage() {
                 <div className="flex-shrink-0 animate-bounce">
                   <span className="material-symbols-outlined text-[120px] text-white drop-shadow-[4px_4px_0px_rgba(0,0,0,1)]">error</span>
                 </div>
-                
+
                 <div className="text-white w-full">
                   <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tighter mb-4 text-white drop-shadow-[2px_2px_0px_rgba(0,0,0,1)]">
                     PHP Sangat Ketat dengan Titik Koma (;)
@@ -173,10 +172,10 @@ export default function SintaksDasarPage() {
                   <span className="w-3 h-3 bg-jade-vibrant rounded-full"></span>
                   <span className="ml-2">latihan_php.php</span>
                 </div>
-                
+
                 <div className="p-6 leading-relaxed w-full">
-                  <CodeBlock 
-                    language="php" 
+                  <CodeBlock
+                    language="php"
                     code={`<?php
   // 1. Membuat dua variabel berbeda
   $nama = "Siswa RPL";
@@ -197,7 +196,7 @@ export default function SintaksDasarPage() {
                 </p>
               </div>
             </section>
-            
+
             {/* Footer Nav */}
             <div className="flex flex-col sm:flex-row justify-between items-center pt-8 gap-4">
               <a href="/aturan-pulau-php" className="bg-white text-black font-black uppercase text-sm md:text-lg px-4 py-3 md:px-6 md:py-4 border-4 border-black shadow-neo-md hover:-translate-y-1 hover:-translate-x-1 hover:shadow-neo-lg active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all flex items-center gap-2 w-full sm:w-auto justify-center">

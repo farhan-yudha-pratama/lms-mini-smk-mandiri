@@ -13,7 +13,6 @@ export default function UndefinedArrayKeyPage() {
       <Headbar
         links={[
           { label: 'Materi', href: '/undefined-array-key', isActive: true },
-          { label: 'Kuis Kunci', href: '/undefined-array-key/kuis', isActive: false }
         ]}
       />
 
@@ -31,7 +30,7 @@ export default function UndefinedArrayKeyPage() {
               <div className="absolute -bottom-10 -right-10 z-0 flex gap-4">
                 <span className={`material-symbols-outlined text-[150px] md:text-[250px] opacity-20 transform -rotate-12 ${isTrapped ? 'text-black' : 'text-[#FFD700]'}`}>pest_control_rodent</span>
               </div>
-              
+
               <div className="relative z-10 pt-8">
                 <h1 className="text-4xl sm:text-5xl md:text-7xl font-black tracking-tighter uppercase mb-4 md:mb-6 drop-shadow-[4px_4px_0px_rgba(255,255,255,0.2)]">
                   Error Terpopuler: <br className="hidden md:block" /> Undefined Array Key
@@ -62,9 +61,9 @@ export default function UndefinedArrayKeyPage() {
               </h2>
 
               <p className="text-lg md:text-xl font-bold text-gray-700 leading-relaxed mb-6">
-                Ini adalah pesan <em>error</em> sejuta umat yang pasti akan kamu temui: 
+                Ini adalah pesan <em>error</em> sejuta umat yang pasti akan kamu temui:
               </p>
-              
+
               <div className="bg-gray-100 border-l-8 border-[#FF0000] p-4 mb-6 shadow-neo-sm">
                 <p className="font-mono text-[#FF0000] font-black text-lg md:text-xl break-all">
                   Warning: Undefined array key "nama" in C:\xampp\htdocs\sekolah\proses.php on line 10
@@ -94,7 +93,7 @@ export default function UndefinedArrayKeyPage() {
               </p>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                
+
                 {/* Bagian HTML */}
                 <div className="bg-canvas text-black border-4 border-black shadow-neo-md flex flex-col">
                   <div className="bg-[#E34F26] text-white p-3 border-b-4 border-black font-black uppercase flex items-center gap-2">
@@ -104,7 +103,7 @@ export default function UndefinedArrayKeyPage() {
                     <CodeBlock language="html" code={`<!-- Input Nama -->\n<input type="text" name="nama_lengkap">`} />
                   </div>
                   <div className="bg-black text-white p-4 font-bold text-sm text-center">
-                    HTML membuat input dengan nama: <br/>
+                    HTML membuat input dengan nama: <br />
                     <strong className="text-[#FFD700] text-xl">nama_lengkap</strong>
                   </div>
                 </div>
@@ -119,8 +118,8 @@ export default function UndefinedArrayKeyPage() {
                     <CodeBlock language="php" code={`// Menerima Data\n$nama_user = $_POST["nama"];`} />
                   </div>
                   <div className="bg-[#FF0000] text-white p-4 font-bold text-sm text-center">
-                    PHP malah meminta nama input: <br/>
-                    <strong className="text-white text-xl">nama</strong><br/>
+                    PHP malah meminta nama input: <br />
+                    <strong className="text-white text-xl">nama</strong><br />
                     <span className="text-xs uppercase bg-black text-[#FFD700] px-1 mt-1 inline-block">Hasil: Error Undefined Array Key!</span>
                   </div>
                 </div>
@@ -141,7 +140,7 @@ export default function UndefinedArrayKeyPage() {
 
               </div>
             </section>
-            
+
             {/* Section 3: Latihan Praktik */}
             <section className="bg-white text-black border-4 border-black shadow-neo-xl p-6 md:p-12 rotate-1 hover:rotate-0 transition-transform">
               <h2 className="text-2xl sm:text-3xl md:text-5xl font-black uppercase mb-8 md:mb-10 border-b-4 border-black pb-4 flex items-center gap-3 md:gap-4 tracking-tighter">
@@ -154,7 +153,7 @@ export default function UndefinedArrayKeyPage() {
               </p>
 
               <div className="w-full mb-6 text-left border-4 border-black">
-                <CodeBlock 
+                <CodeBlock
                   language="php"
                   code={`<?php
   // Coba jalankan kode ini
@@ -181,7 +180,7 @@ export default function UndefinedArrayKeyPage() {
                 </div>
               </div>
             </section>
-            
+
             {/* Footer Nav */}
             <div className="flex flex-col sm:flex-row justify-between items-center pt-8 gap-4">
               <a href="/get-vs-post-php" className="bg-canvas text-black font-black uppercase text-sm md:text-lg px-4 py-3 md:px-6 md:py-4 border-4 border-black shadow-neo-md hover:-translate-y-1 hover:-translate-x-1 hover:shadow-neo-lg active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all flex items-center gap-2 w-full sm:w-auto justify-center">
