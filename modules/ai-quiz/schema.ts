@@ -11,7 +11,8 @@ export const generateQuizFormSchema = z.object({
     return (data.easy + data.medium + data.hard) === 100;
   }, {
     message: "Total persentase kesulitan harus tepat 100%",
-  })
+  }),
+  model: z.string().optional().default("free-tier"),
 });
 
 export const aiMultipleChoiceSchema = z.object({

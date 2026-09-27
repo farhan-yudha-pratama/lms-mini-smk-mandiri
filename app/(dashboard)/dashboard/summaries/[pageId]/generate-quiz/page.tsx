@@ -60,6 +60,7 @@ export default async function GenerateQuizPage(props: {
   }
 
   const isAiEnabled = process.env.ENABLE_AI_FEATURES !== "false";
+  const defaultModel = process.env.AI_DEFAULT_MODEL || "free-tier";
 
   return (
     <div className="p-4 sm:p-6 max-w-4xl mx-auto space-y-6">
@@ -104,6 +105,7 @@ export default async function GenerateQuizPage(props: {
         pageTitle={page.title} 
         summaryText={combinedSummary} 
         isAiEnabled={isAiEnabled}
+        defaultModel={defaultModel}
       />
     </div>
   );

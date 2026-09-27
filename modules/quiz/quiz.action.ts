@@ -6,6 +6,7 @@ import {
   updateQuizPackage, 
   deleteQuizPackage,
   createQuizVariant,
+  updateQuizVariant,
   deleteQuizVariant
 } from './quiz.service';
 import { 
@@ -151,12 +152,25 @@ export async function createQuizVariantAction(formData: FormData) {
   }
 }
 
+export async function updateQuizVariantAction(id: string, name: string, packageId: string) {
+  try {
+    if (!name || !name.trim()) {
+      return { success: false, message: 'Nama varian tidak boleh kosong' };
+    }
+    await updateQuizVariant(id, name.trim());
+    revalidatePath(`/dashboard/quizzes/${packageId}/edit`);
+    return { success: true };
+  } catch (error) {
+    return { success: false, message: error instanceof Error ? error.message : 'Gagal memperbarui nama varian' };
+  }
+}
+
 export async function deleteQuizVariantAction(id: string, packageId: string) {
   try {
     await deleteQuizVariant(id);
     revalidatePath(`/dashboard/quizzes/${packageId}/edit`);
     return { success: true };
   } catch (error) {
-    return { success: false, message: 'Gagal menghapus varian' };
+    return { success: false, message: error instanceof Error ? error.message : 'Gagal menghapus varian' };
   }
 }
