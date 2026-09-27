@@ -9,11 +9,13 @@ export default function ClientQuizGenerator({
   pageTitle,
   summaryText,
   isAiEnabled = true,
+  defaultModel = "free-tier",
 }: {
   pageId: string;
   pageTitle: string;
   summaryText: string;
   isAiEnabled?: boolean;
+  defaultModel?: string;
 }) {
   const router = useRouter();
   
@@ -22,6 +24,7 @@ export default function ClientQuizGenerator({
   const [totalQuestions, setTotalQuestions] = useState<number>(5);
   const [difficulty, setDifficulty] = useState({ easy: 30, medium: 50, hard: 20 });
   const [variantName, setVariantName] = useState(`Paket AI - ${new Date().toLocaleDateString('id-ID')}`);
+  const [model, setModel] = useState<string>(defaultModel || "free-tier");
 
   // Flow State
   const [isGenerating, setIsGenerating] = useState(false);
@@ -42,6 +45,7 @@ export default function ClientQuizGenerator({
       questionType,
       totalQuestions,
       difficultyDistribution: difficulty,
+      model: model.trim() || "free-tier",
     });
 
     if (res?.success && res.data) {
@@ -136,7 +140,7 @@ export default function ClientQuizGenerator({
             </span>
           </div>
           
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
             <div className="space-y-1.5">
               <label className="block text-sm font-semibold text-gray-700">Tipe Soal Kuis</label>
               <select 
@@ -160,6 +164,32 @@ export default function ClientQuizGenerator({
                 onChange={(e) => setTotalQuestions(Number(e.target.value))}
               />
               <p className="text-xs text-gray-400">Rekomendasi: 5 - 15 butir soal.</p>
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="block text-sm font-semibold text-gray-700">Model AI</label>
+                <span className="text-[10px] font-mono text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100 font-semibold">
+                  Default: free-tier
+                </span>
+              </div>
+              <input 
+                type="text" 
+                list="ai-models-list"
+                placeholder="free-tier"
+                className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-shadow font-mono"
+                value={model}
+                onChange={(e) => setModel(e.target.value)}
+              />
+              <datalist id="ai-models-list">
+                <option value="free-tier">free-tier (Default)</option>
+                <option value="gpt-4o-mini">gpt-4o-mini</option>
+                <option value="gpt-4o">gpt-4o</option>
+                <option value="claude-3-5-sonnet">claude-3-5-sonnet</option>
+                <option value="gemini-1.5-flash">gemini-1.5-flash</option>
+                <option value="gemini-1.5-pro">gemini-1.5-pro</option>
+              </datalist>
+              <p className="text-xs text-gray-400">Pilih atau ketik model yang diinginkan.</p>
             </div>
           </div>
 
@@ -233,7 +263,12 @@ export default function ClientQuizGenerator({
         <div className="space-y-6">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-indigo-50 p-4 rounded-xl border border-indigo-200">
             <div>
-              <h2 className="text-base sm:text-lg font-bold text-indigo-900">Review Draft Soal Kuis</h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-base sm:text-lg font-bold text-indigo-900">Review Draft Soal Kuis</h2>
+                <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 border border-indigo-200 font-semibold">
+                  Model: {model || "free-tier"}
+                </span>
+              </div>
               <p className="text-xs text-indigo-700 mt-0.5">Periksa dan koreksi redaksi soal atau kunci jawaban sebelum disimpan.</p>
             </div>
             <button 

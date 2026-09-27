@@ -49,7 +49,14 @@ export async function getQuizPackageById(id: string) {
   const pkg = await db.orm.public.QuizPackage.where({ id }).first();
   if (!pkg) return null;
   const variants = await db.orm.public.QuizVariant.where({ quizPackageId: id }).all();
-  return { ...pkg, variants };
+  const allQuestions = await db.orm.public.Question.all();
+
+  const enrichedVariants = variants.map(v => ({
+    ...v,
+    questionsCount: allQuestions.filter(q => q.quizVariantId === v.id).length,
+  }));
+
+  return { ...pkg, variants: enrichedVariants };
 }
 
 export async function getQuizPackageByPageId(pageId: string) {
@@ -126,12 +133,35 @@ export async function createQuizVariant(data: QuizVariantFormValues) {
   });
 }
 
+export async function updateQuizVariant(id: string, name: string) {
+  const variant = await db.orm.public.QuizVariant.where({ id }).first();
+  if (!variant) {
+    throw new Error('Varian kuis tidak ditemukan');
+  }
+  await db.orm.public.QuizVariant.where({ id }).update({ name });
+  return { id, name };
+}
+
 export async function deleteQuizVariant(id: string) {
+  // 1. Hapus semua riwayat jawaban dan attempt kuis siswa terkait varian ini
+  const attempts = await db.orm.public.QuizAttempt.where({ quizVariantId: id }).all();
+  for (const attempt of attempts) {
+    await db.orm.public.StudentAnswer.where({ quizAttemptId: attempt.id }).delete();
+    await db.orm.public.QuizAttempt.where({ id: attempt.id }).delete();
+  }
+
+  // 2. Hapus semua jawaban siswa, opsi jawaban, dan butir soal terkait varian ini
   const questions = await db.orm.public.Question.where({ quizVariantId: id }).all();
   for (const q of questions) {
+    await db.orm.public.StudentAnswer.where({ questionId: q.id }).delete();
     await db.orm.public.QuestionOption.where({ questionId: q.id }).delete();
     await db.orm.public.Question.where({ id: q.id }).delete();
   }
+
+  // 3. Hapus penugasan kuis (assignment) terkait varian ini
+  await db.orm.public.QuizAssignment.where({ quizVariantId: id }).delete();
+
+  // 4. Hapus data varian kuis
   await db.orm.public.QuizVariant.where({ id }).delete();
   return { id };
 }

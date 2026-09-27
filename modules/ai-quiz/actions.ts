@@ -10,6 +10,7 @@ export async function generateQuizAction(
     questionType: "PILIHAN_GANDA" | "ESSAY";
     totalQuestions: number;
     difficultyDistribution: { easy: number; medium: number; hard: number };
+    model?: string;
   }
 ) {
   // Validate input
@@ -21,12 +22,15 @@ export async function generateQuizAction(
     };
   }
 
+  const validatedData = parseResult.data;
+
   // Panggil service AI
   return generateQuizDraft({
     summaryText,
-    questionType: formData.questionType,
-    totalQuestions: formData.totalQuestions,
-    difficultyDistribution: formData.difficultyDistribution,
+    questionType: validatedData.questionType,
+    totalQuestions: validatedData.totalQuestions,
+    difficultyDistribution: validatedData.difficultyDistribution,
+    model: validatedData.model || "free-tier",
   });
 }
 
