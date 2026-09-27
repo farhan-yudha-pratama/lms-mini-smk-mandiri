@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { checkQuizStatusAction, startQuizAction } from '@/modules/quiz-engine/quiz-engine.action';
 import QuizEngineModal from './QuizEngineModal';
+import QuizModal from './QuizModal';
 import { useRouter } from 'next/navigation';
 
 export default function QuizTrigger({ pageSlug }: { pageSlug: string }) {
@@ -10,17 +11,23 @@ export default function QuizTrigger({ pageSlug }: { pageSlug: string }) {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [attemptId, setAttemptId] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const router = useRouter();
 
   useEffect(() => {
+    let isMounted = true;
     async function loadStatus() {
       const res = await checkQuizStatusAction(pageSlug);
+      if (!isMounted) return;
       if (res.success) {
         setStatus((res as any).data);
       }
       setLoading(false);
     }
     loadStatus();
+    return () => {
+      isMounted = false;
+    };
   }, [pageSlug]);
 
   const handleStart = async () => {
@@ -36,7 +43,7 @@ export default function QuizTrigger({ pageSlug }: { pageSlug: string }) {
       setAttemptId((res as any).attemptId);
       setShowModal(true);
     } else {
-      alert((res as any).message);
+      setErrorMessage((res as any).message || 'Gagal memulai kuis. Silakan coba lagi.');
     }
     setLoading(false);
   };
@@ -58,7 +65,6 @@ export default function QuizTrigger({ pageSlug }: { pageSlug: string }) {
   }
 
   if (status?.status === 'NO_QUIZ') {
-    console.log("tidak ada kuis")
     return null; // Don't render anything if no quiz is attached
   }
 
@@ -99,6 +105,16 @@ export default function QuizTrigger({ pageSlug }: { pageSlug: string }) {
           onComplete={handleComplete}
         />
       )}
+
+      {/* Popup Modal replacing native alert */}
+      <QuizModal
+        isOpen={Boolean(errorMessage)}
+        type="error"
+        title="Gagal Memulai Kuis"
+        message={errorMessage || ''}
+        confirmText="Tutup"
+        onConfirm={() => setErrorMessage(null)}
+      />
     </div>
   );
 }
