@@ -1,4 +1,5 @@
 import { getStudents } from '@/app/actions/student-access';
+import { getAllClasses } from '@/modules/class/class.service';
 import StudentAccessTable from './components/StudentAccessTable';
 import { StudentRow } from './types';
 
@@ -7,13 +8,20 @@ export const metadata = {
 };
 
 export default async function StudentAccessPage() {
-  const rawStudents = await getStudents();
+  const [rawStudents, rawClasses] = await Promise.all([
+    getStudents(),
+    getAllClasses()
+  ]);
+  
+  const classesMap = new Map(rawClasses.map(c => [c.id, c.name]));
   
   const students: StudentRow[] = rawStudents.map(s => ({
     id: s.id,
     name: s.name,
     email: s.email,
-    isActive: s.isActive
+    isActive: s.isActive,
+    classId: s.classId,
+    className: s.classId ? classesMap.get(s.classId) || '-' : '-'
   }));
 
   return (
@@ -25,7 +33,7 @@ export default async function StudentAccessPage() {
         </div>
       </div>
       
-      <StudentAccessTable students={students} />
+      <StudentAccessTable students={students} classes={rawClasses} />
     </div>
   );
 }

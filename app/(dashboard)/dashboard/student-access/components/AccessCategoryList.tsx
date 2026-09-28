@@ -6,12 +6,16 @@ export default function AccessCategoryList({
   categories, 
   loadingId, 
   onOpenStatusModal,
-  onOpenBulkModal
+  onOpenBulkModal,
+  onQuickLock,
+  onBypassPage
 }: { 
   categories: AccessCategory[]; 
   loadingId: string | null; 
   onOpenStatusModal: (page: AccessPage, category: AccessCategory) => void;
   onOpenBulkModal: (category: AccessCategory) => void;
+  onQuickLock: (page: AccessPage, category: AccessCategory) => void;
+  onBypassPage: (page: AccessPage, category: AccessCategory) => void;
 }) {
   const getStatusBadge = (status: PageAccessStatus) => {
     switch (status) {
@@ -72,11 +76,11 @@ export default function AccessCategoryList({
                 <button
                   type="button"
                   onClick={() => onOpenBulkModal(category)}
-                  className="px-3 py-1.5 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 shadow-2xs self-start sm:self-auto"
-                  title="Buka akses semua halaman di kategori ini"
+                  className="px-3 py-1.5 bg-blue-50 border border-blue-200 hover:bg-blue-100 text-blue-700 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 shadow-sm self-start sm:self-auto"
+                  title="Buka akses & beri nilai kuis 100 untuk semua halaman di kategori ini"
                 >
                   <span className="material-symbols-outlined text-sm text-blue-600">lock_open</span>
-                  <span>Buka Semua Halaman</span>
+                  <span>Bypass Kategori (Unlock & Nilai 100)</span>
                 </button>
               )}
             </div>
@@ -104,15 +108,33 @@ export default function AccessCategoryList({
                       </div>
                     </div>
                     
-                    <div className="flex items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-gray-100 shrink-0">
+                    <div className="flex items-center justify-between sm:justify-end gap-2 pt-2 sm:pt-0 border-t sm:border-t-0 border-gray-100 shrink-0 flex-wrap">
+                      <button 
+                        type="button"
+                        disabled={loadingId === page.id}
+                        onClick={() => onQuickLock(page, category)}
+                        className="px-3.5 py-1.5 bg-white border border-red-200 hover:bg-red-50 text-red-600 rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 shadow-sm disabled:opacity-50"
+                      >
+                        <span className="material-symbols-outlined text-sm">lock</span>
+                        <span>Kunci</span>
+                      </button>
+                      <button 
+                        type="button"
+                        disabled={loadingId === page.id}
+                        onClick={() => onBypassPage(page, category)}
+                        className="px-3.5 py-1.5 bg-blue-600 border border-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 shadow-sm disabled:opacity-50"
+                      >
+                        <span className="material-symbols-outlined text-sm">bolt</span>
+                        <span>Bypass (100)</span>
+                      </button>
                       <button 
                         type="button"
                         disabled={loadingId === page.id}
                         onClick={() => onOpenStatusModal(page, category)}
-                        className="w-full sm:w-auto px-3.5 py-1.5 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 shadow-2xs disabled:opacity-50"
+                        className="px-3.5 py-1.5 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 shadow-sm disabled:opacity-50"
                       >
                         <span className="material-symbols-outlined text-sm text-gray-500">tune</span>
-                        <span>Ubah Akses</span>
+                        <span>Opsi</span>
                         {loadingId === page.id && (
                           <span className="material-symbols-outlined animate-spin text-blue-600 text-xs ml-1">refresh</span>
                         )}

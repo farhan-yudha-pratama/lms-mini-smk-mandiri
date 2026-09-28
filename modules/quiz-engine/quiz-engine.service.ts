@@ -24,16 +24,17 @@ export async function getQuizStatus(pageSlug: string, studentId: string) {
     quizVariantId: assignment.quizVariantId
   }).first();
 
+  const rawQuestions = await db.orm.public.Question.where({ quizVariantId: assignment.quizVariantId }).all();
+  const hasEssay = rawQuestions.some(q => q.questionType === 'ESSAY');
+
   if (!attempt) {
-    return { status: 'READY', assignmentId: assignment.id, packageTitle: pkg.title };
+    return { status: 'READY', assignmentId: assignment.id, packageTitle: pkg.title, hasEssay };
   }
 
   if (attempt.status === 'IN_PROGRESS') {
-    return { status: 'IN_PROGRESS', attemptId: attempt.id, packageTitle: pkg.title };
+    return { status: 'IN_PROGRESS', attemptId: attempt.id, packageTitle: pkg.title, hasEssay };
   }
 
-  const rawQuestions = await db.orm.public.Question.where({ quizVariantId: assignment.quizVariantId }).all();
-  const hasEssay = rawQuestions.some(q => q.questionType === 'ESSAY');
   const needsReview = hasEssay && attempt.status === 'COMPLETED';
 
   return { 
@@ -211,5 +212,11 @@ export async function submitQuiz(
     }
   }
 
-  return { score: roundedScore, passed };
+  return { 
+    score: roundedScore, 
+    passed, 
+    hasEssay, 
+    needsReview: hasEssay,
+    status: 'COMPLETED' as const
+  };
 }

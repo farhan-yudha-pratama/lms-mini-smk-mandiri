@@ -5,11 +5,12 @@ import Link from 'next/link';
 import { StudentAccessTableProps, StudentRow } from '../types';
 import StudentAccessPagination from './StudentAccessPagination';
 
-export default function StudentAccessTable({ students }: StudentAccessTableProps) {
+export default function StudentAccessTable({ students, classes }: StudentAccessTableProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const [filterActive, setFilterActive] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
+  const [filterClassId, setFilterClassId] = useState<string>('ALL');
   const [showInfoModal, setShowInfoModal] = useState(false);
 
   // Filter students based on search and status
@@ -23,15 +24,17 @@ export default function StudentAccessTable({ students }: StudentAccessTableProps
         filterActive === 'ALL' ? true :
         filterActive === 'ACTIVE' ? student.isActive :
         !student.isActive;
+        
+      const matchesClass = filterClassId === 'ALL' ? true : student.classId === filterClassId;
 
-      return matchesSearch && matchesStatus;
+      return matchesSearch && matchesStatus && matchesClass;
     });
   }, [students, searchQuery, filterActive]);
 
   // Reset to page 1 if query changes
   useMemo(() => {
     setCurrentPage(1);
-  }, [searchQuery, filterActive]);
+  }, [searchQuery, filterActive, filterClassId]);
 
   // Pagination calculation
   const totalPages = Math.ceil(filteredStudents.length / itemsPerPage);
@@ -56,6 +59,18 @@ export default function StudentAccessTable({ students }: StudentAccessTableProps
         </div>
 
         <div className="flex flex-wrap items-center justify-between sm:justify-end gap-2.5">
+          {/* Class Filter */}
+          <select
+            value={filterClassId}
+            onChange={(e) => setFilterClassId(e.target.value)}
+            className="px-3 py-2 border border-gray-300 rounded-lg text-xs font-medium focus:ring-2 focus:ring-blue-500 outline-none bg-white text-gray-700 cursor-pointer"
+          >
+            <option value="ALL">Semua Kelas</option>
+            {classes.map(c => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </select>
+          
           {/* Status Filter */}
           <select
             value={filterActive}
@@ -99,6 +114,7 @@ export default function StudentAccessTable({ students }: StudentAccessTableProps
                   </div>
                   <div>
                     <h3 className="font-bold text-gray-900 text-sm leading-snug">{student.name}</h3>
+                    <div className="mt-1"><span className="inline-block bg-gray-100 text-gray-800 px-2.5 py-0.5 text-[10px] font-bold rounded">{student.className}</span></div>
                     <div className="flex items-center gap-1 text-xs text-gray-500 mt-0.5">
                       <span className="material-symbols-outlined text-[14px] text-gray-400">mail</span>
                       <span className="truncate max-w-[200px]">{student.email}</span>
@@ -135,6 +151,7 @@ export default function StudentAccessTable({ students }: StudentAccessTableProps
             <thead className="bg-gray-50 border-b border-gray-200 text-gray-700 font-semibold text-xs tracking-wider uppercase">
               <tr>
                 <th className="px-6 py-4">Nama Siswa</th>
+                <th className="px-6 py-4">Kelas</th>
                 <th className="px-6 py-4">Email Akun</th>
                 <th className="px-6 py-4">Status Akun</th>
                 <th className="px-6 py-4 text-right">Aksi</th>
@@ -143,7 +160,7 @@ export default function StudentAccessTable({ students }: StudentAccessTableProps
             <tbody className="divide-y divide-gray-100">
               {paginatedStudents.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-6 py-10 text-center text-gray-500">
+                  <td colSpan={5} className="px-6 py-10 text-center text-gray-500">
                     {searchQuery ? 'Tidak ada siswa yang sesuai dengan filter pencarian.' : 'Belum ada data siswa terdaftar.'}
                   </td>
                 </tr>
@@ -157,6 +174,11 @@ export default function StudentAccessTable({ students }: StudentAccessTableProps
                         </div>
                         <span className="font-semibold text-gray-900">{student.name}</span>
                       </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="inline-block bg-gray-100 text-gray-800 px-2.5 py-1 text-xs font-bold rounded">
+                        {student.className}
+                      </span>
                     </td>
                     <td className="px-6 py-4 text-gray-500 font-mono text-xs">
                       {student.email}

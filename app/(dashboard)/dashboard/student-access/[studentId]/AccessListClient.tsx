@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { updatePageAccess, bulkUpdatePageAccessAction } from '@/app/actions/student-access';
+import { updatePageAccess, bypassCategoryAccessAction, bypassPageAccessAction } from '@/app/actions/student-access';
 import { AccessCategory, AccessPage, PageAccessStatus } from '../types';
 import AccessCategoryList from '../components/AccessCategoryList';
 
@@ -29,6 +29,9 @@ export default function AccessListClient({
 
   // Bulk Unlock Modal State
   const [bulkModalCategory, setBulkModalCategory] = useState<AccessCategory | null>(null);
+  
+  // Page Bypass Modal State
+  const [bypassModalPage, setBypassModalPage] = useState<{page: AccessPage, category: AccessCategory} | null>(null);
 
   const showToast = (type: 'success' | 'error', message: string) => {
     setToast({ type, message });
@@ -79,6 +82,66 @@ export default function AccessListClient({
     }
   };
 
+  const handleQuickLock = async (page: AccessPage, category: AccessCategory) => {
+    setLoadingId(page.id);
+    setLocalCategories(prev => prev.map(cat => {
+      if (cat.id === category.id) {
+        return {
+          ...cat,
+          pages: cat.pages.map(p => p.id === page.id ? { ...p, accessStatus: 'LOCKED' } : p)
+        };
+      }
+      return cat;
+    }));
+    try {
+      const res = await updatePageAccess(studentId, page.id, 'LOCKED');
+      if (!res.success) {
+        setLocalCategories(categories);
+        setErrorPopup({ isOpen: true, message: res.error || 'Gagal mengunci halaman.' });
+      } else {
+        showToast('success', `Akses "${page.title}" berhasil dikunci.`);
+      }
+    } catch (error: any) {
+      setLocalCategories(categories);
+      setErrorPopup({ isOpen: true, message: 'Terjadi kesalahan sistem saat menghubungi server.' });
+    } finally {
+      setLoadingId(null);
+    }
+  };
+
+  const handleConfirmPageBypass = async () => {
+    if (!bypassModalPage) return;
+    const { page, category } = bypassModalPage;
+    
+    setLoadingId(page.id);
+    setBypassModalPage(null);
+    
+    setLocalCategories(prev => prev.map(cat => {
+      if (cat.id === category.id) {
+        return {
+          ...cat,
+          pages: cat.pages.map(p => p.id === page.id ? { ...p, accessStatus: 'UNLOCKED' } : p)
+        };
+      }
+      return cat;
+    }));
+    
+    try {
+      const res = await bypassPageAccessAction(studentId, page.id);
+      if (!res.success) {
+        setLocalCategories(categories);
+        setErrorPopup({ isOpen: true, message: res.error || 'Gagal bypass halaman.' });
+      } else {
+        showToast('success', `Akses "${page.title}" berhasil di-bypass (Nilai 100).`);
+      }
+    } catch (error: any) {
+      setLocalCategories(categories);
+      setErrorPopup({ isOpen: true, message: 'Terjadi kesalahan sistem.' });
+    } finally {
+      setLoadingId(null);
+    }
+  };
+
   const handleConfirmBulkUnlock = async () => {
     if (!bulkModalCategory) return;
     const category = bulkModalCategory;
@@ -99,12 +162,12 @@ export default function AccessListClient({
     }));
 
     try {
-      const res = await bulkUpdatePageAccessAction(studentId, pageIds, 'UNLOCKED');
+      const res = await bypassCategoryAccessAction(studentId, category.id);
       if (!res.success) {
         setLocalCategories(categories);
         setErrorPopup({ isOpen: true, message: res.error || 'Gagal membuka semua halaman.' });
       } else {
-        showToast('success', `Seluruh ${pageIds.length} materi pada kategori "${category.name}" berhasil dibuka.`);
+        showToast('success', `Seluruh ${pageIds.length} materi pada kategori "${category.name}" berhasil di-bypass.`);
       }
     } catch (error: any) {
       setLocalCategories(categories);
@@ -144,6 +207,8 @@ export default function AccessListClient({
         loadingId={loadingId} 
         onOpenStatusModal={handleOpenStatusModal}
         onOpenBulkModal={(cat) => setBulkModalCategory(cat)}
+        onQuickLock={handleQuickLock}
+        onBypassPage={(page, category) => setBypassModalPage({ page, category })}
       />
 
       {/* MODAL UBAH STATUS HAK AKSES */}
@@ -291,15 +356,15 @@ export default function AccessListClient({
               </div>
 
               <h3 className="text-lg font-bold text-gray-900 text-center mb-2">
-                Buka Semua Halaman Kategori?
+                Bypass Kategori & Nilai 100?
               </h3>
 
               <p className="text-sm text-gray-600 text-center mb-4 leading-relaxed">
-                Seluruh <strong>{bulkModalCategory.pages.length} halaman</strong> pada modul <strong>"{bulkModalCategory.name}"</strong> akan diubah statusnya menjadi <strong>Terbuka (UNLOCKED)</strong> untuk siswa ini.
+                Aksi ini bersifat destruktif. Seluruh <strong>{bulkModalCategory.pages.length} halaman</strong> pada modul <strong>"{bulkModalCategory.name}"</strong> akan dibuka.
               </p>
 
-              <div className="p-3 bg-blue-50 rounded-lg border border-blue-100 text-xs text-blue-700">
-                Siswa dapat langsung mengakses semua bab materi pada kategori ini tanpa terhalang prasyarat.
+              <div className="p-3 bg-red-50 rounded-lg border border-red-200 text-xs text-red-700 font-medium">
+                Peringatan: Seluruh kuis yang berada dalam kategori ini akan otomatis ditandai selesai (COMPLETED) dengan nilai 100. Jika siswa sudah mengerjakan kuis, nilainya akan tertimpa!
               </div>
             </div>
 
@@ -325,7 +390,51 @@ export default function AccessListClient({
         </div>
       )}
 
-      {/* MODAL ERROR FEEDBACK */}
+      
+      {/* MODAL BYPASS HALAMAN */}
+      {bypassModalPage && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden border border-gray-200">
+            <div className="p-6">
+              <div className="w-12 h-12 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mx-auto mb-4">
+                <span className="material-symbols-outlined text-2xl">bolt</span>
+              </div>
+
+              <h3 className="text-lg font-bold text-gray-900 text-center mb-2">
+                Bypass Materi & Nilai 100?
+              </h3>
+
+              <p className="text-sm text-gray-600 text-center mb-4 leading-relaxed">
+                Anda akan membypass materi <strong>"{bypassModalPage.page.title}"</strong>.
+              </p>
+
+              <div className="p-3 bg-red-50 rounded-lg border border-red-200 text-xs text-red-700 font-medium">
+                Peringatan: Jika materi ini memiliki kuis, sistem akan otomatis memberikan nilai 100. Tindakan ini menimpa riwayat nilai sebelumnya.
+              </div>
+            </div>
+
+            <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex flex-col sm:flex-row justify-end gap-3">
+              <button
+                type="button"
+                disabled={loadingId === bypassModalPage.page.id}
+                onClick={() => setBypassModalPage(null)}
+                className="w-full sm:w-auto px-4 py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-lg text-sm font-medium transition-colors"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                disabled={loadingId === bypassModalPage.page.id}
+                onClick={handleConfirmPageBypass}
+                className="w-full sm:w-auto px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition-colors shadow-sm disabled:opacity-50"
+              >
+                {loadingId === bypassModalPage.page.id ? 'Memproses...' : 'Ya, Bypass Materi'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+{/* MODAL ERROR FEEDBACK */}
       {errorPopup.isOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
           <div className="bg-white rounded-xl shadow-xl border border-gray-200 w-full max-w-sm p-6 text-center">

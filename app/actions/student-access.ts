@@ -60,3 +60,23 @@ export async function bulkUpdatePageAccessAction(studentId: string, pageIds: str
     return handleActionError(error);
   }
 }
+
+export async function bypassCategoryAccessAction(studentId: string, categoryId: string): Promise<ActionResponse> {
+  try {
+    await studentAccessService.bypassCategoryAccessService(studentId, categoryId);
+    revalidatePath(`/dashboard/student-access/${studentId}`);
+    return { success: true, message: 'Berhasil membypass kategori dan memberikan nilai kuis 100.' };
+  } catch (error) {
+    return handleActionError(error);
+  }
+}
+
+export async function bypassPageAccessAction(studentId: string, pageId: string): Promise<ActionResponse> {
+  try {
+    await studentAccessService.bypassPageAccessService(studentId, pageId);
+    revalidatePath(`/dashboard/student-access/${studentId}`);
+    return { success: true, message: 'Berhasil membypass materi dan memberikan nilai kuis 100.' };
+  } catch (error) {
+    return handleActionError(error);
+  }
+}

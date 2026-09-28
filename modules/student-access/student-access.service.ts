@@ -17,6 +17,7 @@ export async function getStudentAccessData(studentId: string) {
   const sortedCategories = categories.sort((a, b) => a.orderIndex - b.orderIndex);
   
   const allPages = await db.orm.public.Page.all();
+  const sequences = await db.orm.public.PageSequence.all();
   
   // Get all access records for this student
   const accesses = await db.orm.public.PageAccess.where({ studentId }).all();
@@ -28,12 +29,20 @@ export async function getStudentAccessData(studentId: string) {
       .sort((a, b) => a.orderIndex - b.orderIndex)
       .map(page => {
         const access = accesses.find(a => a.pageId === page.id);
+        let defaultStatus: PageAccessStatus = 'LOCKED';
+        if (!access) {
+            const seq = sequences.find(s => s.pageId === page.id);
+            if (!seq || !seq.prerequisitePageId) {
+                defaultStatus = 'UNLOCKED';
+            }
+        }
+        
         return {
           id: page.id,
           title: page.title,
           slug: page.slug,
           orderIndex: page.orderIndex,
-          accessStatus: (access?.status as PageAccessStatus) || 'LOCKED'
+          accessStatus: (access?.status as PageAccessStatus) || defaultStatus
         };
       });
       
@@ -73,5 +82,110 @@ export async function updatePageAccess(studentId: string, pageId: string, status
       unlockedAt: status === 'UNLOCKED' || status === 'COMPLETED' ? now : null,
       completedAt: status === 'COMPLETED' ? now : null
     });
+  }
+}
+
+export async function bypassCategoryAccessService(studentId: string, categoryId: string) {
+  const pages = await db.orm.public.Page.where({ categoryId }).all();
+  const pageIds = pages.map(p => p.id);
+  
+  const now = new Date().toISOString();
+  
+  // Unlock all pages in category
+  for (const pageId of pageIds) {
+    const existing = await db.orm.public.PageAccess.where({ studentId, pageId }).all();
+    if (existing.length > 0) {
+      await db.orm.public.PageAccess.where({ id: existing[0].id }).update({
+        status: 'UNLOCKED',
+        unlockedAt: existing[0].unlockedAt || now
+      });
+    } else {
+      await db.orm.public.PageAccess.create({
+        studentId,
+        pageId,
+        status: 'UNLOCKED',
+        unlockedAt: now
+      });
+    }
+  }
+  
+  // Find quizzes and set to 100
+  const packages = await db.orm.public.QuizPackage.all();
+  const targetPackages = packages.filter(p => pageIds.includes(p.pageId));
+  
+  const variants = await db.orm.public.QuizVariant.all();
+  
+  for (const pkg of targetPackages) {
+    const pkgVariants = variants.filter(v => v.quizPackageId === pkg.id);
+    if (pkgVariants.length > 0) {
+      const variantId = pkgVariants[0].id;
+      const attempts = await db.orm.public.QuizAttempt.where({ studentId, quizVariantId: variantId }).all();
+      
+      if (attempts.length > 0) {
+        await db.orm.public.QuizAttempt.where({ id: attempts[0].id }).update({
+          score: 100,
+          status: 'COMPLETED',
+          finishedAt: attempts[0].finishedAt || now
+        });
+      } else {
+        await db.orm.public.QuizAttempt.create({
+          studentId,
+          quizVariantId: variantId,
+          score: 100,
+          status: 'COMPLETED',
+          startedAt: now,
+          finishedAt: now
+        });
+      }
+    }
+  }
+}
+
+export async function bypassPageAccessService(studentId: string, pageId: string) {
+  const now = new Date().toISOString();
+  
+  // Unlock the specific page
+  const existing = await db.orm.public.PageAccess.where({ studentId, pageId }).all();
+  if (existing.length > 0) {
+    await db.orm.public.PageAccess.where({ id: existing[0].id }).update({
+      status: 'UNLOCKED',
+      unlockedAt: existing[0].unlockedAt || now
+    });
+  } else {
+    await db.orm.public.PageAccess.create({
+      studentId,
+      pageId,
+      status: 'UNLOCKED',
+      unlockedAt: now
+    });
+  }
+  
+  // Find quizzes and set to 100
+  const packages = await db.orm.public.QuizPackage.where({ pageId }).all();
+  const variants = await db.orm.public.QuizVariant.all();
+  
+  for (const pkg of packages) {
+    const pkgVariants = variants.filter(v => v.quizPackageId === pkg.id);
+    if (pkgVariants.length > 0) {
+      const variantId = pkgVariants[0].id;
+      const attempts = await db.orm.public.QuizAttempt.where({ studentId, quizVariantId: variantId }).all();
+      
+      if (attempts.length > 0) {
+        await db.orm.public.QuizAttempt.where({ id: attempts[0].id }).update({
+          score: 100,
+          status: 'COMPLETED',
+          finishedAt: attempts[0].finishedAt || now
+        });
+      } else {
+        await db.orm.public.QuizAttempt.create({
+          studentId,
+          quizVariantId: variantId,
+          score: 100,
+          status: 'COMPLETED',
+          startedAt: now,
+          finishedAt: now
+        });
+      }
+    }
   }
 }

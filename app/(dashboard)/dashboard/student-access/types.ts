@@ -8,6 +8,8 @@ export interface ActionResponse<T = any> {
 }
 
 export interface StudentRow {
+  classId?: string | null;
+  className?: string;
   id: string;
   name: string;
   email: string;
@@ -29,6 +31,7 @@ export interface AccessCategory {
 }
 
 export interface StudentAccessTableProps {
+  classes: { id: string; name: string }[];
   students: StudentRow[];
 }
 
