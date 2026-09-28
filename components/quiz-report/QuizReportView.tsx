@@ -244,7 +244,7 @@ export default function QuizReportView({
               Penilaian essay untuk murid <strong>{attemptDetail.student.name}</strong> berhasil disimpan!
             </p>
             <div className="p-2.5 bg-emerald-50 border border-emerald-300 rounded font-bold text-emerald-900">
-              Skor Baru: <span className="text-xl font-black">{res.data.score}</span> / 100 {res.data.isPassed ? '(LULUS 🎉)' : '(BELUM LULUS)'}
+              Skor Baru: <span className="text-xl font-bold">{res.data.score}</span> / 100 {res.data.isPassed ? '(LULUS 🎉)' : '(BELUM LULUS)'}
             </div>
           </div>
         ),
@@ -279,7 +279,7 @@ export default function QuizReportView({
           <p className="text-sm text-gray-700">
             Apakah Anda yakin ingin menghapus/mereset riwayat kuis untuk murid berikut?
           </p>
-          <div className="bg-gray-50 border-2 border-black/20 p-3 rounded-lg text-sm space-y-1">
+          <div className="bg-gray-50 border border-gray-200/20 p-3 rounded-lg text-sm space-y-1">
             <div className="flex justify-between">
               <span className="text-gray-500 font-medium">Nama Murid:</span>
               <span className="font-bold text-gray-900">{row.studentName}</span>
@@ -414,7 +414,7 @@ export default function QuizReportView({
       ) : (
         <>
           {/* FILTER CONTROLS */}
-          <div className="bg-white p-5 md:p-6 rounded-xl shadow-sm border-2 border-black space-y-4">
+          <div className="bg-white p-5 md:p-6 rounded-xl shadow-sm border border-gray-200 space-y-4">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 border-b border-gray-100 pb-3">
           <div className="flex items-center gap-2">
             <span className="material-symbols-outlined text-gray-700">filter_alt</span>
@@ -443,7 +443,7 @@ export default function QuizReportView({
               <select 
                 value={selectedClassId} 
                 onChange={e => handleClassChange(e.target.value)}
-                className="w-full px-3 py-2.5 bg-gray-50 border-2 border-gray-300 rounded-lg focus:border-black focus:ring-1 focus:ring-black outline-none text-sm font-medium transition-colors cursor-pointer appearance-none pr-8"
+                className="w-full px-3 py-2.5 bg-gray-50 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none text-sm font-medium transition-colors cursor-pointer appearance-none pr-8"
               >
                 <option value="">Semua Kelas</option>
                 {classes.map(c => (
@@ -465,7 +465,7 @@ export default function QuizReportView({
               <select 
                 value={selectedPackageId} 
                 onChange={e => handlePackageChange(e.target.value)}
-                className="w-full px-3 py-2.5 bg-gray-50 border-2 border-gray-300 rounded-lg focus:border-black focus:ring-1 focus:ring-black outline-none text-sm font-medium transition-colors cursor-pointer appearance-none pr-8"
+                className="w-full px-3 py-2.5 bg-gray-50 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none text-sm font-medium transition-colors cursor-pointer appearance-none pr-8"
               >
                 <option value="">Semua Materi / Halaman</option>
                 {packagesByCategory.map(([catName, pkgs]) => (
@@ -495,7 +495,7 @@ export default function QuizReportView({
                 value={searchQuery}
                 onChange={handleSearchChange}
                 placeholder="Ketik nama murid, email..."
-                className="w-full px-3 py-2.5 pl-9 bg-gray-50 border-2 border-gray-300 rounded-lg focus:border-black focus:ring-1 focus:ring-black outline-none text-sm transition-colors"
+                className="w-full px-3 py-2.5 pl-9 bg-gray-50 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none text-sm transition-colors"
               />
               <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-lg pointer-events-none">
                 search
@@ -527,7 +527,7 @@ export default function QuizReportView({
             onClick={() => handleReviewFilterChange('ALL')}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors ${
               reviewFilter === 'ALL'
-                ? 'bg-black text-white border-black shadow-neo-sm'
+                ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
                 : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
             }`}
           >
@@ -539,14 +539,14 @@ export default function QuizReportView({
             onClick={() => handleReviewFilterChange('NEED_REVIEW')}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold border flex items-center gap-1.5 transition-colors ${
               reviewFilter === 'NEED_REVIEW'
-                ? 'bg-amber-500 text-white border-black shadow-neo-sm'
+                ? 'bg-amber-600 text-white border-amber-600 shadow-sm'
                 : 'bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100'
             }`}
           >
             <span className="material-symbols-outlined text-sm">pending_actions</span>
             Perlu Review Essay
             {data.stats.pendingReviewCount > 0 && (
-              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
                 reviewFilter === 'NEED_REVIEW' ? 'bg-white text-black' : 'bg-amber-500 text-white'
               }`}>
                 {data.stats.pendingReviewCount}
@@ -559,7 +559,7 @@ export default function QuizReportView({
             onClick={() => handleReviewFilterChange('GRADED')}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold border flex items-center gap-1.5 transition-colors ${
               reviewFilter === 'GRADED'
-                ? 'bg-emerald-600 text-white border-black shadow-neo-sm'
+                ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
                 : 'bg-emerald-50 text-emerald-900 border-emerald-300 hover:bg-emerald-100'
             }`}
           >
@@ -572,7 +572,7 @@ export default function QuizReportView({
             onClick={() => handleReviewFilterChange('HAS_ESSAY')}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold border flex items-center gap-1.5 transition-colors ${
               reviewFilter === 'HAS_ESSAY'
-                ? 'bg-purple-600 text-white border-black shadow-neo-sm'
+                ? 'bg-purple-600 text-white border-purple-600 shadow-sm'
                 : 'bg-purple-50 text-purple-900 border-purple-300 hover:bg-purple-100'
             }`}
           >
@@ -606,56 +606,31 @@ export default function QuizReportView({
       </div>
 
       {/* SUMMARY STATS CARDS */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white p-4 rounded-xl border-2 border-black shadow-neo-sm flex flex-col justify-center">
-          <span className="text-gray-500 text-xs font-bold uppercase tracking-wider mb-1">Total Data</span>
-          <span className="text-2xl font-black text-gray-900">{data.stats.totalRecords}</span>
-          <span className="text-[11px] text-gray-500 mt-0.5">Siswa / Riwayat Kuis</span>
-        </div>
-
-        <div className="bg-white p-4 rounded-xl border-2 border-black shadow-neo-sm flex flex-col justify-center">
-          <span className="text-gray-500 text-xs font-bold uppercase tracking-wider mb-1">Perlu Review Essay</span>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* We only keep the Perlu Review Essay Card but make it clean minimalist */}
+        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-center">
+          <span className="text-gray-500 text-xs font-semibold uppercase tracking-wider mb-1">Perlu Review Essay</span>
           <div className="flex items-center gap-2">
-            <span className={`text-2xl font-black ${data.stats.pendingReviewCount > 0 ? 'text-amber-600' : 'text-gray-700'}`}>
+            <span className={`text-2xl font-bold ${data.stats.pendingReviewCount > 0 ? 'text-amber-600' : 'text-gray-700'}`}>
               {data.stats.pendingReviewCount}
             </span>
             {data.stats.pendingReviewCount > 0 && (
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 animate-pulse">
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200 animate-pulse">
                 Butuh Penilaian
               </span>
             )}
           </div>
           <span className="text-[11px] text-gray-500 mt-0.5">Menunggu penilaian guru</span>
         </div>
-
-        <div className="bg-white p-4 rounded-xl border-2 border-black shadow-neo-sm flex flex-col justify-center">
-          <span className="text-gray-500 text-xs font-bold uppercase tracking-wider mb-1">Lulus KKM</span>
-          <span className="text-2xl font-black text-blue-700">
-            {data.stats.passedCount}
-          </span>
-          <span className="text-[11px] text-blue-600 mt-0.5 font-medium">
-            {data.stats.completedCount > 0 
-              ? `${Math.round((data.stats.passedCount / data.stats.completedCount) * 100)}% dari yang selesai` 
-              : '0%'}
-          </span>
-        </div>
-
-        <div className="bg-white p-4 rounded-xl border-2 border-black shadow-neo-sm flex flex-col justify-center">
-          <span className="text-gray-500 text-xs font-bold uppercase tracking-wider mb-1">Rata-rata Nilai</span>
-          <span className="text-2xl font-black text-emerald-600">
-            {data.stats.averageScore}
-          </span>
-          <span className="text-[11px] text-gray-500 mt-0.5">Skala 0 - 100</span>
-        </div>
       </div>
 
       {/* REPORT DATA TABLE */}
-      <div className="bg-white border-2 border-black rounded-xl shadow-neo-sm overflow-hidden">
+      <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
         {/* Table Header Action Bar */}
-        <div className="px-5 py-4 border-b-2 border-black flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-[#F4F0EA]">
+        <div className="px-5 py-4 border-b border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-gray-50">
           <div className="flex items-center gap-2">
             <span className="material-symbols-outlined text-gray-800">table_chart</span>
-            <h3 className="font-black text-gray-900 uppercase tracking-tight text-base">
+            <h3 className="font-semibold text-gray-900 text-base">
               Daftar Hasil & Nilai Murid
             </h3>
             {isPending && (
@@ -670,7 +645,7 @@ export default function QuizReportView({
             type="button"
             onClick={() => loadReports()} 
             disabled={isPending}
-            className="text-xs font-bold text-gray-700 bg-white border-2 border-black px-3 py-1.5 rounded-lg hover:bg-gray-100 flex items-center gap-1.5 shadow-neo-sm transition-transform active:translate-y-0.5"
+            className="text-xs font-bold text-gray-700 bg-white border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-100 flex items-center gap-1.5 shadow-sm transition-transform active:translate-y-0.5"
           >
             <span className="material-symbols-outlined text-base">refresh</span>
             Segarkan
@@ -680,7 +655,7 @@ export default function QuizReportView({
         {/* Table Container */}
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm whitespace-nowrap">
-            <thead className="bg-gray-50 border-b-2 border-black text-gray-600 uppercase text-[11px] font-black tracking-wider">
+            <thead className="bg-gray-50 border-b border-gray-200 text-gray-600 uppercase text-[11px] font-bold tracking-wider">
               <tr>
                 <th className="px-4 py-3.5 w-12 text-center">No</th>
                 <th className="px-4 py-3.5">Kelas</th>
@@ -727,7 +702,7 @@ export default function QuizReportView({
 
                       {/* 2. Kelas Badge */}
                       <td className="px-4 py-3.5">
-                        <span className="inline-block bg-white border border-black px-2.5 py-1 text-xs font-black uppercase tracking-wider rounded shadow-neo-sm text-gray-800">
+                        <span className="inline-block bg-gray-100 border border-gray-200 px-2.5 py-1 text-xs font-semibold uppercase tracking-wider rounded text-gray-700">
                           {row.className}
                         </span>
                       </td>
@@ -789,7 +764,7 @@ export default function QuizReportView({
                       <td className="px-4 py-3.5 text-center">
                         {isDone && row.score !== null ? (
                           <div>
-                            <span className={`text-base font-black ${row.isPassed ? 'text-green-600' : 'text-red-600'}`}>
+                            <span className={`text-base font-bold ${row.isPassed ? 'text-green-600' : 'text-red-600'}`}>
                               {row.score}
                             </span>
                             <span className="text-[10px] text-gray-400 block font-normal">
@@ -826,10 +801,10 @@ export default function QuizReportView({
                             <button
                               type="button"
                               onClick={() => handleOpenDetail(row.attemptId!)}
-                              className={`inline-flex items-center gap-1 px-3 py-1.5 rounded text-xs font-bold border-2 transition-all shadow-neo-sm active:translate-y-0.5 ${
+                              className={`inline-flex items-center gap-1 px-3 py-1.5 rounded text-xs font-bold border-2 transition-all shadow-sm active:translate-y-0.5 ${
                                 row.needsReview 
                                   ? 'bg-amber-100 border-amber-500 text-amber-900 hover:bg-amber-200' 
-                                  : 'bg-white border-black text-black hover:bg-gray-100'
+                                  : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
                               }`}
                               title={row.needsReview ? "Buka detail untuk mereview jawaban essay murid" : "Lihat detail jawaban murid"}
                             >
@@ -853,7 +828,7 @@ export default function QuizReportView({
                             type="button"
                             onClick={() => handleReset(row)}
                             disabled={!hasStarted || resettingId === row.id}
-                            className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded text-xs font-bold border-2 transition-all shadow-neo-sm ${
+                            className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded text-xs font-bold border-2 transition-all shadow-sm ${
                               hasStarted 
                                 ? 'bg-white border-red-300 text-red-600 hover:bg-red-50 hover:border-red-600 active:translate-y-0.5' 
                                 : 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed shadow-none'
@@ -876,10 +851,10 @@ export default function QuizReportView({
         </div>
 
         {/* PAGINATION CONTROLS */}
-        <div className="px-5 py-4 border-t-2 border-black bg-white flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="px-5 py-4 border-t border-gray-200 bg-white flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="text-xs font-semibold text-gray-600">
-            Menampilkan <span className="text-black font-black">{startItemIndex} - {endItemIndex}</span> dari{' '}
-            <span className="text-black font-black">{data.pagination.totalItems}</span> data
+            Menampilkan <span className="text-black font-bold">{startItemIndex} - {endItemIndex}</span> dari{' '}
+            <span className="text-black font-bold">{data.pagination.totalItems}</span> data
           </div>
 
           <div className="flex items-center gap-1">
@@ -887,7 +862,7 @@ export default function QuizReportView({
               type="button"
               onClick={() => handlePageChange(1)}
               disabled={data.pagination.page <= 1 || isPending}
-              className="px-2.5 py-1.5 border-2 border-black rounded text-xs font-black disabled:opacity-30 hover:bg-gray-100 transition-colors shadow-neo-sm"
+              className="px-2.5 py-1.5 border border-gray-200 rounded text-xs font-bold disabled:opacity-30 hover:bg-gray-100 transition-colors shadow-sm"
               title="Halaman Pertama"
             >
               «
@@ -897,13 +872,13 @@ export default function QuizReportView({
               type="button"
               onClick={() => handlePageChange(data.pagination.page - 1)}
               disabled={data.pagination.page <= 1 || isPending}
-              className="px-3 py-1.5 border-2 border-black rounded text-xs font-bold disabled:opacity-30 hover:bg-gray-100 transition-colors shadow-neo-sm flex items-center gap-1"
+              className="px-3 py-1.5 border border-gray-200 rounded text-xs font-bold disabled:opacity-30 hover:bg-gray-100 transition-colors shadow-sm flex items-center gap-1"
             >
               <span className="material-symbols-outlined text-xs">arrow_back_ios</span>
               Sebelumnya
             </button>
 
-            <span className="px-3 py-1.5 border-2 border-black bg-black text-white rounded text-xs font-black shadow-neo-sm">
+            <span className="px-3 py-1.5 border border-gray-200 bg-black text-white rounded text-xs font-bold shadow-sm">
               {data.pagination.page} / {data.pagination.totalPages}
             </span>
 
@@ -911,7 +886,7 @@ export default function QuizReportView({
               type="button"
               onClick={() => handlePageChange(data.pagination.page + 1)}
               disabled={data.pagination.page >= data.pagination.totalPages || isPending}
-              className="px-3 py-1.5 border-2 border-black rounded text-xs font-bold disabled:opacity-30 hover:bg-gray-100 transition-colors shadow-neo-sm flex items-center gap-1"
+              className="px-3 py-1.5 border border-gray-200 rounded text-xs font-bold disabled:opacity-30 hover:bg-gray-100 transition-colors shadow-sm flex items-center gap-1"
             >
               Berikutnya
               <span className="material-symbols-outlined text-xs">arrow_forward_ios</span>
@@ -921,7 +896,7 @@ export default function QuizReportView({
               type="button"
               onClick={() => handlePageChange(data.pagination.totalPages)}
               disabled={data.pagination.page >= data.pagination.totalPages || isPending}
-              className="px-2.5 py-1.5 border-2 border-black rounded text-xs font-black disabled:opacity-30 hover:bg-gray-100 transition-colors shadow-neo-sm"
+              className="px-2.5 py-1.5 border border-gray-200 rounded text-xs font-bold disabled:opacity-30 hover:bg-gray-100 transition-colors shadow-sm"
               title="Halaman Terakhir"
             >
               »
@@ -936,16 +911,16 @@ export default function QuizReportView({
           <div 
             role="dialog"
             aria-modal="true"
-            className="bg-[#F4F0EA] border-4 border-black w-full max-w-4xl max-h-[92vh] flex flex-col shadow-neo-xl animate-in zoom-in-95 duration-150 overflow-hidden"
+            className="bg-gray-50 border border-gray-200 rounded-xl w-full max-w-4xl max-h-[92vh] flex flex-col shadow-xl animate-in zoom-in-95 duration-150 overflow-hidden"
           >
             {/* Modal Header */}
-            <div className="border-b-4 border-black p-4 md:p-5 bg-white flex items-center justify-between gap-4 shrink-0">
+            <div className="border-b border-gray-200 p-4 md:p-5 bg-white flex items-center justify-between gap-4 shrink-0">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 border-2 border-black bg-[#FFDE59] flex items-center justify-center shadow-neo-sm">
+                <div className="w-10 h-10 border border-gray-200 bg-blue-50 text-blue-600 rounded-lg border-none flex items-center justify-center shadow-sm">
                   <span className="material-symbols-outlined text-2xl font-bold">assignment</span>
                 </div>
                 <div>
-                  <h3 className="text-lg md:text-xl font-black uppercase tracking-tight text-gray-900 leading-snug">
+                  <h3 className="text-lg md:text-xl font-semibold text-gray-900 text-gray-900 leading-snug">
                     Lembar Jawaban & Review Kuis
                   </h3>
                   {attemptDetail && (
@@ -961,7 +936,7 @@ export default function QuizReportView({
               <button
                 type="button"
                 onClick={() => setDetailModalOpen(false)}
-                className="w-9 h-9 border-2 border-black bg-white hover:bg-red-50 text-gray-700 hover:text-red-600 flex items-center justify-center shadow-neo-sm transition-colors rounded-none font-bold"
+                className="w-9 h-9 border border-gray-200 bg-white hover:bg-red-50 text-gray-700 hover:text-red-600 flex items-center justify-center shadow-sm transition-colors rounded-none font-bold"
                 title="Tutup"
               >
                 ✕
@@ -982,7 +957,7 @@ export default function QuizReportView({
               ) : (
                 <div className="space-y-6">
                   {/* Top Stats Overview */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-white p-4 border-2 border-black shadow-neo-sm">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-white p-4 border border-gray-200 shadow-sm">
                     <div>
                       <div className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Status Attempt</div>
                       <div className="mt-1">
@@ -1004,7 +979,7 @@ export default function QuizReportView({
 
                     <div>
                       <div className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Skor Saat Ini</div>
-                      <div className="text-xl font-black text-gray-900 mt-0.5">
+                      <div className="text-xl font-bold text-gray-900 mt-0.5">
                         {attemptDetail.attempt.score !== null ? attemptDetail.attempt.score : '-'}
                         <span className="text-xs font-semibold text-gray-400 ml-1">/ 100</span>
                       </div>
@@ -1012,7 +987,7 @@ export default function QuizReportView({
 
                     <div>
                       <div className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">KKM Kelulusan</div>
-                      <div className="text-xl font-black text-blue-700 mt-0.5">
+                      <div className="text-xl font-bold text-blue-700 mt-0.5">
                         {attemptDetail.package.passingScore}
                       </div>
                     </div>
@@ -1027,8 +1002,8 @@ export default function QuizReportView({
 
                   {/* List of Questions with Student Answers */}
                   <div className="space-y-4">
-                    <div className="flex items-center justify-between border-b-2 border-black pb-2">
-                      <h4 className="font-black text-base uppercase tracking-tight text-gray-900">
+                    <div className="flex items-center justify-between border-b border-gray-200 pb-2">
+                      <h4 className="font-bold text-base uppercase tracking-tight text-gray-900">
                         Daftar Soal & Jawaban Murid ({attemptDetail.questions.length} Soal)
                       </h4>
                       <span className="text-xs font-bold text-gray-600">
@@ -1043,14 +1018,14 @@ export default function QuizReportView({
                       return (
                         <div 
                           key={q.id} 
-                          className={`bg-white border-2 border-black p-4 md:p-5 shadow-neo-sm space-y-3 ${
+                          className={`bg-white border border-gray-200 p-4 md:p-5 shadow-sm space-y-3 ${
                             isEssay ? 'border-l-8 border-l-purple-500' : 'border-l-8 border-l-blue-500'
                           }`}
                         >
                           {/* Question Header */}
                           <div className="flex items-center justify-between gap-2 flex-wrap">
                             <div className="flex items-center gap-2">
-                              <span className="w-6 h-6 rounded-full bg-black text-white text-xs font-black flex items-center justify-center">
+                              <span className="w-6 h-6 rounded-full bg-black text-white text-xs font-bold flex items-center justify-center">
                                 {qIdx + 1}
                               </span>
                               <span className={`px-2 py-0.5 text-xs font-bold uppercase rounded border ${
@@ -1060,7 +1035,7 @@ export default function QuizReportView({
                               }`}>
                                 {isEssay ? 'Soal Essay' : 'Pilihan Ganda'}
                               </span>
-                              <span className="text-xs font-bold text-gray-600 bg-gray-100 px-2 py-0.5 border border-black/20">
+                              <span className="text-xs font-bold text-gray-600 bg-gray-100 px-2 py-0.5 border border-gray-300">
                                 Bobot: {q.points} Poin
                               </span>
                             </div>
@@ -1111,7 +1086,7 @@ export default function QuizReportView({
 
                                     <div className="flex items-center gap-1.5 shrink-0">
                                       {isSelected && (
-                                        <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${
+                                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
                                           isCorrect ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'
                                         }`}>
                                           {isCorrect ? '✓ Jawaban Murid (Benar)' : '✗ Jawaban Murid (Salah)'}
@@ -1138,7 +1113,7 @@ export default function QuizReportView({
                                   <span className="material-symbols-outlined text-sm text-purple-700">chat</span>
                                   Jawaban Essay Siswa:
                                 </div>
-                                <div className="p-4 bg-[#FFFDF9] border-2 border-black/40 text-sm md:text-base text-gray-900 font-mono leading-relaxed whitespace-pre-wrap min-h-[80px]">
+                                <div className="p-4 bg-[#FFFDF9] border border-gray-200/40 text-sm md:text-base text-gray-900 font-mono leading-relaxed whitespace-pre-wrap min-h-[80px]">
                                   {studentAns?.essayAnswer?.trim() ? (
                                     studentAns.essayAnswer
                                   ) : (
@@ -1190,7 +1165,7 @@ export default function QuizReportView({
                                     step="1"
                                     value={essayGrades[q.id] ?? 0}
                                     onChange={(e) => handleEssayGradeChange(q.id, Number(e.target.value), q.points)}
-                                    className="w-28 px-3 py-2 bg-white border-2 border-black rounded font-black text-base text-gray-900 focus:ring-2 focus:ring-purple-500 outline-none"
+                                    className="w-28 px-3 py-2 bg-white border border-gray-200 rounded font-bold text-base text-gray-900 focus:ring-2 focus:ring-purple-500 outline-none"
                                   />
                                   <span className="text-xs font-bold text-gray-600">
                                     / {q.points} Poin Maksimal
@@ -1209,16 +1184,16 @@ export default function QuizReportView({
 
             {/* Modal Footer with Live Score Calculation & Save Action */}
             {attemptDetail && (
-              <div className="border-t-4 border-black p-4 bg-white flex flex-col md:flex-row items-center justify-between gap-3 shrink-0">
+              <div className="border-t border-gray-200 p-4 bg-white flex flex-col md:flex-row items-center justify-between gap-3 shrink-0">
                 {/* Live Preview Score */}
                 <div className="flex items-center gap-3 w-full md:w-auto">
-                  <div className="p-2 border-2 border-black bg-[#F4F0EA] flex items-center gap-2">
+                  <div className="p-2 border border-gray-200 bg-gray-50 flex items-center gap-2">
                     <span className="text-xs font-bold uppercase text-gray-600">Kalkulasi Skor:</span>
-                    <span className="text-lg font-black text-gray-900">
+                    <span className="text-lg font-bold text-gray-900">
                       {previewScoreData.score}
                     </span>
                     <span className="text-xs font-bold text-gray-400">/ 100</span>
-                    <span className={`px-2 py-0.5 rounded text-[11px] font-black uppercase ${
+                    <span className={`px-2 py-0.5 rounded text-[11px] font-bold uppercase ${
                       previewScoreData.passed ? 'bg-emerald-300 text-black' : 'bg-red-300 text-black'
                     }`}>
                       {previewScoreData.passed ? 'Lulus KKM' : 'Belum Lulus'}
@@ -1234,7 +1209,7 @@ export default function QuizReportView({
                   <button
                     type="button"
                     onClick={() => setDetailModalOpen(false)}
-                    className="px-4 py-2.5 border-2 border-black bg-white text-gray-800 font-bold text-xs uppercase tracking-wider hover:bg-gray-100 shadow-neo-sm"
+                    className="px-4 py-2.5 border border-gray-200 bg-white text-gray-800 font-bold text-xs uppercase tracking-wider hover:bg-gray-100 shadow-sm"
                   >
                     Tutup
                   </button>
@@ -1244,7 +1219,7 @@ export default function QuizReportView({
                       type="button"
                       onClick={handleSaveGrades}
                       disabled={savingGrades}
-                      className="px-5 py-2.5 border-2 border-black bg-[#4ECDC4] hover:bg-[#45B7AF] text-black font-black text-xs uppercase tracking-wider shadow-neo-sm hover:-translate-y-0.5 transition-transform flex items-center gap-1.5 disabled:opacity-50"
+                      className="px-5 py-2.5 border border-gray-200 bg-blue-600 hover:bg-blue-700 rounded-lg text-white border-blue-600 shadow-sm text-black font-bold text-xs uppercase tracking-wider shadow-sm hover:-translate-y-0.5 transition-transform flex items-center gap-1.5 disabled:opacity-50"
                     >
                       <span className="material-symbols-outlined text-base">save</span>
                       {savingGrades ? 'Menyimpan...' : 'Simpan Nilai Essay'}
@@ -1263,28 +1238,28 @@ export default function QuizReportView({
           <div 
             role="dialog"
             aria-modal="true"
-            className="bg-[#F4F0EA] border-4 border-black p-6 md:p-8 max-w-md w-full shadow-neo-xl space-y-4 animate-in zoom-in-95 duration-150"
+            className="bg-gray-50 border border-gray-200 rounded-xl p-6 md:p-8 max-w-md w-full shadow-xl space-y-4 animate-in zoom-in-95 duration-150"
           >
             {/* Header */}
             <div className="flex items-start gap-3.5">
-              <div className={`w-10 h-10 border-2 border-black flex items-center justify-center shadow-neo-sm shrink-0 ${
+              <div className={`w-10 h-10 border border-gray-200 flex items-center justify-center shadow-sm shrink-0 ${
                 modalConfig.type === 'error' || modalConfig.isDestructive
-                  ? 'bg-[#FF6B6B] text-white' 
+                  ? 'bg-red-600 text-white rounded-lg border-red-600 shadow-sm' 
                   : modalConfig.type === 'success'
                   ? 'bg-emerald-400 text-black'
-                  : 'bg-yellow-400 text-black'
+                  : 'bg-amber-100 text-amber-800 rounded-lg border-amber-200 shadow-sm'
               }`}>
                 <span className="material-symbols-outlined text-xl">
                   {modalConfig.type === 'error' ? 'error' : modalConfig.type === 'success' ? 'check_circle' : 'warning'}
                 </span>
               </div>
-              <h3 className="text-lg font-black uppercase tracking-tight text-gray-900 leading-snug">
+              <h3 className="text-lg font-semibold text-gray-900 text-gray-900 leading-snug">
                 {modalConfig.title}
               </h3>
             </div>
 
             {/* Body */}
-            <div className="text-sm font-medium text-gray-800 leading-relaxed bg-white/70 border-2 border-black/10 p-3.5 rounded">
+            <div className="text-sm font-medium text-gray-800 leading-relaxed bg-white/70 border border-gray-200/10 p-3.5 rounded">
               {modalConfig.message}
             </div>
 
@@ -1294,7 +1269,7 @@ export default function QuizReportView({
                 <button
                   type="button"
                   onClick={modalConfig.onCancel || (() => setModalConfig(null))}
-                  className="w-full sm:w-auto px-5 py-2.5 border-2 border-black bg-white text-black font-black uppercase text-xs tracking-wider hover:bg-gray-100 transition-colors shadow-neo-sm"
+                  className="w-full sm:w-auto px-5 py-2.5 border border-gray-200 bg-white text-black font-bold uppercase text-xs tracking-wider hover:bg-gray-100 transition-colors shadow-sm"
                 >
                   {modalConfig.cancelText || 'Batal'}
                 </button>
@@ -1303,9 +1278,9 @@ export default function QuizReportView({
               <button
                 type="button"
                 onClick={modalConfig.onConfirm || (() => setModalConfig(null))}
-                className={`w-full sm:w-auto px-5 py-2.5 border-2 border-black font-black uppercase text-xs tracking-wider transition-transform shadow-neo-sm hover:-translate-y-0.5 ${
+                className={`w-full sm:w-auto px-5 py-2.5 border border-gray-200 font-bold uppercase text-xs tracking-wider transition-transform shadow-sm hover:-translate-y-0.5 ${
                   modalConfig.isDestructive
-                    ? 'bg-[#FF6B6B] text-white hover:bg-red-600'
+                    ? 'bg-red-600 text-white rounded-lg border-red-600 shadow-sm hover:bg-red-600'
                     : 'bg-black text-white hover:bg-neutral-800'
                 }`}
               >

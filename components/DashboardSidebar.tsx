@@ -25,32 +25,23 @@ export default function DashboardSidebar({
     router.push('/login');
   };
 
-  const isSuperAdmin = user?.role === 'SUPERADMIN';
+  const ALL_MENU_ITEMS = [
+    { label: 'Overview', icon: 'dashboard', href: '/dashboard', roles: ['SUPERADMIN', 'GURU'] },
+    { label: 'Manajemen Pengguna', icon: 'group', href: '/dashboard/users', roles: ['SUPERADMIN'] },
+    { label: 'Manajemen Kelas', icon: 'school', href: '/dashboard/classes', roles: ['SUPERADMIN', 'GURU'] },
+    { label: 'Kelola Materi', icon: 'menu_book', href: '/dashboard/materi', roles: ['SUPERADMIN', 'GURU'] },
+    { label: 'Summary AI', icon: 'summarize', href: '/dashboard/summaries', roles: ['SUPERADMIN', 'GURU'] },
+    { label: 'Akses Siswa', icon: 'lock_open', href: '/dashboard/student-access', roles: ['SUPERADMIN', 'GURU'] },
+    { label: 'Manajemen Kuis', icon: 'quiz', href: '/dashboard/quizzes', roles: ['SUPERADMIN'] },
+    { label: 'Evaluasi & Kuis', icon: 'quiz', href: '/dashboard/quizzes', roles: ['GURU'] },
+    { label: 'Laporan Nilai', icon: 'analytics', href: '/dashboard/reports', roles: ['SUPERADMIN', 'GURU'] },
+  ];
 
-  const menuItems = isSuperAdmin
-    ? [
-        { label: 'Overview', icon: 'dashboard', href: '/dashboard' },
-        { label: 'Manajemen Pengguna', icon: 'group', href: '/dashboard/users' },
-        { label: 'Manajemen Kelas', icon: 'school', href: '/dashboard/classes' },
-        { label: 'Kelola Materi', icon: 'menu_book', href: '/dashboard/materi' },
-        { label: 'Summary AI', icon: 'summarize', href: '/dashboard/summaries' },
-        { label: 'Akses Siswa', icon: 'lock_open', href: '/dashboard/student-access' },
-        { label: 'Manajemen Kuis', icon: 'quiz', href: '/dashboard/quizzes' },
-        { label: 'Laporan Nilai', icon: 'analytics', href: '/dashboard/reports' },
-        { label: 'Pengaturan', icon: 'settings', href: '/dashboard/settings' },
-      ]
-    : [
-        { label: 'Overview', icon: 'dashboard', href: '/dashboard' },
-        { label: 'Manajemen Kelas', icon: 'school', href: '/dashboard/classes' },
-        { label: 'Kelola Materi', icon: 'menu_book', href: '/dashboard/materi' },
-        { label: 'Summary AI', icon: 'summarize', href: '/dashboard/summaries' },
-        { label: 'Akses Siswa', icon: 'lock_open', href: '/dashboard/student-access' },
-        { label: 'Evaluasi & Kuis', icon: 'quiz', href: '/dashboard/quizzes' },
-        { label: 'Laporan Nilai', icon: 'analytics', href: '/dashboard/reports' },
-      ];
+  const userRole = user?.role || 'GURU'; // Fallback to GURU if undefined
+  const menuItems = ALL_MENU_ITEMS.filter(item => item.roles.includes(userRole));
 
   return (
-    <aside 
+    <aside
       className={`fixed lg:sticky top-0 left-0 h-screen bg-white border-r border-gray-200 z-50 flex flex-col transition-all duration-300 ease-in-out
         ${isMobileOpen ? 'translate-x-0' : '-translate-x-full'} 
         lg:translate-x-0
@@ -78,14 +69,13 @@ export default function DashboardSidebar({
             const active = pathname === item.href;
             return (
               <li key={item.href}>
-                <Link 
+                <Link
                   href={item.href}
                   onClick={() => setIsMobileOpen(false)}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
-                    active 
-                    ? 'bg-blue-50 text-blue-700' 
-                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                  }`}
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${active
+                      ? 'bg-blue-50 text-blue-700'
+                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                    }`}
                 >
                   <span className="material-symbols-outlined text-xl">{item.icon}</span>
                   {isSidebarOpen && <span className="font-medium whitespace-nowrap">{item.label}</span>}
@@ -97,7 +87,7 @@ export default function DashboardSidebar({
       </nav>
 
       <div className="p-4 border-t border-gray-200 shrink-0">
-        <button 
+        <button
           onClick={handleLogout}
           className="flex items-center gap-3 px-3 py-2.5 w-full rounded-lg text-red-600 hover:bg-red-50 transition-colors"
         >
