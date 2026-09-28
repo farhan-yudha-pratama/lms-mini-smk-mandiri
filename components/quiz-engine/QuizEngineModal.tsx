@@ -158,9 +158,10 @@ export default function QuizEngineModal({
     setCheatingWarning(true);
     setSubmitting(true);
 
-    const answersArray = Object.keys(answersRef.current).map(qId => ({ 
-      questionId: qId, 
-      optionId: answersRef.current[qId] 
+    const answersArray = (data?.questions || []).map((q: any) => ({ 
+      questionId: q.id, 
+      optionId: q.type === 'PILIHAN_GANDA' ? answersRef.current[q.id] || undefined : undefined,
+      essayAnswer: q.type === 'ESSAY' ? answersRef.current[q.id] || undefined : undefined
     }));
 
     try {
@@ -398,8 +399,11 @@ export default function QuizEngineModal({
 
   // Submission Flow with Modal Confirmation
   const handleOpenSubmitConfirm = () => {
-    const answeredCount = Object.keys(answers).length;
     const totalQuestions = data?.questions?.length || 0;
+    const answeredCount = (data?.questions || []).filter((q: any) => {
+      const val = answers[q.id];
+      return q.type === 'ESSAY' ? Boolean(val && val.trim().length > 0) : Boolean(val);
+    }).length;
     const unansweredCount = totalQuestions - answeredCount;
 
     isInternalModalOpenRef.current = true;
@@ -410,7 +414,7 @@ export default function QuizEngineModal({
       message: (
         <div className="space-y-3">
           <p className="font-medium text-gray-800">
-            Pastikan Anda telah memeriksa semua pilihan sebelum mengumpulkan ujian ini.
+            Pastikan Anda telah memeriksa semua pilihan dan jawaban essay sebelum mengumpulkan ujian ini.
           </p>
           <div className="bg-white border-2 border-black p-3 space-y-1.5 font-bold text-sm">
             <div className="flex justify-between">
@@ -429,7 +433,7 @@ export default function QuizEngineModal({
             )}
           </div>
           <p className="text-xs text-gray-500 italic">
-            *Setelah dikumpulkan, jawaban tidak dapat diubah kembali.
+            *Setelah dikumpulkan, jawaban tidak dapat diubah kembali. Jawaban essay akan dinilai oleh guru.
           </p>
         </div>
       ),
@@ -453,9 +457,10 @@ export default function QuizEngineModal({
     isArmedRef.current = false;
     setSubmitting(true);
 
-    const answersArray = Object.keys(answers).map(qId => ({ 
-      questionId: qId, 
-      optionId: answers[qId] 
+    const answersArray = (data?.questions || []).map((q: any) => ({ 
+      questionId: q.id, 
+      optionId: q.type === 'PILIHAN_GANDA' ? answers[q.id] || undefined : undefined,
+      essayAnswer: q.type === 'ESSAY' ? answers[q.id] || undefined : undefined
     }));
 
     const res = await submitQuizAction(attemptId, answersArray, false);
@@ -502,7 +507,7 @@ export default function QuizEngineModal({
         <div className="bg-[#F4F0EA] border-4 border-black p-6 md:p-10 max-w-2xl w-full text-center shadow-neo-xl my-8">
           <h2 className="text-2xl md:text-3xl font-black uppercase tracking-tight mb-2 text-black">{data.title}</h2>
           <p className="text-sm font-bold text-gray-600 mb-6 uppercase tracking-wider">
-            {data.questions?.length || 0} Soal Pilihan Ganda
+            {data.questions?.length || 0} Pertanyaan Soal
           </p>
 
           {/* System & Permission Checklist */}
@@ -615,7 +620,10 @@ export default function QuizEngineModal({
   }
 
   const currentQ = data.questions[currentIdx];
-  const answeredCount = Object.keys(answers).length;
+  const answeredCount = (data?.questions || []).filter((q: any) => {
+    const val = answers[q.id];
+    return q.type === 'ESSAY' ? Boolean(val && val.trim().length > 0) : Boolean(val);
+  }).length;
   const isLast = currentIdx === data.questions.length - 1;
 
   return (
@@ -645,48 +653,89 @@ export default function QuizEngineModal({
             <div className="animate-fade-in">
               {/* Question Navigation Bubbles */}
               <div className="mb-6 flex gap-2 overflow-x-auto pb-2">
-                {data.questions.map((_: any, i: number) => (
-                  <button
-                    key={i}
-                    type="button"
-                    onClick={() => setCurrentIdx(i)}
-                    className={`shrink-0 w-10 h-10 border-2 border-black font-bold flex items-center justify-center transition-transform hover:-translate-y-0.5 ${
-                      currentIdx === i ? 'bg-black text-white' : answers[data.questions[i].id] ? 'bg-[#FF6B6B] text-white' : 'bg-white'
-                    }`}
-                  >
-                    {i + 1}
-                  </button>
-                ))}
+                {data.questions.map((qItem: any, i: number) => {
+                  const val = answers[qItem.id];
+                  const hasAnswered = qItem.type === 'ESSAY' ? Boolean(val && val.trim().length > 0) : Boolean(val);
+                  return (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => setCurrentIdx(i)}
+                      className={`shrink-0 w-10 h-10 border-2 border-black font-bold flex items-center justify-center transition-transform hover:-translate-y-0.5 ${
+                        currentIdx === i 
+                          ? 'bg-black text-white' 
+                          : hasAnswered 
+                            ? 'bg-[#FF6B6B] text-white' 
+                            : 'bg-white text-black'
+                      }`}
+                    >
+                      {i + 1}
+                    </button>
+                  );
+                })}
               </div>
 
               {/* Question Card */}
               <div className="bg-white border-4 border-black p-6 shadow-neo-sm">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className={`px-2.5 py-1 text-xs font-black uppercase border border-black ${
+                    currentQ.type === 'ESSAY' ? 'bg-[#FFDE59] text-black' : 'bg-[#4ECDC4] text-black'
+                  }`}>
+                    {currentQ.type === 'ESSAY' ? 'Soal Essay' : 'Pilihan Ganda'}
+                  </span>
+                  <span className="text-xs font-bold text-gray-700 bg-gray-100 px-2 py-0.5 border border-black/30">
+                    {currentQ.points} Poin
+                  </span>
+                </div>
+
                 <h3 className="text-lg md:text-xl font-bold mb-6 leading-snug">
                   {currentIdx + 1}. {currentQ.text}
                 </h3>
 
-                <div className="space-y-3">
-                  {currentQ.options.map((opt: any) => {
-                    const isSelected = answers[currentQ.id] === opt.id;
-                    return (
-                      <label 
-                        key={opt.id} 
-                        className={`block border-2 border-black p-4 cursor-pointer transition-colors ${
-                          isSelected ? 'bg-black text-white' : 'bg-white hover:bg-gray-50'
-                        }`}
-                      >
-                        <input 
-                          type="radio" 
-                          name={`q-${currentQ.id}`} 
-                          className="hidden"
-                          checked={isSelected}
-                          onChange={() => setAnswers(prev => ({ ...prev, [currentQ.id]: opt.id }))}
-                        />
-                        <span className="font-medium">{opt.text}</span>
-                      </label>
-                    );
-                  })}
-                </div>
+                {currentQ.type === 'ESSAY' ? (
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center text-xs font-bold text-gray-600">
+                      <span>Ketikkan Jawaban Uraian / Essay Anda:</span>
+                      <span>
+                        {answers[currentQ.id]?.trim() ? `${answers[currentQ.id].trim().length} karakter` : 'Belum dijawab'}
+                      </span>
+                    </div>
+                    <textarea 
+                      rows={6}
+                      value={answers[currentQ.id] || ''}
+                      onChange={(e) => setAnswers(prev => ({ ...prev, [currentQ.id]: e.target.value }))}
+                      placeholder="Tuliskan penjelasan dan uraian jawaban Anda di sini secara lengkap..."
+                      className="w-full p-4 border-2 border-black focus:ring-2 focus:ring-black outline-none font-sans text-sm md:text-base leading-relaxed bg-[#FFFDF9] resize-y"
+                    />
+                    <div className="p-3 bg-yellow-50 border border-black/20 text-xs font-medium text-gray-700 flex items-center gap-2">
+                      <span className="material-symbols-outlined text-sm text-yellow-700">info</span>
+                      <span>Jawaban essay akan diperiksa dan dinilai secara manual oleh Guru setelah Anda mengumpulkan ujian.</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {currentQ.options.map((opt: any) => {
+                      const isSelected = answers[currentQ.id] === opt.id;
+                      return (
+                        <label 
+                          key={opt.id} 
+                          className={`block border-2 border-black p-4 cursor-pointer transition-colors ${
+                            isSelected ? 'bg-black text-white' : 'bg-white hover:bg-gray-50'
+                          }`}
+                        >
+                          <input 
+                            type="radio" 
+                            name={`q-${currentQ.id}`} 
+                            className="hidden"
+                            checked={isSelected}
+                            onChange={() => setAnswers(prev => ({ ...prev, [currentQ.id]: opt.id }))}
+                          />
+                          <span className="font-medium">{opt.text}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
           )}

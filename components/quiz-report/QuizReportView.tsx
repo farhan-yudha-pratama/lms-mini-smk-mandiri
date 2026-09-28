@@ -1,8 +1,14 @@
 'use client';
 
 import { useState, useTransition, useMemo } from 'react';
-import { getQuizReportsAction, resetQuizAttemptAction } from '@/modules/quiz-report/quiz-report.action';
-import { QuizReportItem, QuizReportsResponse } from '@/modules/quiz-report/quiz-report.service';
+import { 
+  getQuizReportsAction, 
+  resetQuizAttemptAction,
+  getQuizAttemptDetailAction,
+  gradeQuizAttemptAction
+} from '@/modules/quiz-report/quiz-report.action';
+import { QuizReportItem, QuizReportsResponse, UnfinishedStudentsResponse } from '@/modules/quiz-report/quiz-report.service';
+import UnfinishedStudentsView from './UnfinishedStudentsView';
 
 type Package = { id: string; title: string; pageTitle: string; categoryName: string; };
 type ClassType = { id: string; name: string; };
@@ -37,28 +43,39 @@ function formatDate(dateString: string | null) {
 
 export default function QuizReportView({ 
   packages, 
-  classes,
-  initialReports
+  classes, 
+  initialReports,
+  initialUnfinishedReports,
 }: { 
   packages: Package[]; 
   classes: ClassType[]; 
   initialReports?: QuizReportsResponse;
+  initialUnfinishedReports?: UnfinishedStudentsResponse;
 }) {
+  const [activeTab, setActiveTab] = useState<'REPORTS' | 'UNFINISHED'>('REPORTS');
   const [selectedClassId, setSelectedClassId] = useState<string>('');
   const [selectedPackageId, setSelectedPackageId] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [reviewFilter, setReviewFilter] = useState<'ALL' | 'NEED_REVIEW' | 'HAS_ESSAY' | 'GRADED' | 'NO_ESSAY'>('ALL');
   const [page, setPage] = useState<number>(1);
-  const [limit, setLimit] = useState<number>(50); // Default 50 data pagination
+  const [limit, setLimit] = useState<number>(50);
   const [isPending, startTransition] = useTransition();
 
   const [data, setData] = useState<QuizReportsResponse>(initialReports || {
     items: [],
     pagination: { page: 1, limit: 50, totalItems: 0, totalPages: 1 },
-    stats: { totalRecords: 0, completedCount: 0, inProgressCount: 0, notStartedCount: 0, passedCount: 0, averageScore: 0 }
+    stats: { totalRecords: 0, completedCount: 0, inProgressCount: 0, notStartedCount: 0, passedCount: 0, averageScore: 0, pendingReviewCount: 0, essayQuizCount: 0 }
   });
 
   const [modalConfig, setModalConfig] = useState<ModalState | null>(null);
   const [resettingId, setResettingId] = useState<string | null>(null);
+
+  // DETAIL & ESSAY REVIEW MODAL STATE
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [attemptDetail, setAttemptDetail] = useState<any | null>(null);
+  const [essayGrades, setEssayGrades] = useState<Record<string, number>>({});
+  const [savingGrades, setSavingGrades] = useState(false);
 
   // Group packages by category for clean dropdown rendering
   const packagesByCategory = useMemo(() => {
@@ -78,12 +95,14 @@ export default function QuizReportView({
     search?: string;
     page?: number;
     limit?: number;
+    reviewFilter?: 'ALL' | 'NEED_REVIEW' | 'HAS_ESSAY' | 'GRADED' | 'NO_ESSAY';
   }) => {
     const targetClassId = newParams?.classId !== undefined ? newParams.classId : selectedClassId;
     const targetPackageId = newParams?.packageId !== undefined ? newParams.packageId : selectedPackageId;
     const targetSearch = newParams?.search !== undefined ? newParams.search : searchQuery;
     const targetPage = newParams?.page !== undefined ? newParams.page : page;
     const targetLimit = newParams?.limit !== undefined ? newParams.limit : limit;
+    const targetReviewFilter = newParams?.reviewFilter !== undefined ? newParams.reviewFilter : reviewFilter;
 
     startTransition(async () => {
       const res = await getQuizReportsAction({
@@ -92,6 +111,7 @@ export default function QuizReportView({
         search: targetSearch || undefined,
         page: targetPage,
         limit: targetLimit,
+        reviewFilter: targetReviewFilter,
       });
 
       if (res.success && res.data) {
@@ -129,6 +149,12 @@ export default function QuizReportView({
     loadReports({ search: query, page: 1 });
   };
 
+  const handleReviewFilterChange = (filter: 'ALL' | 'NEED_REVIEW' | 'HAS_ESSAY' | 'GRADED' | 'NO_ESSAY') => {
+    setReviewFilter(filter);
+    setPage(1);
+    loadReports({ reviewFilter: filter, page: 1 });
+  };
+
   const handleLimitChange = (newLimit: number) => {
     setLimit(newLimit);
     setPage(1);
@@ -145,9 +171,100 @@ export default function QuizReportView({
     setSelectedClassId('');
     setSelectedPackageId('');
     setSearchQuery('');
+    setReviewFilter('ALL');
     setPage(1);
     setLimit(50);
-    loadReports({ classId: '', packageId: '', search: '', page: 1, limit: 50 });
+    loadReports({ classId: '', packageId: '', search: '', page: 1, limit: 50, reviewFilter: 'ALL' });
+  };
+
+  // Open Detail / Review Modal
+  const handleOpenDetail = async (attemptId: string) => {
+    setDetailModalOpen(true);
+    setDetailLoading(true);
+    setAttemptDetail(null);
+
+    const res = await getQuizAttemptDetailAction(attemptId);
+    if (res.success && res.data) {
+      setAttemptDetail(res.data);
+      // Initialize essay grades
+      const initialGrades: Record<string, number> = {};
+      res.data.questions
+        .filter((q: any) => q.questionType === 'ESSAY')
+        .forEach((q: any) => {
+          initialGrades[q.id] = q.studentAnswer?.pointsEarned || 0;
+        });
+      setEssayGrades(initialGrades);
+    } else {
+      setModalConfig({
+        isOpen: true,
+        type: 'error',
+        title: 'Gagal Memuat Detail',
+        message: res.message || 'Tidak dapat memuat detail pengerjaan kuis.',
+        confirmText: 'Tutup',
+        onConfirm: () => {
+          setModalConfig(null);
+          setDetailModalOpen(false);
+        }
+      });
+    }
+    setDetailLoading(false);
+  };
+
+  // Change individual essay grade in modal
+  const handleEssayGradeChange = (questionId: string, value: number, maxPoints: number) => {
+    const clamped = Math.max(0, Math.min(maxPoints, value));
+    setEssayGrades(prev => ({
+      ...prev,
+      [questionId]: clamped
+    }));
+  };
+
+  // Save manual essay grades
+  const handleSaveGrades = async () => {
+    if (!attemptDetail) return;
+    setSavingGrades(true);
+
+    const payload = Object.keys(essayGrades).map(qId => ({
+      questionId: qId,
+      pointsEarned: Number(essayGrades[qId]) || 0
+    }));
+
+    const res = await gradeQuizAttemptAction(attemptDetail.attempt.id, payload);
+    setSavingGrades(false);
+
+    if (res.success && res.data) {
+      setDetailModalOpen(false);
+      setModalConfig({
+        isOpen: true,
+        type: 'success',
+        title: 'Penilaian Disimpan',
+        message: (
+          <div className="space-y-2 text-sm text-gray-800">
+            <p>
+              Penilaian essay untuk murid <strong>{attemptDetail.student.name}</strong> berhasil disimpan!
+            </p>
+            <div className="p-2.5 bg-emerald-50 border border-emerald-300 rounded font-bold text-emerald-900">
+              Skor Baru: <span className="text-xl font-black">{res.data.score}</span> / 100 {res.data.isPassed ? '(LULUS 🎉)' : '(BELUM LULUS)'}
+            </div>
+          </div>
+        ),
+        confirmText: 'OK',
+        onConfirm: () => {
+          setModalConfig(null);
+          loadReports();
+        }
+      });
+      loadReports();
+    } else {
+      setModalConfig({
+        isOpen: true,
+        type: 'error',
+        title: 'Gagal Menyimpan Penilaian',
+        message: res.message || 'Terjadi kesalahan saat menyimpan penilaian essay.',
+        confirmText: 'Tutup',
+        onConfirm: () => setModalConfig(null)
+      });
+    }
   };
 
   // Reset Quiz Attempt for a student
@@ -221,17 +338,84 @@ export default function QuizReportView({
     });
   };
 
-  const hasActiveFilters = Boolean(selectedClassId || selectedPackageId || searchQuery || limit !== 50);
+  const hasActiveFilters = Boolean(selectedClassId || selectedPackageId || searchQuery || reviewFilter !== 'ALL' || limit !== 50);
 
   // Pagination bounds calculation
   const startItemIndex = data.pagination.totalItems === 0 ? 0 : (data.pagination.page - 1) * data.pagination.limit + 1;
   const endItemIndex = Math.min(data.pagination.page * data.pagination.limit, data.pagination.totalItems);
 
+  // Modal live score preview calculation
+  const previewScoreData = useMemo(() => {
+    if (!attemptDetail) return { score: 0, passed: false, totalEarned: 0, totalMax: 0 };
+    let totalEarned = 0;
+    let totalMax = 0;
+
+    for (const q of attemptDetail.questions) {
+      totalMax += q.points;
+      if (q.questionType === 'ESSAY') {
+        totalEarned += (Number(essayGrades[q.id]) || 0);
+      } else {
+        totalEarned += (q.studentAnswer?.pointsEarned || 0);
+      }
+    }
+
+    const score = totalMax > 0 ? Math.round((totalEarned / totalMax) * 100 * 100) / 100 : 0;
+    const passed = score >= (attemptDetail.package.passingScore || 70);
+    return { score, passed, totalEarned, totalMax };
+  }, [attemptDetail, essayGrades]);
+
   return (
     <div className="space-y-6">
-      {/* FILTER CONTROLS */}
-      <div className="bg-white p-5 md:p-6 rounded-xl shadow-sm border-2 border-black space-y-4">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 border-b border-gray-100 pb-3">
+      {/* TOP TAB NAVIGATION */}
+      <div className="flex border-b border-gray-200 gap-2 overflow-x-auto pb-px">
+        <button
+          type="button"
+          onClick={() => setActiveTab('REPORTS')}
+          className={`flex items-center gap-2 px-5 py-3 font-semibold text-sm border-b-2 transition-all cursor-pointer whitespace-nowrap ${
+            activeTab === 'REPORTS'
+              ? 'border-blue-600 text-blue-600 bg-blue-50/50 rounded-t-lg'
+              : 'border-transparent text-gray-500 hover:text-gray-900 hover:border-gray-300'
+          }`}
+        >
+          <span className="material-symbols-outlined text-lg">assessment</span>
+          <span>Rekap Nilai & Review Jawaban</span>
+          {data.stats.pendingReviewCount > 0 && (
+            <span className="ml-1.5 px-2 py-0.5 text-xs font-bold bg-amber-100 text-amber-800 rounded-full">
+              {data.stats.pendingReviewCount} perlu review
+            </span>
+          )}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('UNFINISHED')}
+          className={`flex items-center gap-2 px-5 py-3 font-semibold text-sm border-b-2 transition-all cursor-pointer whitespace-nowrap ${
+            activeTab === 'UNFINISHED'
+              ? 'border-blue-600 text-blue-600 bg-blue-50/50 rounded-t-lg'
+              : 'border-transparent text-gray-500 hover:text-gray-900 hover:border-gray-300'
+          }`}
+        >
+          <span className="material-symbols-outlined text-lg">person_search</span>
+          <span>Pantau Siswa Belum Selesai (Materi & Kuis)</span>
+          {initialUnfinishedReports && (initialUnfinishedReports.stats.studentsWithLockedPages + initialUnfinishedReports.stats.studentsWithIncompleteQuiz > 0) && (
+            <span className="ml-1.5 px-2 py-0.5 text-xs font-bold bg-rose-100 text-rose-700 rounded-full">
+              {initialUnfinishedReports.pagination.totalItems} siswa
+            </span>
+          )}
+        </button>
+      </div>
+
+      {activeTab === 'UNFINISHED' ? (
+        <UnfinishedStudentsView
+          packages={packages}
+          classes={classes}
+          initialData={initialUnfinishedReports}
+        />
+      ) : (
+        <>
+          {/* FILTER CONTROLS */}
+          <div className="bg-white p-5 md:p-6 rounded-xl shadow-sm border-2 border-black space-y-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 border-b border-gray-100 pb-3">
           <div className="flex items-center gap-2">
             <span className="material-symbols-outlined text-gray-700">filter_alt</span>
             <h2 className="text-base font-bold text-gray-900 uppercase tracking-tight">
@@ -333,12 +517,76 @@ export default function QuizReportView({
           </div>
         </div>
 
+        {/* 4. Filter Jenis Soal & Status Review Essay */}
+        <div className="pt-2 border-t border-gray-100 flex flex-wrap items-center gap-2">
+          <span className="text-xs font-bold text-gray-600 uppercase tracking-wider mr-1">
+            Status Essay:
+          </span>
+          <button
+            type="button"
+            onClick={() => handleReviewFilterChange('ALL')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors ${
+              reviewFilter === 'ALL'
+                ? 'bg-black text-white border-black shadow-neo-sm'
+                : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+            }`}
+          >
+            Semua
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleReviewFilterChange('NEED_REVIEW')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold border flex items-center gap-1.5 transition-colors ${
+              reviewFilter === 'NEED_REVIEW'
+                ? 'bg-amber-500 text-white border-black shadow-neo-sm'
+                : 'bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100'
+            }`}
+          >
+            <span className="material-symbols-outlined text-sm">pending_actions</span>
+            Perlu Review Essay
+            {data.stats.pendingReviewCount > 0 && (
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
+                reviewFilter === 'NEED_REVIEW' ? 'bg-white text-black' : 'bg-amber-500 text-white'
+              }`}>
+                {data.stats.pendingReviewCount}
+              </span>
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleReviewFilterChange('GRADED')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold border flex items-center gap-1.5 transition-colors ${
+              reviewFilter === 'GRADED'
+                ? 'bg-emerald-600 text-white border-black shadow-neo-sm'
+                : 'bg-emerald-50 text-emerald-900 border-emerald-300 hover:bg-emerald-100'
+            }`}
+          >
+            <span className="material-symbols-outlined text-sm">verified</span>
+            Sudah Dinilai
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleReviewFilterChange('HAS_ESSAY')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold border flex items-center gap-1.5 transition-colors ${
+              reviewFilter === 'HAS_ESSAY'
+                ? 'bg-purple-600 text-white border-black shadow-neo-sm'
+                : 'bg-purple-50 text-purple-900 border-purple-300 hover:bg-purple-100'
+            }`}
+          >
+            <span className="material-symbols-outlined text-sm">edit_note</span>
+            Ada Soal Essay
+          </button>
+        </div>
+
         {/* Quick Info & Default Pagination Config */}
         <div className="flex flex-wrap items-center justify-between gap-3 pt-2 text-xs text-gray-500 border-t border-gray-100">
           <div className="flex items-center gap-2">
             <span className="inline-block w-2 h-2 rounded-full bg-blue-500"></span>
             <span>
-              Urutan: <strong>Berdasarkan Kelas (A-Z)</strong>, kemudian <strong>Aktivitas Terbaru</strong>
+              Urutan: <strong>Berdasarkan Kelas (A-Z)</strong>, kemudian <strong>Perlu Review Essay</strong> & <strong>Aktivitas Terbaru</strong>
             </span>
           </div>
 
@@ -366,18 +614,18 @@ export default function QuizReportView({
         </div>
 
         <div className="bg-white p-4 rounded-xl border-2 border-black shadow-neo-sm flex flex-col justify-center">
-          <span className="text-gray-500 text-xs font-bold uppercase tracking-wider mb-1">Selesai Mengerjakan</span>
-          <span className="text-2xl font-black text-green-700">
-            {data.stats.completedCount}
-            <span className="text-xs font-semibold text-gray-400 ml-1">
-              / {data.stats.totalRecords}
+          <span className="text-gray-500 text-xs font-bold uppercase tracking-wider mb-1">Perlu Review Essay</span>
+          <div className="flex items-center gap-2">
+            <span className={`text-2xl font-black ${data.stats.pendingReviewCount > 0 ? 'text-amber-600' : 'text-gray-700'}`}>
+              {data.stats.pendingReviewCount}
             </span>
-          </span>
-          <span className="text-[11px] text-green-600 mt-0.5 font-medium">
-            {data.stats.totalRecords > 0 
-              ? `${Math.round((data.stats.completedCount / data.stats.totalRecords) * 100)}% selesai` 
-              : '0%'}
-          </span>
+            {data.stats.pendingReviewCount > 0 && (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 animate-pulse">
+                Butuh Penilaian
+              </span>
+            )}
+          </div>
+          <span className="text-[11px] text-gray-500 mt-0.5">Menunggu penilaian guru</span>
         </div>
 
         <div className="bg-white p-4 rounded-xl border-2 border-black shadow-neo-sm flex flex-col justify-center">
@@ -451,21 +699,26 @@ export default function QuizReportView({
                     <span className="material-symbols-outlined text-4xl text-gray-300">search_off</span>
                     <p className="font-bold text-gray-700 text-base">Tidak ada data laporan ditemukan</p>
                     <p className="text-xs text-gray-500">
-                      Coba sesuaikan atau reset filter kelas dan materi di atas.
+                      Coba sesuaikan atau reset filter di atas.
                     </p>
                   </td>
                 </tr>
               ) : (
                 data.items.map((row, index) => {
-                  const isDone = row.status === 'COMPLETED' || row.status === 'GRADED';
+                  const isGraded = row.status === 'GRADED';
+                  const isDone = row.status === 'COMPLETED' || isGraded;
                   const isInProgress = row.status === 'IN_PROGRESS';
-                  const hasStarted = row.status !== 'NOT_STARTED';
+                  const hasStarted = Boolean(row.attemptId);
                   const rowNumber = (data.pagination.page - 1) * data.pagination.limit + index + 1;
 
                   return (
                     <tr 
                       key={row.id} 
-                      className={`hover:bg-amber-50/40 transition-colors ${index % 2 === 1 ? 'bg-gray-50/50' : 'bg-white'}`}
+                      className={`hover:bg-amber-50/40 transition-colors ${
+                        row.needsReview 
+                          ? 'bg-amber-50/30' 
+                          : index % 2 === 1 ? 'bg-gray-50/50' : 'bg-white'
+                      }`}
                     >
                       {/* 1. Index No */}
                       <td className="px-4 py-3.5 text-center font-bold text-gray-500 text-xs">
@@ -490,14 +743,32 @@ export default function QuizReportView({
                         <div className="font-semibold text-gray-800 truncate max-w-xs" title={row.pageTitle}>
                           {row.pageTitle}
                         </div>
-                        <div className="text-[11px] text-gray-500">
-                          Kategori: <span className="font-medium text-gray-700">{row.categoryName}</span>
+                        <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                          <span className="text-[11px] text-gray-500">
+                            {row.categoryName}
+                          </span>
+                          {row.hasEssay && (
+                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-300">
+                              <span className="material-symbols-outlined text-[11px]">edit_note</span>
+                              {row.essayCount} Essay
+                            </span>
+                          )}
                         </div>
                       </td>
 
                       {/* 5. Status Badge */}
                       <td className="px-4 py-3.5 text-center">
-                        {isDone ? (
+                        {isGraded ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-bold bg-blue-100 text-blue-800 border border-blue-300">
+                            <span className="material-symbols-outlined text-xs">verified</span>
+                            Dinilai
+                          </span>
+                        ) : row.needsReview ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300 animate-pulse">
+                            <span className="material-symbols-outlined text-xs">pending_actions</span>
+                            Perlu Review Essay
+                          </span>
+                        ) : isDone ? (
                           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-bold bg-green-100 text-green-800 border border-green-300">
                             <span className="material-symbols-outlined text-xs">check_circle</span>
                             Selesai
@@ -547,24 +818,54 @@ export default function QuizReportView({
                         )}
                       </td>
 
-                      {/* 8. Aksi (Reset Attempt) */}
+                      {/* 8. Aksi (Detail / Review & Reset) */}
                       <td className="px-4 py-3.5 text-right">
-                        <button
-                          type="button"
-                          onClick={() => handleReset(row)}
-                          disabled={!hasStarted || resettingId === row.id}
-                          className={`inline-flex items-center gap-1 px-3 py-1.5 rounded text-xs font-bold border-2 transition-all shadow-neo-sm ${
-                            hasStarted 
-                              ? 'bg-white border-red-400 text-red-600 hover:bg-red-50 hover:border-red-600 active:translate-y-0.5' 
-                              : 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed shadow-none'
-                          }`}
-                          title={hasStarted ? "Hapus riwayat jawaban untuk mengizinkan murid mengulang" : "Murid belum memulai kuis"}
-                        >
-                          <span className="material-symbols-outlined text-[15px]">
-                            {resettingId === row.id ? 'sync' : 'history'}
-                          </span>
-                          {resettingId === row.id ? 'Reset...' : 'Reset'}
-                        </button>
+                        <div className="inline-flex items-center gap-2">
+                          {/* DETAIL / REVIEW BUTTON */}
+                          {hasStarted ? (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenDetail(row.attemptId!)}
+                              className={`inline-flex items-center gap-1 px-3 py-1.5 rounded text-xs font-bold border-2 transition-all shadow-neo-sm active:translate-y-0.5 ${
+                                row.needsReview 
+                                  ? 'bg-amber-100 border-amber-500 text-amber-900 hover:bg-amber-200' 
+                                  : 'bg-white border-black text-black hover:bg-gray-100'
+                              }`}
+                              title={row.needsReview ? "Buka detail untuk mereview jawaban essay murid" : "Lihat detail jawaban murid"}
+                            >
+                              <span className="material-symbols-outlined text-[15px]">
+                                {row.needsReview ? 'rate_review' : 'visibility'}
+                              </span>
+                              {row.needsReview ? 'Review Essay' : 'Detail'}
+                            </button>
+                          ) : (
+                            <button
+                              disabled
+                              className="inline-flex items-center gap-1 px-3 py-1.5 rounded text-xs font-bold border-2 border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed"
+                            >
+                              <span className="material-symbols-outlined text-[15px]">visibility_off</span>
+                              Detail
+                            </button>
+                          )}
+
+                          {/* RESET BUTTON */}
+                          <button
+                            type="button"
+                            onClick={() => handleReset(row)}
+                            disabled={!hasStarted || resettingId === row.id}
+                            className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded text-xs font-bold border-2 transition-all shadow-neo-sm ${
+                              hasStarted 
+                                ? 'bg-white border-red-300 text-red-600 hover:bg-red-50 hover:border-red-600 active:translate-y-0.5' 
+                                : 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed shadow-none'
+                            }`}
+                            title={hasStarted ? "Hapus riwayat jawaban untuk mengizinkan murid mengulang" : "Murid belum memulai kuis"}
+                          >
+                            <span className="material-symbols-outlined text-[15px]">
+                              {resettingId === row.id ? 'sync' : 'history'}
+                            </span>
+                            {resettingId === row.id ? 'Reset...' : 'Reset'}
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -576,15 +877,12 @@ export default function QuizReportView({
 
         {/* PAGINATION CONTROLS */}
         <div className="px-5 py-4 border-t-2 border-black bg-white flex flex-col sm:flex-row items-center justify-between gap-4">
-          {/* Item count text */}
           <div className="text-xs font-semibold text-gray-600">
             Menampilkan <span className="text-black font-black">{startItemIndex} - {endItemIndex}</span> dari{' '}
             <span className="text-black font-black">{data.pagination.totalItems}</span> data
           </div>
 
-          {/* Page Buttons */}
           <div className="flex items-center gap-1">
-            {/* First Page */}
             <button
               type="button"
               onClick={() => handlePageChange(1)}
@@ -595,7 +893,6 @@ export default function QuizReportView({
               «
             </button>
 
-            {/* Prev Page */}
             <button
               type="button"
               onClick={() => handlePageChange(data.pagination.page - 1)}
@@ -606,12 +903,10 @@ export default function QuizReportView({
               Sebelumnya
             </button>
 
-            {/* Current Page Indicator */}
             <span className="px-3 py-1.5 border-2 border-black bg-black text-white rounded text-xs font-black shadow-neo-sm">
               {data.pagination.page} / {data.pagination.totalPages}
             </span>
 
-            {/* Next Page */}
             <button
               type="button"
               onClick={() => handlePageChange(data.pagination.page + 1)}
@@ -622,7 +917,6 @@ export default function QuizReportView({
               <span className="material-symbols-outlined text-xs">arrow_forward_ios</span>
             </button>
 
-            {/* Last Page */}
             <button
               type="button"
               onClick={() => handlePageChange(data.pagination.totalPages)}
@@ -635,6 +929,333 @@ export default function QuizReportView({
           </div>
         </div>
       </div>
+
+      {/* DETAIL & REVIEW JAWABAN MODAL */}
+      {detailModalOpen && (
+        <div className="fixed inset-0 z-[200] bg-black/75 backdrop-blur-xs flex items-center justify-center p-3 md:p-6 animate-in fade-in duration-150">
+          <div 
+            role="dialog"
+            aria-modal="true"
+            className="bg-[#F4F0EA] border-4 border-black w-full max-w-4xl max-h-[92vh] flex flex-col shadow-neo-xl animate-in zoom-in-95 duration-150 overflow-hidden"
+          >
+            {/* Modal Header */}
+            <div className="border-b-4 border-black p-4 md:p-5 bg-white flex items-center justify-between gap-4 shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 border-2 border-black bg-[#FFDE59] flex items-center justify-center shadow-neo-sm">
+                  <span className="material-symbols-outlined text-2xl font-bold">assignment</span>
+                </div>
+                <div>
+                  <h3 className="text-lg md:text-xl font-black uppercase tracking-tight text-gray-900 leading-snug">
+                    Lembar Jawaban & Review Kuis
+                  </h3>
+                  {attemptDetail && (
+                    <div className="text-xs text-gray-600 flex items-center gap-2 flex-wrap font-medium">
+                      <span>Murid: <strong>{attemptDetail.student.name}</strong> ({attemptDetail.student.className})</span>
+                      <span>•</span>
+                      <span>Materi: <strong>{attemptDetail.package.pageTitle}</strong></span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setDetailModalOpen(false)}
+                className="w-9 h-9 border-2 border-black bg-white hover:bg-red-50 text-gray-700 hover:text-red-600 flex items-center justify-center shadow-neo-sm transition-colors rounded-none font-bold"
+                title="Tutup"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
+              {detailLoading ? (
+                <div className="text-center py-16 space-y-3">
+                  <span className="material-symbols-outlined text-4xl animate-spin text-gray-700">sync</span>
+                  <p className="font-bold text-gray-800">Memuat lembar pengerjaan murid...</p>
+                </div>
+              ) : !attemptDetail ? (
+                <div className="text-center py-16 text-red-600 font-bold">
+                  Data lembar jawaban tidak dapat dimuat.
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {/* Top Stats Overview */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-white p-4 border-2 border-black shadow-neo-sm">
+                    <div>
+                      <div className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Status Attempt</div>
+                      <div className="mt-1">
+                        {attemptDetail.attempt.status === 'GRADED' ? (
+                          <span className="px-2 py-0.5 rounded text-xs font-bold bg-blue-100 text-blue-800 border border-blue-300">
+                            Sudah Dinilai
+                          </span>
+                        ) : attemptDetail.needsReview ? (
+                          <span className="px-2 py-0.5 rounded text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                            Perlu Review Essay
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded text-xs font-bold bg-green-100 text-green-800 border border-green-300">
+                            Selesai
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Skor Saat Ini</div>
+                      <div className="text-xl font-black text-gray-900 mt-0.5">
+                        {attemptDetail.attempt.score !== null ? attemptDetail.attempt.score : '-'}
+                        <span className="text-xs font-semibold text-gray-400 ml-1">/ 100</span>
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">KKM Kelulusan</div>
+                      <div className="text-xl font-black text-blue-700 mt-0.5">
+                        {attemptDetail.package.passingScore}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Waktu Selesai</div>
+                      <div className="text-xs font-semibold text-gray-800 mt-1">
+                        {formatDate(attemptDetail.attempt.finishedAt)}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* List of Questions with Student Answers */}
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between border-b-2 border-black pb-2">
+                      <h4 className="font-black text-base uppercase tracking-tight text-gray-900">
+                        Daftar Soal & Jawaban Murid ({attemptDetail.questions.length} Soal)
+                      </h4>
+                      <span className="text-xs font-bold text-gray-600">
+                        Total Bobot Soal: {attemptDetail.totalMaxPoints} Poin
+                      </span>
+                    </div>
+
+                    {attemptDetail.questions.map((q: any, qIdx: number) => {
+                      const isEssay = q.questionType === 'ESSAY';
+                      const studentAns = q.studentAnswer;
+
+                      return (
+                        <div 
+                          key={q.id} 
+                          className={`bg-white border-2 border-black p-4 md:p-5 shadow-neo-sm space-y-3 ${
+                            isEssay ? 'border-l-8 border-l-purple-500' : 'border-l-8 border-l-blue-500'
+                          }`}
+                        >
+                          {/* Question Header */}
+                          <div className="flex items-center justify-between gap-2 flex-wrap">
+                            <div className="flex items-center gap-2">
+                              <span className="w-6 h-6 rounded-full bg-black text-white text-xs font-black flex items-center justify-center">
+                                {qIdx + 1}
+                              </span>
+                              <span className={`px-2 py-0.5 text-xs font-bold uppercase rounded border ${
+                                isEssay 
+                                  ? 'bg-purple-100 text-purple-800 border-purple-300' 
+                                  : 'bg-blue-100 text-blue-800 border-blue-300'
+                              }`}>
+                                {isEssay ? 'Soal Essay' : 'Pilihan Ganda'}
+                              </span>
+                              <span className="text-xs font-bold text-gray-600 bg-gray-100 px-2 py-0.5 border border-black/20">
+                                Bobot: {q.points} Poin
+                              </span>
+                            </div>
+
+                            <div className="text-xs font-bold">
+                              {isEssay ? (
+                                <span className="text-purple-700 bg-purple-50 px-2.5 py-1 rounded border border-purple-200">
+                                  Nilai Essay: <strong>{essayGrades[q.id] ?? 0}</strong> / {q.points} Poin
+                                </span>
+                              ) : (
+                                <span className={studentAns?.isCorrect ? 'text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded border border-emerald-200' : 'text-red-700 bg-red-50 px-2.5 py-1 rounded border border-red-200'}>
+                                  Poin Diperoleh: <strong>{studentAns?.pointsEarned || 0}</strong> / {q.points} Poin
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Question Text */}
+                          <p className="font-semibold text-gray-900 text-sm md:text-base leading-relaxed whitespace-pre-wrap">
+                            {q.questionText}
+                          </p>
+
+                          {/* Multiple Choice Options Display */}
+                          {!isEssay && (
+                            <div className="space-y-1.5 pt-2 border-t border-gray-100">
+                              <div className="text-xs font-bold text-gray-500 mb-2">Pilihan Jawaban:</div>
+                              {q.options.map((opt: any, optIdx: number) => {
+                                const isSelected = studentAns?.selectedOptionId === opt.id;
+                                const isCorrect = opt.isCorrect;
+
+                                return (
+                                  <div
+                                    key={opt.id}
+                                    className={`p-2.5 text-xs md:text-sm rounded border flex items-center justify-between ${
+                                      isSelected && isCorrect
+                                        ? 'bg-emerald-100 border-emerald-500 font-bold text-emerald-950'
+                                        : isSelected && !isCorrect
+                                        ? 'bg-red-100 border-red-400 font-bold text-red-950'
+                                        : isCorrect
+                                        ? 'bg-green-50 border-green-300 text-green-900 font-medium'
+                                        : 'bg-gray-50 border-gray-200 text-gray-700'
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-bold">{String.fromCharCode(65 + optIdx)}.</span>
+                                      <span>{opt.optionText}</span>
+                                    </div>
+
+                                    <div className="flex items-center gap-1.5 shrink-0">
+                                      {isSelected && (
+                                        <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${
+                                          isCorrect ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'
+                                        }`}>
+                                          {isCorrect ? '✓ Jawaban Murid (Benar)' : '✗ Jawaban Murid (Salah)'}
+                                        </span>
+                                      )}
+                                      {!isSelected && isCorrect && (
+                                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-green-200 text-green-800">
+                                          Kunci Jawaban
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+
+                          {/* ESSAY QUESTION: STUDENT'S ANSWER & TEACHER SCORING INPUT */}
+                          {isEssay && (
+                            <div className="pt-2 border-t border-purple-100 space-y-3">
+                              {/* Student's Essay Text */}
+                              <div>
+                                <div className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-1 flex items-center gap-1">
+                                  <span className="material-symbols-outlined text-sm text-purple-700">chat</span>
+                                  Jawaban Essay Siswa:
+                                </div>
+                                <div className="p-4 bg-[#FFFDF9] border-2 border-black/40 text-sm md:text-base text-gray-900 font-mono leading-relaxed whitespace-pre-wrap min-h-[80px]">
+                                  {studentAns?.essayAnswer?.trim() ? (
+                                    studentAns.essayAnswer
+                                  ) : (
+                                    <span className="text-gray-400 italic font-sans text-xs">
+                                      (Murid tidak mengisi teks jawaban essay)
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Manual Scoring Controls for Teacher */}
+                              <div className="p-3.5 bg-purple-50/80 border-2 border-purple-300 rounded-lg space-y-2">
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                  <label className="text-xs font-bold text-purple-900 uppercase tracking-wider">
+                                    Beri Nilai Guru (Maksimal: {q.points} Poin):
+                                  </label>
+
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="text-[11px] text-gray-500 font-medium">Beri Cepat:</span>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleEssayGradeChange(q.id, 0, q.points)}
+                                      className="px-2 py-1 bg-white border border-gray-300 rounded text-xs font-bold text-gray-700 hover:bg-gray-100"
+                                    >
+                                      0 Poin
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleEssayGradeChange(q.id, Math.round(q.points / 2), q.points)}
+                                      className="px-2 py-1 bg-white border border-gray-300 rounded text-xs font-bold text-gray-700 hover:bg-gray-100"
+                                    >
+                                      50% ({Math.round(q.points / 2)})
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleEssayGradeChange(q.id, q.points, q.points)}
+                                      className="px-2 py-1 bg-white border border-gray-300 rounded text-xs font-bold text-purple-700 hover:bg-purple-100"
+                                    >
+                                      100% ({q.points})
+                                    </button>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center gap-3">
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    max={q.points}
+                                    step="1"
+                                    value={essayGrades[q.id] ?? 0}
+                                    onChange={(e) => handleEssayGradeChange(q.id, Number(e.target.value), q.points)}
+                                    className="w-28 px-3 py-2 bg-white border-2 border-black rounded font-black text-base text-gray-900 focus:ring-2 focus:ring-purple-500 outline-none"
+                                  />
+                                  <span className="text-xs font-bold text-gray-600">
+                                    / {q.points} Poin Maksimal
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer with Live Score Calculation & Save Action */}
+            {attemptDetail && (
+              <div className="border-t-4 border-black p-4 bg-white flex flex-col md:flex-row items-center justify-between gap-3 shrink-0">
+                {/* Live Preview Score */}
+                <div className="flex items-center gap-3 w-full md:w-auto">
+                  <div className="p-2 border-2 border-black bg-[#F4F0EA] flex items-center gap-2">
+                    <span className="text-xs font-bold uppercase text-gray-600">Kalkulasi Skor:</span>
+                    <span className="text-lg font-black text-gray-900">
+                      {previewScoreData.score}
+                    </span>
+                    <span className="text-xs font-bold text-gray-400">/ 100</span>
+                    <span className={`px-2 py-0.5 rounded text-[11px] font-black uppercase ${
+                      previewScoreData.passed ? 'bg-emerald-300 text-black' : 'bg-red-300 text-black'
+                    }`}>
+                      {previewScoreData.passed ? 'Lulus KKM' : 'Belum Lulus'}
+                    </span>
+                  </div>
+                  <span className="text-[11px] text-gray-500 hidden lg:inline">
+                    (Total Poin: {previewScoreData.totalEarned} / {previewScoreData.totalMax})
+                  </span>
+                </div>
+
+                {/* Footer Buttons */}
+                <div className="flex items-center gap-2.5 w-full md:w-auto justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setDetailModalOpen(false)}
+                    className="px-4 py-2.5 border-2 border-black bg-white text-gray-800 font-bold text-xs uppercase tracking-wider hover:bg-gray-100 shadow-neo-sm"
+                  >
+                    Tutup
+                  </button>
+
+                  {attemptDetail.hasEssay && (
+                    <button
+                      type="button"
+                      onClick={handleSaveGrades}
+                      disabled={savingGrades}
+                      className="px-5 py-2.5 border-2 border-black bg-[#4ECDC4] hover:bg-[#45B7AF] text-black font-black text-xs uppercase tracking-wider shadow-neo-sm hover:-translate-y-0.5 transition-transform flex items-center gap-1.5 disabled:opacity-50"
+                    >
+                      <span className="material-symbols-outlined text-base">save</span>
+                      {savingGrades ? 'Menyimpan...' : 'Simpan Nilai Essay'}
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* POPUP MODAL (Replacing native alert & confirm) */}
       {modalConfig && modalConfig.isOpen && (
@@ -693,6 +1314,8 @@ export default function QuizReportView({
             </div>
           </div>
         </div>
+      )}
+        </>
       )}
     </div>
   );
