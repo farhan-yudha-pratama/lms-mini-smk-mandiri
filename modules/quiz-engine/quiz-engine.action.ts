@@ -40,7 +40,11 @@ export async function getQuizQuestionsAction(attemptId: string) {
   }
 }
 
-export async function submitQuizAction(attemptId: string, answers: { questionId: string, optionId: string }[], forcedScoreZero: boolean = false) {
+export async function submitQuizAction(
+  attemptId: string, 
+  answers: { questionId: string; optionId?: string; essayAnswer?: string }[], 
+  forcedScoreZero: boolean = false
+) {
   const session = await getUserSession();
   if (!session) return { success: false, message: 'Unauthorized' };
   

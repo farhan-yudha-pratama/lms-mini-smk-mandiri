@@ -77,11 +77,20 @@ export default function QuizTrigger({ pageSlug }: { pageSlug: string }) {
         <div className="bg-yellow-100 border-4 border-black p-4 text-center font-bold">
           ⚠️ Kuis ini belum ditugaskan kepada Anda oleh Guru.
         </div>
-      ) : status.status === 'COMPLETED' ? (
-        <div className={`p-6 border-4 border-black text-center ${status.passed ? 'bg-green-100' : 'bg-red-100'}`}>
-          <h4 className="text-xl font-black mb-2">{status.passed ? '🎉 ANDA LULUS!' : '❌ BELUM LULUS'}</h4>
-          <p className="text-lg font-bold">Nilai Anda: <span className="text-3xl font-black">{status.score}</span> / 100</p>
+      ) : status.status === 'COMPLETED' || status.status === 'GRADED' ? (
+        <div className={`p-6 border-4 border-black text-center ${status.passed ? 'bg-green-100' : status.needsReview ? 'bg-amber-100' : 'bg-red-100'}`}>
+          <h4 className="text-xl font-black mb-2">
+            {status.needsReview ? '📝 SEDANG DI-REVIEW GURU' : status.passed ? '🎉 ANDA LULUS!' : '❌ BELUM LULUS'}
+          </h4>
+          <p className="text-lg font-bold">
+            Nilai Anda: <span className="text-3xl font-black">{status.score !== null ? status.score : '-'}</span> / 100
+          </p>
           <p className="mt-2 font-medium">KKM: {status.passingScore}</p>
+          {status.needsReview && (
+            <p className="mt-3 text-xs font-bold text-amber-800 bg-white/70 border border-black/20 p-2.5 max-w-md mx-auto">
+              Jawaban essay Anda telah tersimpan dan sedang menunggu penilaian manual oleh guru. Skor di atas adalah perolehan sementara.
+            </p>
+          )}
         </div>
       ) : (
         <div className="text-center">

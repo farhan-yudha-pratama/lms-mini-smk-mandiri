@@ -32,13 +32,19 @@ export async function getQuizStatus(pageSlug: string, studentId: string) {
     return { status: 'IN_PROGRESS', attemptId: attempt.id, packageTitle: pkg.title };
   }
 
+  const rawQuestions = await db.orm.public.Question.where({ quizVariantId: assignment.quizVariantId }).all();
+  const hasEssay = rawQuestions.some(q => q.questionType === 'ESSAY');
+  const needsReview = hasEssay && attempt.status === 'COMPLETED';
+
   return { 
-    status: 'COMPLETED', 
+    status: attempt.status, 
     attemptId: attempt.id, 
     score: attempt.score, 
     passed: attempt.score !== null && attempt.score >= pkg.passingScore,
     passingScore: pkg.passingScore,
-    packageTitle: pkg.title
+    packageTitle: pkg.title,
+    hasEssay,
+    needsReview
   };
 }
 
@@ -76,20 +82,23 @@ export async function getQuizEngineData(attemptId: string, studentId: string) {
     questions = [...questions].sort(() => Math.random() - 0.5);
   }
 
-  // Get options and shuffle them dynamically
+  // Get options and shuffle them dynamically for multiple choice questions
   const safeQuestions = [];
   for (const q of questions) {
-    const rawOptions = await db.orm.public.QuestionOption.where({ questionId: q.id }).all();
-    const shuffledOptions = [...rawOptions].sort(() => Math.random() - 0.5).map(opt => ({
-      id: opt.id,
-      text: opt.optionText
-    }));
+    let options: { id: string; text: string }[] = [];
+    if (q.questionType === 'PILIHAN_GANDA') {
+      const rawOptions = await db.orm.public.QuestionOption.where({ questionId: q.id }).all();
+      options = [...rawOptions].sort(() => Math.random() - 0.5).map(opt => ({
+        id: opt.id,
+        text: opt.optionText
+      }));
+    }
 
     safeQuestions.push({
       id: q.id,
       text: q.questionText,
       type: q.questionType,
-      options: shuffledOptions,
+      options,
       points: q.points
     });
   }
@@ -103,7 +112,12 @@ export async function getQuizEngineData(attemptId: string, studentId: string) {
   };
 }
 
-export async function submitQuiz(attemptId: string, studentId: string, answers: { questionId: string, optionId: string }[], forcedScoreZero = false) {
+export async function submitQuiz(
+  attemptId: string, 
+  studentId: string, 
+  answers: { questionId: string; optionId?: string; essayAnswer?: string }[], 
+  forcedScoreZero = false
+) {
   const attempt = await db.orm.public.QuizAttempt.where({ id: attemptId }).first();
   if (!attempt || attempt.studentId !== studentId) throw new Error('Attempt tidak valid');
   if (attempt.status !== 'IN_PROGRESS') throw new Error('Kuis sudah di-submit');
@@ -115,36 +129,51 @@ export async function submitQuiz(attemptId: string, studentId: string, answers: 
   let maxPossibleScore = 0;
 
   const rawQuestions = await db.orm.public.Question.where({ quizVariantId: variant!.id }).all();
+  const hasEssay = rawQuestions.some(q => q.questionType === 'ESSAY');
 
   for (const q of rawQuestions) {
     maxPossibleScore += q.points;
     const studentAns = answers.find(a => a.questionId === q.id);
     let pointsEarned = 0;
-    let isCorrect = false;
+    let isCorrect: boolean | null = false;
 
-    if (studentAns && studentAns.optionId && !forcedScoreZero) {
-      const option = await db.orm.public.QuestionOption.where({ id: studentAns.optionId }).first();
-      if (option && option.isCorrect) {
-        isCorrect = true;
-        pointsEarned = q.points;
-        totalScore += q.points;
+    if (q.questionType === 'PILIHAN_GANDA') {
+      if (studentAns && studentAns.optionId && !forcedScoreZero) {
+        const option = await db.orm.public.QuestionOption.where({ id: studentAns.optionId }).first();
+        if (option && option.isCorrect) {
+          isCorrect = true;
+          pointsEarned = q.points;
+          totalScore += q.points;
+        }
       }
-    }
 
-    await db.orm.public.StudentAnswer.create({
-      id: randomUUID(),
-      quizAttemptId: attemptId,
-      questionId: q.id,
-      selectedOptionId: studentAns?.optionId || null,
-      essayAnswer: null,
-      isCorrect,
-      pointsEarned
-    });
+      await db.orm.public.StudentAnswer.create({
+        id: randomUUID(),
+        quizAttemptId: attemptId,
+        questionId: q.id,
+        selectedOptionId: studentAns?.optionId || null,
+        essayAnswer: null,
+        isCorrect,
+        pointsEarned
+      });
+    } else if (q.questionType === 'ESSAY') {
+      // Essay question: initial pointsEarned is 0, isCorrect is null pending manual teacher review
+      await db.orm.public.StudentAnswer.create({
+        id: randomUUID(),
+        quizAttemptId: attemptId,
+        questionId: q.id,
+        selectedOptionId: null,
+        essayAnswer: studentAns?.essayAnswer?.trim() || null,
+        isCorrect: null,
+        pointsEarned: 0
+      });
+    }
   }
 
   const finalScore = forcedScoreZero ? 0 : (maxPossibleScore > 0 ? (totalScore / maxPossibleScore) * 100 : 0);
   const roundedScore = Math.round(finalScore * 100) / 100;
 
+  // Status is COMPLETED (if essay present, it will await teacher review/grading to become GRADED)
   await db.orm.public.QuizAttempt.where({ id: attemptId }).update({
     score: roundedScore,
     status: 'COMPLETED',
