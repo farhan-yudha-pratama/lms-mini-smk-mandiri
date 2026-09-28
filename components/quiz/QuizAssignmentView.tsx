@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { getAssignmentsAction, assignManualAction, distributeRandomAction } from '@/modules/quiz-assignment/quiz-assignment.action';
+import AdminModal, { AdminModalType } from '@/components/quiz/AdminModal';
 
 export default function QuizAssignmentView({ 
   packageId, 
@@ -18,6 +19,43 @@ export default function QuizAssignmentView({
   const [actionLoading, setActionLoading] = useState(false);
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
   const [selectedVariantId, setSelectedVariantId] = useState<string>('');
+  const [modalState, setModalState] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: AdminModalType;
+    onConfirm?: () => void;
+    confirmText?: string;
+    isDestructive?: boolean;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'info',
+  });
+
+  const showModal = (
+    title: string,
+    message: string,
+    type: AdminModalType = 'info',
+    onConfirm?: () => void,
+    confirmText?: string,
+    isDestructive?: boolean
+  ) => {
+    setModalState({
+      isOpen: true,
+      title,
+      message,
+      type,
+      onConfirm,
+      confirmText,
+      isDestructive,
+    });
+  };
+
+  const closeModal = () => {
+    setModalState(prev => ({ ...prev, isOpen: false }));
+  };
 
   async function loadData(classId: string) {
     setLoading(true);
@@ -39,23 +77,29 @@ export default function QuizAssignmentView({
 
   const handleRandomize = async () => {
     if (variants.length === 0) {
-      alert('Tambahkan varian kuis terlebih dahulu');
+      showModal('Varian Kuis Kosong', 'Tambahkan varian kuis terlebih dahulu sebelum mengacak penugasan.', 'warning');
       return;
     }
     setActionLoading(true);
     const res = await distributeRandomAction({ packageId, classId: selectedClassId });
     if (res.success) {
-      alert(`Berhasil mendistribusikan kuis ke ${res.count} siswa!`);
+      showModal('Penugasan Berhasil', `Berhasil mendistribusikan kuis ke ${res.count} siswa!`, 'success');
       loadData(selectedClassId);
     } else {
-      alert(res.message || 'Gagal mendistribusikan kuis');
+      showModal('Gagal Mendistribusikan', res.message || 'Gagal mendistribusikan kuis', 'error');
     }
     setActionLoading(false);
   };
 
   const handleManualAssign = async () => {
-    if (!selectedVariantId) return alert('Pilih varian kuis');
-    if (selectedStudentIds.length === 0) return alert('Pilih minimal 1 murid');
+    if (!selectedVariantId) {
+      showModal('Peringatan', 'Silakan pilih varian kuis terlebih dahulu.', 'warning');
+      return;
+    }
+    if (selectedStudentIds.length === 0) {
+      showModal('Peringatan', 'Pilih minimal 1 murid untuk penugasan.', 'warning');
+      return;
+    }
     
     setActionLoading(true);
     const res = await assignManualAction({ 
@@ -65,11 +109,11 @@ export default function QuizAssignmentView({
     });
     
     if (res.success) {
-      alert(`Berhasil menugaskan ke ${res.count} siswa!`);
+      showModal('Penugasan Berhasil', `Berhasil menugaskan kuis ke ${res.count} siswa!`, 'success');
       loadData(selectedClassId);
       setSelectedVariantId('');
     } else {
-      alert(res.message || 'Gagal menugaskan');
+      showModal('Gagal Menugaskan', res.message || 'Gagal menugaskan kuis', 'error');
     }
     setActionLoading(false);
   };
@@ -221,6 +265,18 @@ export default function QuizAssignmentView({
           </div>
         </div>
       )}
+
+      {/* ADMIN POP-UP MODAL */}
+      <AdminModal
+        isOpen={modalState.isOpen}
+        onClose={closeModal}
+        title={modalState.title}
+        message={modalState.message}
+        type={modalState.type}
+        confirmText={modalState.confirmText}
+        onConfirm={modalState.onConfirm}
+        isDestructive={modalState.isDestructive}
+      />
     </div>
   );
 }

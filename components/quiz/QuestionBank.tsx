@@ -8,6 +8,7 @@ import {
   deleteQuestionAction, 
   reorderQuestionsAction 
 } from '@/modules/quiz/quiz.action';
+import AdminModal, { AdminModalType } from '@/components/quiz/AdminModal';
 
 type QuestionBankProps = {
   quizVariantId: string;
@@ -29,6 +30,49 @@ export default function QuestionBank({ quizVariantId, initialQuestions }: Questi
   const [points, setPoints] = useState<number>(1);
   const [options, setOptions] = useState([{ text: '', isCorrect: true }, { text: '', isCorrect: false }]);
   const [loading, setLoading] = useState(false);
+  
+  const [modalState, setModalState] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: AdminModalType;
+    confirmText?: string;
+    cancelText?: string;
+    onConfirm?: () => void;
+    isDestructive?: boolean;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'info',
+  });
+
+  const showModal = (
+    title: string,
+    message: string,
+    type: AdminModalType = 'info',
+    options?: {
+      confirmText?: string;
+      cancelText?: string;
+      onConfirm?: () => void;
+      isDestructive?: boolean;
+    }
+  ) => {
+    setModalState({
+      isOpen: true,
+      title,
+      message,
+      type,
+      confirmText: options?.confirmText,
+      cancelText: options?.cancelText,
+      onConfirm: options?.onConfirm,
+      isDestructive: options?.isDestructive,
+    });
+  };
+
+  const closeModal = () => {
+    setModalState(prev => ({ ...prev, isOpen: false }));
+  };
 
   const totalPoints = questions.reduce((sum, q) => sum + (Number(q.points) || 0), 0);
   const pgCount = questions.filter(q => q.questionType === 'PILIHAN_GANDA').length;
@@ -93,19 +137,19 @@ export default function QuestionBank({ quizVariantId, initialQuestions }: Questi
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!questionText.trim()) {
-      alert('Pertanyaan wajib diisi');
+      showModal('Pertanyaan Kosong', 'Teks pertanyaan kuis wajib diisi.', 'warning');
       return;
     }
 
     if (formType === 'PILIHAN_GANDA') {
       const hasEmptyOpt = options.some(o => !o.text.trim());
       if (hasEmptyOpt) {
-        alert('Semua pilihan jawaban wajib diisi');
+        showModal('Pilihan Jawaban Kosong', 'Semua kolom pilihan jawaban wajib diisi sebelum menyimpan.', 'warning');
         return;
       }
       const hasCorrect = options.some(o => o.isCorrect);
       if (!hasCorrect) {
-        alert('Pilih salah satu jawaban yang benar');
+        showModal('Kunci Jawaban Belum Dipilih', 'Silakan pilih salah satu opsi sebagai jawaban yang benar.', 'warning');
         return;
       }
     }
@@ -134,15 +178,25 @@ export default function QuestionBank({ quizVariantId, initialQuestions }: Questi
       handleCancelForm();
       router.refresh();
     } else {
-      alert(res.message || 'Gagal menyimpan soal');
+      showModal('Gagal Menyimpan Soal', res.message || 'Terjadi kesalahan pada server saat menyimpan soal.', 'error');
     }
     setLoading(false);
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Apakah Anda yakin ingin menghapus soal ini?')) return;
-    await deleteQuestionAction(id, quizVariantId);
-    router.refresh();
+    showModal(
+      'Hapus Soal',
+      'Apakah Anda yakin ingin menghapus butir soal ini beserta seluruh opsi jawabannya? Tindakan ini tidak dapat dibatalkan.',
+      'confirm',
+      {
+        confirmText: 'Hapus Soal',
+        isDestructive: true,
+        onConfirm: async () => {
+          await deleteQuestionAction(id, quizVariantId);
+          router.refresh();
+        },
+      }
+    );
   };
 
   const handleMove = async (index: number, direction: 'up' | 'down') => {
@@ -473,6 +527,19 @@ export default function QuestionBank({ quizVariantId, initialQuestions }: Questi
           </div>
         </form>
       )}
+      {/* ADMIN POP-UP MODAL */}
+      <AdminModal
+        isOpen={modalState.isOpen}
+        onClose={closeModal}
+        title={modalState.title}
+        message={modalState.message}
+        type={modalState.type}
+        confirmText={modalState.confirmText}
+        cancelText={modalState.cancelText}
+        onConfirm={modalState.onConfirm}
+        isDestructive={modalState.isDestructive}
+      />
     </div>
   );
 }
+

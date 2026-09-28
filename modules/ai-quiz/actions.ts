@@ -1,6 +1,7 @@
 "use server";
 
 import { db } from "@/prisma/db";
+import { randomUUID } from "crypto";
 import { generateQuizFormSchema, saveQuizSchema } from "./schema";
 import { generateQuizDraft } from "./ai.service";
 
@@ -67,7 +68,9 @@ export async function saveQuizPackageAction(data: any) {
     // 4. Masukkan semua pertanyaan dan opsinya
     for (let i = 0; i < payload.questions.length; i++) {
       const q = payload.questions[i];
+      const questionId = randomUUID();
       const question = await db.orm.public.Question.create({
+        id: questionId,
         quizVariantId: quizVariant.id,
         questionText: q.questionText,
         questionType: payload.questionType,
@@ -80,6 +83,7 @@ export async function saveQuizPackageAction(data: any) {
         for (let j = 0; j < q.options.length; j++) {
           const opt = q.options[j];
           await db.orm.public.QuestionOption.create({
+            id: randomUUID(),
             questionId: question.id,
             optionText: opt.optionText,
             isCorrect: opt.isCorrect,

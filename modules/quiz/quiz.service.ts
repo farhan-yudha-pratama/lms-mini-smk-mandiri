@@ -146,20 +146,34 @@ export async function deleteQuizVariant(id: string) {
   // 1. Hapus semua riwayat jawaban dan attempt kuis siswa terkait varian ini
   const attempts = await db.orm.public.QuizAttempt.where({ quizVariantId: id }).all();
   for (const attempt of attempts) {
-    await db.orm.public.StudentAnswer.where({ quizAttemptId: attempt.id }).delete();
+    const answers = await db.orm.public.StudentAnswer.where({ quizAttemptId: attempt.id }).all();
+    for (const ans of answers) {
+      await db.orm.public.StudentAnswer.where({ id: ans.id }).delete();
+    }
     await db.orm.public.QuizAttempt.where({ id: attempt.id }).delete();
   }
 
   // 2. Hapus semua jawaban siswa, opsi jawaban, dan butir soal terkait varian ini
   const questions = await db.orm.public.Question.where({ quizVariantId: id }).all();
   for (const q of questions) {
-    await db.orm.public.StudentAnswer.where({ questionId: q.id }).delete();
-    await db.orm.public.QuestionOption.where({ questionId: q.id }).delete();
+    const answers = await db.orm.public.StudentAnswer.where({ questionId: q.id }).all();
+    for (const ans of answers) {
+      await db.orm.public.StudentAnswer.where({ id: ans.id }).delete();
+    }
+
+    const options = await db.orm.public.QuestionOption.where({ questionId: q.id }).all();
+    for (const opt of options) {
+      await db.orm.public.QuestionOption.where({ id: opt.id }).delete();
+    }
+
     await db.orm.public.Question.where({ id: q.id }).delete();
   }
 
   // 3. Hapus penugasan kuis (assignment) terkait varian ini
-  await db.orm.public.QuizAssignment.where({ quizVariantId: id }).delete();
+  const assignments = await db.orm.public.QuizAssignment.where({ quizVariantId: id }).all();
+  for (const assign of assignments) {
+    await db.orm.public.QuizAssignment.where({ id: assign.id }).delete();
+  }
 
   // 4. Hapus data varian kuis
   await db.orm.public.QuizVariant.where({ id }).delete();

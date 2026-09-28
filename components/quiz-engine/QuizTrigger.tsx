@@ -12,6 +12,7 @@ export default function QuizTrigger({ pageSlug }: { pageSlug: string }) {
   const [showModal, setShowModal] = useState(false);
   const [attemptId, setAttemptId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [completionNotice, setCompletionNotice] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -48,15 +49,41 @@ export default function QuizTrigger({ pageSlug }: { pageSlug: string }) {
     setLoading(false);
   };
 
-  const handleComplete = (score: number, passed: boolean) => {
+  const handleComplete = async (
+    score: number, 
+    passed: boolean, 
+    details?: { hasEssay?: boolean; needsReview?: boolean }
+  ) => {
     setShowModal(false);
-    setStatus({
-      ...status,
+
+    const hasEssay = details?.hasEssay ?? status?.hasEssay ?? false;
+    const needsReview = details?.needsReview ?? hasEssay;
+
+    // Immediately update local state so the student instantly sees the waiting status without hard refresh
+    setStatus((prev: any) => ({
+      ...prev,
       status: 'COMPLETED',
       score,
-      passed
-    });
-    // Hard refresh to trigger layout re-evaluation (unlocking next pages in sidebar)
+      passed,
+      hasEssay,
+      needsReview
+    }));
+
+    // If quiz has essay, show waiting modal notice
+    if (hasEssay || needsReview) {
+      setCompletionNotice(true);
+    }
+
+    // Silently re-check quiz status from server to sync all data
+    try {
+      const res = await checkQuizStatusAction(pageSlug);
+      if (res.success && (res as any).data) {
+        setStatus((res as any).data);
+      }
+    } catch (e) {
+      console.error('Failed to sync quiz status:', e);
+    }
+
     router.refresh();
   };
 
@@ -78,7 +105,7 @@ export default function QuizTrigger({ pageSlug }: { pageSlug: string }) {
           ⚠️ Kuis ini belum ditugaskan kepada Anda oleh Guru.
         </div>
       ) : status.status === 'COMPLETED' || status.status === 'GRADED' ? (
-        <div className={`p-6 border-4 border-black text-center ${status.passed ? 'bg-green-100' : status.needsReview ? 'bg-amber-100' : 'bg-red-100'}`}>
+        <div className={`p-6 border-4 border-black text-center ${status.needsReview ? 'bg-amber-100' : status.passed ? 'bg-green-100' : 'bg-red-100'}`}>
           <h4 className="text-xl font-black mb-2">
             {status.needsReview ? '📝 SEDANG DI-REVIEW GURU' : status.passed ? '🎉 ANDA LULUS!' : '❌ BELUM LULUS'}
           </h4>
@@ -87,9 +114,15 @@ export default function QuizTrigger({ pageSlug }: { pageSlug: string }) {
           </p>
           <p className="mt-2 font-medium">KKM: {status.passingScore}</p>
           {status.needsReview && (
-            <p className="mt-3 text-xs font-bold text-amber-800 bg-white/70 border border-black/20 p-2.5 max-w-md mx-auto">
-              Jawaban essay Anda telah tersimpan dan sedang menunggu penilaian manual oleh guru. Skor di atas adalah perolehan sementara.
-            </p>
+            <div className="mt-4 p-4 bg-white/90 border-2 border-black max-w-lg mx-auto text-left shadow-neo-sm">
+              <div className="flex items-center gap-2 text-amber-900 font-black text-sm mb-1.5">
+                <span className="text-base">⏳</span>
+                <span>Sedang Menunggu Penilaian Guru</span>
+              </div>
+              <p className="text-xs font-bold text-gray-700 leading-relaxed">
+                Jawaban essay Anda telah tersimpan dengan aman. Skor di atas adalah perolehan sementara dari soal pilihan ganda (jika ada). Silakan tunggu guru selesai memeriksa dan memberikan nilai essay Anda.
+              </p>
+            </div>
           )}
         </div>
       ) : (
@@ -114,6 +147,28 @@ export default function QuizTrigger({ pageSlug }: { pageSlug: string }) {
           onComplete={handleComplete}
         />
       )}
+
+      {/* Popup Modal notice for essay quiz submission */}
+      <QuizModal
+        isOpen={completionNotice}
+        type="info"
+        title="Jawaban Berhasil Dikumpulkan"
+        message={
+          <div className="text-left space-y-2">
+            <p className="font-bold text-sm">
+              Evaluasi pembelajaran Anda telah berhasil disimpan!
+            </p>
+            <p className="text-xs text-gray-700">
+              Karena kuis ini memiliki <strong>soal essay</strong>, penilaian tidak dapat dilakukan secara instan oleh sistem.
+            </p>
+            <div className="p-2.5 bg-yellow-100 border-2 border-black text-xs font-bold text-yellow-950 mt-2">
+              ⏳ Status kuis Anda saat ini adalah <strong>Menunggu Penilaian Guru</strong>. Silakan tunggu pemeriksaan manual oleh guru, Anda tidak perlu me-refresh halaman berulang kali.
+            </div>
+          </div>
+        }
+        confirmText="Mengerti & Tutup"
+        onConfirm={() => setCompletionNotice(false)}
+      />
 
       {/* Popup Modal replacing native alert */}
       <QuizModal

@@ -7,7 +7,7 @@ import QuizModal from './QuizModal';
 interface QuizEngineModalProps {
   attemptId: string;
   onClose: () => void;
-  onComplete: (score: number, passed: boolean) => void;
+  onComplete: (score: number, passed: boolean, details?: { hasEssay?: boolean; needsReview?: boolean }) => void;
 }
 
 interface ModalConfig {
@@ -467,7 +467,14 @@ export default function QuizEngineModal({
     await exitFullscreen();
 
     if (res.success) {
-      onComplete((res as any).score, (res as any).passed);
+      onComplete(
+        (res as any).score, 
+        (res as any).passed, 
+        { 
+          hasEssay: Boolean((res as any).hasEssay), 
+          needsReview: Boolean((res as any).needsReview) 
+        }
+      );
     } else {
       setSubmitting(false);
       submittingRef.current = false;

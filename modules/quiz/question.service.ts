@@ -60,8 +60,12 @@ export async function updateQuestion(id: string, data: QuestionFormValues) {
   });
 
   if (data.questionType === 'PILIHAN_GANDA' && data.options) {
-    // To simplify, we delete existing options and recreate them
-    await db.orm.public.QuestionOption.where({ questionId: id }).delete();
+    // Fetch and delete existing options one by one by id
+    const existingOptions = await db.orm.public.QuestionOption.where({ questionId: id }).all();
+    for (const opt of existingOptions) {
+      await db.orm.public.QuestionOption.where({ id: opt.id }).delete();
+    }
+
     for (let i = 0; i < data.options.length; i++) {
       const opt = data.options[i];
       await db.orm.public.QuestionOption.create({
@@ -74,14 +78,26 @@ export async function updateQuestion(id: string, data: QuestionFormValues) {
     }
   } else {
     // if changed to ESSAY, remove options
-    await db.orm.public.QuestionOption.where({ questionId: id }).delete();
+    const existingOptions = await db.orm.public.QuestionOption.where({ questionId: id }).all();
+    for (const opt of existingOptions) {
+      await db.orm.public.QuestionOption.where({ id: opt.id }).delete();
+    }
   }
 
   return { id };
 }
 
 export async function deleteQuestion(id: string) {
-  await db.orm.public.QuestionOption.where({ questionId: id }).delete();
+  const answers = await db.orm.public.StudentAnswer.where({ questionId: id }).all();
+  for (const ans of answers) {
+    await db.orm.public.StudentAnswer.where({ id: ans.id }).delete();
+  }
+
+  const options = await db.orm.public.QuestionOption.where({ questionId: id }).all();
+  for (const opt of options) {
+    await db.orm.public.QuestionOption.where({ id: opt.id }).delete();
+  }
+
   await db.orm.public.Question.where({ id }).delete();
   return { id };
 }
