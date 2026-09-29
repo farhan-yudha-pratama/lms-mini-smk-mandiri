@@ -21,7 +21,7 @@ export default function ClientQuizGenerator({
   
   // Tahap 1 State: Form Input
   const [questionType, setQuestionType] = useState<"PILIHAN_GANDA" | "ESSAY">("PILIHAN_GANDA");
-  const [totalQuestions, setTotalQuestions] = useState<number>(5);
+  const [totalQuestions, setTotalQuestions] = useState<number | string>("5");
   const [difficulty, setDifficulty] = useState({ easy: 30, medium: 50, hard: 20 });
   const [variantName, setVariantName] = useState(`Paket AI - ${new Date().toLocaleDateString('id-ID')}`);
   const [model, setModel] = useState<string>(defaultModel || "free-tier");
@@ -41,9 +41,15 @@ export default function ClientQuizGenerator({
     }
 
     setIsGenerating(true);
+    const parsedTotal = parseInt(String(totalQuestions), 10);
+    if (isNaN(parsedTotal) || parsedTotal < 1) {
+      setErrorMsg("Jumlah soal tidak valid.");
+      return;
+    }
+
     const res = await generateQuizAction(summaryText, {
       questionType,
-      totalQuestions,
+      totalQuestions: parsedTotal,
       difficultyDistribution: difficulty,
       model: model.trim() || "free-tier",
     });
@@ -161,7 +167,7 @@ export default function ClientQuizGenerator({
                 max="30"
                 className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-shadow"
                 value={totalQuestions}
-                onChange={(e) => setTotalQuestions(Number(e.target.value))}
+                onChange={(e) => setTotalQuestions(e.target.value)}
               />
               <p className="text-xs text-gray-400">Rekomendasi: 5 - 15 butir soal.</p>
             </div>

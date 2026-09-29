@@ -4,7 +4,7 @@ import { getSession } from '@/lib/session';
 import bcrypt from 'bcryptjs';
 import { revalidatePath } from 'next/cache';
 import { ActionResponse, Role } from './types';
-import { BulkUserActionSchema, BulkChangeRoleSchema, BulkToggleActiveSchema } from './modules/user.schema';
+import { BulkUserActionSchema, BulkChangeRoleSchema, BulkToggleActiveSchema, EditUserNameSchema } from './modules/user.schema';
 import { userService } from './modules/user.service';
 
 /**
@@ -85,5 +85,54 @@ export async function bulkToggleActive(userIds: string[], isActive: boolean): Pr
     return { success: true, message: `Status pengguna berhasil di${isActive ? 'aktifkan' : 'nonaktifkan'}.` };
   } catch (error) {
     return handleActionError(error);
+  }
+}
+
+/**
+ * Helper untuk mengubah string menjadi Title Case.
+ */
+function toTitleCase(str: string): string {
+  return str.replace(
+    /\w\S*/g,
+    (txt) => txt.charAt(0).toUpperCase() + txt.substring(1).toLowerCase()
+  ).replace(/\s+/g, ' ').trim();
+}
+
+export async function editUserNameAction(userId: string, newName: string): Promise<ActionResponse> {
+  try {
+    await requireSuperAdmin();
+    
+    // Validasi Input
+    const validatedData = EditUserNameSchema.parse({ userId, newName });
+    const formattedName = toTitleCase(validatedData.newName);
+    
+    // Proses Logika
+    await userService.updateUserName(validatedData.userId, formattedName);
+
+    revalidatePath('/dashboard/users');
+    return { success: true, message: 'Nama pengguna berhasil diperbarui.' };
+  } catch (error) {
+    return handleActionError(error);
+  }
+}
+
+export async function bulkDeleteUsersAction(userIds: string[]): Promise<ActionResponse> {
+  try {
+    await requireSuperAdmin();
+    
+    // Validasi Input
+    const validatedData = BulkUserActionSchema.parse({ userIds });
+    
+    // Proses Logika
+    await userService.bulkDeleteUsers(validatedData.userIds);
+
+    revalidatePath('/dashboard/users');
+    return { success: true, message: 'Pengguna berhasil dihapus.' };
+  } catch (error) {
+    console.error('[User Action Error - Delete]:', error);
+    return { 
+      success: false, 
+      error: 'Pengguna tidak dapat dihapus karena masih memiliki relasi data aktif di sistem (misal: riwayat kuis).' 
+    };
   }
 }

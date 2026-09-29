@@ -1,5 +1,8 @@
 'use server';
 
+import { generateSummaryDraft } from '@/modules/summary/ai.service';
+
+
 import { revalidatePath } from 'next/cache';
 import { PageSummarySchema, PageSummaryInput } from '@/modules/summary/summary.schema';
 import * as summaryService from '@/modules/summary/summary.service';
@@ -57,6 +60,21 @@ export async function deleteSummaryAction(id: string): Promise<ActionResponse> {
     const result = await summaryService.deleteSummary(id);
     revalidatePath('/dashboard/summaries', 'layout');
     return { success: true, message: 'Ringkasan materi berhasil dihapus.', data: result };
+  } catch (error) {
+    return handleActionError(error);
+  }
+}
+
+export async function generateSummaryAction(
+  content: string,
+  model?: string
+): Promise<ActionResponse> {
+  try {
+    const result = await generateSummaryDraft({ content, model });
+    if (!result.success) {
+      return { success: false, error: result.message };
+    }
+    return { success: true, data: result.data };
   } catch (error) {
     return handleActionError(error);
   }

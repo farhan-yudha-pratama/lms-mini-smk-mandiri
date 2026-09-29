@@ -95,23 +95,41 @@ export default async function PageSummariesManagement({ params }: { params: Prom
       )}
 
       {/* Action Buttons Toolbar (Responsive Grid/Flex) */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {isAiEnabled ? (
-          <Link
-            href={`/dashboard/summaries/${page.id}/generate-quiz`}
-            className="flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors shadow-sm text-center"
-          >
-            <span className="material-symbols-outlined text-lg">smart_toy</span>
-            <span>Generate Kuis AI</span>
-          </Link>
+          <>
+            <Link
+              href={`/dashboard/summaries/${page.id}/generate-summary`}
+              className="flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors shadow-sm text-center"
+            >
+              <span className="material-symbols-outlined text-lg">auto_awesome</span>
+              <span>Generate Rangkuman AI</span>
+            </Link>
+            <Link
+              href={`/dashboard/summaries/${page.id}/generate-quiz`}
+              className="flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors shadow-sm text-center"
+            >
+              <span className="material-symbols-outlined text-lg">smart_toy</span>
+              <span>Generate Kuis AI</span>
+            </Link>
+          </>
         ) : (
-          <span
-            className="flex items-center justify-center gap-2 bg-gray-100 text-gray-400 rounded-xl px-4 py-2.5 text-sm font-medium border border-gray-200 cursor-not-allowed text-center"
-            title="Fitur AI dinonaktifkan sementara"
-          >
-            <span className="material-symbols-outlined text-lg">smart_toy</span>
-            <span>Generate Kuis AI (Off)</span>
-          </span>
+          <>
+            <span
+              className="flex items-center justify-center gap-2 bg-gray-100 text-gray-400 rounded-xl px-4 py-2.5 text-sm font-medium border border-gray-200 cursor-not-allowed text-center"
+              title="Fitur AI dinonaktifkan sementara"
+            >
+              <span className="material-symbols-outlined text-lg">auto_awesome</span>
+              <span>Rangkuman AI (Off)</span>
+            </span>
+            <span
+              className="flex items-center justify-center gap-2 bg-gray-100 text-gray-400 rounded-xl px-4 py-2.5 text-sm font-medium border border-gray-200 cursor-not-allowed text-center"
+              title="Fitur AI dinonaktifkan sementara"
+            >
+              <span className="material-symbols-outlined text-lg">smart_toy</span>
+              <span>Generate Kuis AI (Off)</span>
+            </span>
+          </>
         )}
 
         <Link
@@ -127,7 +145,7 @@ export default async function PageSummariesManagement({ params }: { params: Prom
           className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors shadow-sm text-center"
         >
           <span className="material-symbols-outlined text-lg">add</span>
-          <span>Tambah Topik / Summary</span>
+          <span>Tambah Manual</span>
         </Link>
       </div>
 

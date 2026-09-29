@@ -16,3 +16,8 @@ export const BulkToggleActiveSchema = BulkUserActionSchema.extend({
     message: 'Status aktif tidak boleh kosong dan harus berupa boolean.',
   }),
 });
+
+export const EditUserNameSchema = z.object({
+  userId: z.string().min(1, 'ID Pengguna wajib diisi.'),
+  newName: z.string().min(1, 'Nama baru tidak boleh kosong.')
+});

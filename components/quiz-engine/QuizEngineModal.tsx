@@ -240,11 +240,8 @@ export default function QuizEngineModal({
       }
     };
 
-    // Prevent context menu and clipboard operations
+    // Prevent context menu
     const handleContextMenu = (e: MouseEvent) => e.preventDefault();
-    const handleCopy = (e: ClipboardEvent) => e.preventDefault();
-    const handleCut = (e: ClipboardEvent) => e.preventDefault();
-    const handlePaste = (e: ClipboardEvent) => e.preventDefault();
 
     // Prevent shortcuts and developer inspection
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -266,12 +263,6 @@ export default function QuizEngineModal({
         return;
       }
 
-      // Prevent Copy / Cut / Paste / Select All: Ctrl+C, Ctrl+V, Ctrl+X, Ctrl+A
-      if ((e.ctrlKey || e.metaKey) && ['c', 'v', 'x', 'a', 'C', 'V', 'X', 'A'].includes(e.key)) {
-        e.preventDefault();
-        return;
-      }
-
       // Prevent Tab Switching Shortcuts: Ctrl+Tab, Ctrl+W, Ctrl+T
       if ((e.ctrlKey || e.metaKey) && ['t', 'T', 'w', 'W', 'Tab'].includes(e.key)) {
         e.preventDefault();
@@ -289,9 +280,6 @@ export default function QuizEngineModal({
     window.addEventListener('focus', handleFocus);
 
     document.addEventListener('contextmenu', handleContextMenu);
-    document.addEventListener('copy', handleCopy);
-    document.addEventListener('cut', handleCut);
-    document.addEventListener('paste', handlePaste);
     document.addEventListener('keydown', handleKeyDown);
 
     return () => {
@@ -309,9 +297,6 @@ export default function QuizEngineModal({
       window.removeEventListener('focus', handleFocus);
 
       document.removeEventListener('contextmenu', handleContextMenu);
-      document.removeEventListener('copy', handleCopy);
-      document.removeEventListener('cut', handleCut);
-      document.removeEventListener('paste', handlePaste);
       document.removeEventListener('keydown', handleKeyDown);
     };
   }, [quizStage, submitCheater]);
@@ -559,7 +544,7 @@ export default function QuizEngineModal({
                   <span className="material-symbols-outlined text-lg mt-0.5">lock</span>
                   <div>
                     <div className="font-bold text-sm">Proteksi Input & Tombol Pintasan</div>
-                    <div className="text-xs text-gray-600">Klik kanan, copy-paste, dan shortcut inspect telah dinonaktifkan.</div>
+                    <div className="text-xs text-gray-600">Klik kanan dan shortcut inspect telah dinonaktifkan.</div>
                   </div>
                 </div>
                 <span className="shrink-0 px-2.5 py-1 text-xs font-black uppercase bg-emerald-300 text-black border border-black">
