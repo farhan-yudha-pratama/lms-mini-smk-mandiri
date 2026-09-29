@@ -27,15 +27,22 @@ export interface UsersTableProps {
   onSelectAll: (checked: boolean) => void;
   onSelectOne: (id: string, checked: boolean) => void;
   onSort: (col: keyof UserRow) => void;
+  onEditName?: (user: UserRow) => void;
+  onDeleteUser?: (user: UserRow) => void;
 }
 
 export interface UsersToolbarProps {
+  onSearchChange: (value: string) => void;
+}
+
+export interface FloatingActionBarProps {
   selectedCount: number;
   isProcessing: boolean;
-  onSearchChange: (value: string) => void;
+  onClearSelection: () => void;
   onBulkResetPassword: () => void;
   onBulkChangeRole: (newRole: Role) => void;
   onBulkToggleActive: (isActive: boolean) => void;
+  onBulkDelete?: () => void;
 }
 
 export interface UsersPaginationProps {

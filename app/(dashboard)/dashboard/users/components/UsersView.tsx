@@ -3,11 +3,13 @@
 import { useState, useMemo } from 'react';
 import { UserRow, SortColumn, SortDirection, Role } from '../types';
 import { filterUsers, sortUsers } from '@/lib/user-helpers';
-import { bulkResetPassword, bulkChangeRole, bulkToggleActive } from '../actions';
+import { bulkResetPassword, bulkChangeRole, bulkToggleActive, editUserNameAction, bulkDeleteUsersAction } from '../actions';
 import UsersToolbar from './UsersToolbar';
 import UsersTable from './UsersTable';
 import UsersPagination from './UsersPagination';
 import ConfirmModal from './ConfirmModal';
+import EditNameModal from './EditNameModal';
+import FloatingActionBar from './FloatingActionBar';
 
 interface UsersViewProps {
   initialUsers: UserRow[];
@@ -34,6 +36,12 @@ export default function UsersView({ initialUsers }: UsersViewProps) {
     message: string;
     isDestructive?: boolean;
     onConfirm: () => void;
+  } | null>(null);
+
+  const [editModalConfig, setEditModalConfig] = useState<{
+    isOpen: boolean;
+    userId: string;
+    initialName: string;
   } | null>(null);
 
   // Apply filter & sort locally
@@ -154,6 +162,71 @@ export default function UsersView({ initialUsers }: UsersViewProps) {
     });
   };
 
+  const onEditName = (user: UserRow) => {
+    setEditModalConfig({
+      isOpen: true,
+      userId: user.id,
+      initialName: user.name,
+    });
+  };
+
+  const handleEditConfirm = async (newName: string) => {
+    if (!editModalConfig) return;
+    const userId = editModalConfig.userId;
+    setEditModalConfig(null);
+    runAction(async () => {
+      const res = await editUserNameAction(userId, newName);
+      if (res.success) {
+        // the action already applies titlecase, but for optimistic update we can just let server response revalidate,
+        // or update locally. We will update locally.
+        const formattedName = newName.replace(
+          /\w\S*/g,
+          (txt) => txt.charAt(0).toUpperCase() + txt.substring(1).toLowerCase()
+        ).replace(/\s+/g, ' ').trim();
+        setUsers(prev => prev.map(u => u.id === userId ? { ...u, name: formattedName } : u));
+      }
+      return res;
+    });
+  };
+
+  const onDeleteUser = (user: UserRow) => {
+    setModalConfig({
+      isOpen: true,
+      title: 'Hapus Pengguna',
+      message: `Data yang dihapus tidak dapat dikembalikan. Yakin menghapus pengguna ${user.name}?`,
+      isDestructive: true,
+      onConfirm: () => {
+        setModalConfig(null);
+        runAction(async () => {
+          const res = await bulkDeleteUsersAction([user.id]);
+          if (res.success) {
+            setUsers(prev => prev.filter(u => u.id !== user.id));
+          }
+          return res;
+        });
+      }
+    });
+  };
+
+  const onBulkDelete = () => {
+    setModalConfig({
+      isOpen: true,
+      title: 'Hapus Pengguna Terpilih',
+      message: `Data yang dihapus tidak dapat dikembalikan. Yakin menghapus ${selectedIds.size} pengguna?`,
+      isDestructive: true,
+      onConfirm: () => {
+        setModalConfig(null);
+        runAction(async () => {
+          const res = await bulkDeleteUsersAction(Array.from(selectedIds));
+          if (res.success) {
+            setUsers(prev => prev.filter(u => !selectedIds.has(u.id)));
+          }
+          return res;
+        });
+      }
+    });
+  };
+
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
       {/* Header */}
@@ -174,17 +247,12 @@ export default function UsersView({ initialUsers }: UsersViewProps) {
         <div className="absolute inset-0 bg-gray-50/80 backdrop-blur-md -m-4 p-4 md:-m-0 md:p-0"></div>
         <div className="relative">
           <UsersToolbar
-            selectedCount={selectedIds.size}
-            isProcessing={isProcessing}
             onSearchChange={setSearchQuery}
-            onBulkResetPassword={onBulkResetPassword}
-            onBulkChangeRole={onBulkChangeRole}
-            onBulkToggleActive={onBulkToggleActive}
           />
         </div>
       </div>
 
-      <div className="md:bg-white md:rounded-xl md:border md:border-gray-200 md:shadow-sm flex flex-col">
+      <div className="md:bg-white md:rounded-xl md:border md:border-gray-200 md:shadow-sm flex flex-col relative z-0">
         <UsersTable
           users={paginatedUsers}
           selectedIds={selectedIds}
@@ -193,6 +261,8 @@ export default function UsersView({ initialUsers }: UsersViewProps) {
           onSelectAll={handleSelectAll}
           onSelectOne={handleSelectOne}
           onSort={handleSort}
+          onEditName={onEditName}
+          onDeleteUser={onDeleteUser}
         />
 
         <UsersPagination
@@ -215,6 +285,22 @@ export default function UsersView({ initialUsers }: UsersViewProps) {
         isDestructive={modalConfig?.isDestructive}
         onConfirm={modalConfig?.onConfirm ?? (() => {})}
         onCancel={() => setModalConfig(null)}
+      />
+      <EditNameModal
+        isOpen={editModalConfig?.isOpen ?? false}
+        initialName={editModalConfig?.initialName ?? ''}
+        onConfirm={handleEditConfirm}
+        onCancel={() => setEditModalConfig(null)}
+      />
+      
+      <FloatingActionBar
+        selectedCount={selectedIds.size}
+        isProcessing={isProcessing}
+        onClearSelection={() => setSelectedIds(new Set())}
+        onBulkResetPassword={onBulkResetPassword}
+        onBulkChangeRole={onBulkChangeRole}
+        onBulkToggleActive={onBulkToggleActive}
+        onBulkDelete={onBulkDelete}
       />
     </div>
   );
