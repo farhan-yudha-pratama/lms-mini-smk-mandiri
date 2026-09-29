@@ -1,0 +1,407 @@
+[
+  {
+    "id": "table.quizCompletionRecord",
+    "label": "Create table \"quizCompletionRecord\"",
+    "summary": "Creates table \"quizCompletionRecord\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "quizCompletionRecord"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"quizCompletionRecord\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"quizCompletionRecord\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"quizCompletionRecord\"",
+        "sql": "CREATE TABLE \"public\".\"quizCompletionRecord\" (\n  \"categoryName\" text,\n  \"classroomId\" text,\n  \"classroomName\" text,\n  \"completedAt\" timestamptz NOT NULL,\n  \"correctAnswers\" int4 NOT NULL,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"essayCount\" int4 DEFAULT 0 NOT NULL,\n  \"id\" text NOT NULL,\n  \"isPassed\" bool NOT NULL,\n  \"pageSlug\" text,\n  \"pageTitle\" text,\n  \"passingScore\" float8 NOT NULL,\n  \"score\" float8 NOT NULL,\n  \"sourceId\" text NOT NULL,\n  \"sourceTitle\" text NOT NULL,\n  \"sourceType\" text NOT NULL,\n  \"studentEmail\" text NOT NULL,\n  \"studentId\" text NOT NULL,\n  \"studentName\" text NOT NULL,\n  \"timeTakenSeconds\" int4,\n  \"totalQuestions\" int4 NOT NULL,\n  PRIMARY KEY (\"id\"),\n  CONSTRAINT \"quizCompletionRecord_sourceType_check_a8d38731\" CHECK (\"sourceType\" IN ('MATERIAL_QUIZ', 'ASSIGNMENT'))\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"quizCompletionRecord\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"quizCompletionRecord\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.studentScoreSummary",
+    "label": "Create table \"studentScoreSummary\"",
+    "summary": "Creates table \"studentScoreSummary\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "studentScoreSummary"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"studentScoreSummary\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"studentScoreSummary\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"studentScoreSummary\"",
+        "sql": "CREATE TABLE \"public\".\"studentScoreSummary\" (\n  \"averageAssignmentScore\" float8,\n  \"averageMaterialQuizScore\" float8,\n  \"classroomId\" text,\n  \"classroomName\" text,\n  \"id\" text NOT NULL,\n  \"lastActivityAt\" timestamptz,\n  \"overallAverageScore\" float8,\n  \"studentId\" text NOT NULL,\n  \"totalAssignmentCompleted\" int4 DEFAULT 0 NOT NULL,\n  \"totalAssignmentPassed\" int4 DEFAULT 0 NOT NULL,\n  \"totalMaterialCompleted\" int4 DEFAULT 0 NOT NULL,\n  \"totalMaterialQuizCompleted\" int4 DEFAULT 0 NOT NULL,\n  \"totalMaterialQuizPassed\" int4 DEFAULT 0 NOT NULL,\n  \"totalPointsEarned\" float8 DEFAULT 0 NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"studentScoreSummary\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"studentScoreSummary\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.studentScoreSummary.studentScoreSummary_studentId_key",
+    "label": "Add unique constraint on \"studentScoreSummary\" (studentId)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "studentScoreSummary_studentId_key",
+        "table": "studentScoreSummary"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"studentScoreSummary_studentId_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "studentScoreSummary_studentId_key",
+          "public",
+          "\"public\".\"studentScoreSummary\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"studentScoreSummary_studentId_key\"",
+        "sql": "ALTER TABLE \"public\".\"studentScoreSummary\" ADD CONSTRAINT \"studentScoreSummary_studentId_key\" UNIQUE (\"studentId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"studentScoreSummary_studentId_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "studentScoreSummary_studentId_key",
+          "public",
+          "\"public\".\"studentScoreSummary\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.quizCompletionRecord.quizCompletionRecord_classroomId_idx_e4a392d3",
+    "label": "Create index \"quizCompletionRecord_classroomId_idx_e4a392d3\" on \"quizCompletionRecord\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "quizCompletionRecord_classroomId_idx_e4a392d3",
+        "table": "quizCompletionRecord"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"quizCompletionRecord_classroomId_idx_e4a392d3\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"quizCompletionRecord_classroomId_idx_e4a392d3\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"quizCompletionRecord_classroomId_idx_e4a392d3\"",
+        "sql": "CREATE INDEX \"quizCompletionRecord_classroomId_idx_e4a392d3\" ON \"public\".\"quizCompletionRecord\" (\"classroomId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"quizCompletionRecord_classroomId_idx_e4a392d3\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"quizCompletionRecord_classroomId_idx_e4a392d3\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.quizCompletionRecord.quizCompletionRecord_studentId_idx_bf255322",
+    "label": "Create index \"quizCompletionRecord_studentId_idx_bf255322\" on \"quizCompletionRecord\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "quizCompletionRecord_studentId_idx_bf255322",
+        "table": "quizCompletionRecord"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"quizCompletionRecord_studentId_idx_bf255322\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"quizCompletionRecord_studentId_idx_bf255322\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"quizCompletionRecord_studentId_idx_bf255322\"",
+        "sql": "CREATE INDEX \"quizCompletionRecord_studentId_idx_bf255322\" ON \"public\".\"quizCompletionRecord\" (\"studentId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"quizCompletionRecord_studentId_idx_bf255322\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"quizCompletionRecord_studentId_idx_bf255322\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.studentScoreSummary.studentScoreSummary_classroomId_idx_e4a392d3",
+    "label": "Create index \"studentScoreSummary_classroomId_idx_e4a392d3\" on \"studentScoreSummary\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "studentScoreSummary_classroomId_idx_e4a392d3",
+        "table": "studentScoreSummary"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"studentScoreSummary_classroomId_idx_e4a392d3\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"studentScoreSummary_classroomId_idx_e4a392d3\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"studentScoreSummary_classroomId_idx_e4a392d3\"",
+        "sql": "CREATE INDEX \"studentScoreSummary_classroomId_idx_e4a392d3\" ON \"public\".\"studentScoreSummary\" (\"classroomId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"studentScoreSummary_classroomId_idx_e4a392d3\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"studentScoreSummary_classroomId_idx_e4a392d3\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.quizCompletionRecord.quizCompletionRecord_studentId_fkey",
+    "label": "Add foreign key \"quizCompletionRecord_studentId_fkey\" on \"quizCompletionRecord\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "quizCompletionRecord_studentId_fkey",
+        "table": "quizCompletionRecord"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"quizCompletionRecord_studentId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "quizCompletionRecord_studentId_fkey",
+          "public",
+          "\"public\".\"quizCompletionRecord\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"quizCompletionRecord_studentId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"quizCompletionRecord\"\nADD CONSTRAINT \"quizCompletionRecord_studentId_fkey\"\nFOREIGN KEY (\"studentId\")\nREFERENCES \"public\".\"user\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"quizCompletionRecord_studentId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "quizCompletionRecord_studentId_fkey",
+          "public",
+          "\"public\".\"quizCompletionRecord\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.quizCompletionRecord.quizCompletionRecord_classroomId_fkey",
+    "label": "Add foreign key \"quizCompletionRecord_classroomId_fkey\" on \"quizCompletionRecord\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "quizCompletionRecord_classroomId_fkey",
+        "table": "quizCompletionRecord"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"quizCompletionRecord_classroomId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "quizCompletionRecord_classroomId_fkey",
+          "public",
+          "\"public\".\"quizCompletionRecord\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"quizCompletionRecord_classroomId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"quizCompletionRecord\"\nADD CONSTRAINT \"quizCompletionRecord_classroomId_fkey\"\nFOREIGN KEY (\"classroomId\")\nREFERENCES \"public\".\"classroom\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"quizCompletionRecord_classroomId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "quizCompletionRecord_classroomId_fkey",
+          "public",
+          "\"public\".\"quizCompletionRecord\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.studentScoreSummary.studentScoreSummary_studentId_fkey",
+    "label": "Add foreign key \"studentScoreSummary_studentId_fkey\" on \"studentScoreSummary\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "studentScoreSummary_studentId_fkey",
+        "table": "studentScoreSummary"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"studentScoreSummary_studentId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "studentScoreSummary_studentId_fkey",
+          "public",
+          "\"public\".\"studentScoreSummary\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"studentScoreSummary_studentId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"studentScoreSummary\"\nADD CONSTRAINT \"studentScoreSummary_studentId_fkey\"\nFOREIGN KEY (\"studentId\")\nREFERENCES \"public\".\"user\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"studentScoreSummary_studentId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "studentScoreSummary_studentId_fkey",
+          "public",
+          "\"public\".\"studentScoreSummary\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.studentScoreSummary.studentScoreSummary_classroomId_fkey",
+    "label": "Add foreign key \"studentScoreSummary_classroomId_fkey\" on \"studentScoreSummary\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "studentScoreSummary_classroomId_fkey",
+        "table": "studentScoreSummary"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"studentScoreSummary_classroomId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "studentScoreSummary_classroomId_fkey",
+          "public",
+          "\"public\".\"studentScoreSummary\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"studentScoreSummary_classroomId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"studentScoreSummary\"\nADD CONSTRAINT \"studentScoreSummary_classroomId_fkey\"\nFOREIGN KEY (\"classroomId\")\nREFERENCES \"public\".\"classroom\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"studentScoreSummary_classroomId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "studentScoreSummary_classroomId_fkey",
+          "public",
+          "\"public\".\"studentScoreSummary\""
+        ]
+      }
+    ]
+  }
+]
