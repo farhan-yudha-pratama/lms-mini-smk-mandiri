@@ -33,6 +33,8 @@ model Classroom {
   updatedAt   temporal.updatedAtString()
   
   users       User[]
+  scoreSummaries     StudentScoreSummary[]
+  completionRecords  QuizCompletionRecord[]
 }
 
 model User {
@@ -55,6 +57,8 @@ model User {
   sessions     Session[]
   auditLogs       AuditLog[]
   quizAssignments QuizAssignment[]
+  scoreSummary    StudentScoreSummary?
+  completionRecords QuizCompletionRecord[]
 }
 
 model MaterialCategory {
@@ -254,6 +258,85 @@ model AuditLog {
   createdAt TimestamptzString @default(now())
 
   user      User?             @relation(fields: [userId], references: [id])
+}
+
+// ============================================================
+// TAMBAHAN v1.0.0 — Score Summary & Quiz History
+// ============================================================
+
+enum HistorySourceType {
+  MATERIAL_QUIZ
+  ASSIGNMENT
+}
+
+/// Tabel denormalisasi (cache agregasi nilai per murid).
+/// Di-update setiap kali QuizAttempt atau AssignmentAttempt selesai dinilai.
+/// Dirancang untuk konsumsi API pihak ketiga — query cukup ONE ROW per murid tanpa JOIN berat.
+model StudentScoreSummary {
+  id                          String            @id @default(uuid())
+  studentId                   String            @unique
+  classroomId                 String?
+  classroomName               String?
+
+  // Statistik Kuis Materi
+  totalMaterialQuizCompleted  Int               @default(0)
+  totalMaterialQuizPassed     Int               @default(0)
+  averageMaterialQuizScore    Float?
+
+  // Statistik Tugas Mandiri
+  totalAssignmentCompleted    Int               @default(0)
+  totalAssignmentPassed       Int               @default(0)
+  averageAssignmentScore      Float?
+
+  // Statistik Global
+  overallAverageScore         Float?
+  totalPointsEarned           Float             @default(0)
+  totalMaterialCompleted      Int               @default(0)
+  lastActivityAt              TimestamptzString?
+  updatedAt                   temporal.updatedAtString()
+
+  student                     User              @relation(fields: [studentId], references: [id])
+  classroom                   Classroom?        @relation(fields: [classroomId], references: [id])
+}
+
+/// Tabel IMMUTABLE — tidak pernah diupdate setelah dibuat.
+/// Setiap kali murid menyelesaikan kuis atau tugas, satu record baru INSERT.
+/// Berfungsi sebagai bukti historis (audit trail) pengerjaan untuk murid
+/// dan sumber data mentah untuk API pihak ketiga.
+model QuizCompletionRecord {
+  id                  String            @id @default(uuid())
+  studentId           String
+
+  // Snapshot data murid saat mengerjakan (agar history tetap valid meski User diubah/dihapus)
+  studentName         String
+  studentEmail        String
+  classroomId         String?
+  classroomName       String?
+
+  // Sumber asesmen
+  sourceType          HistorySourceType
+  sourceId            String            // ID QuizAttempt atau AssignmentAttempt
+  sourceTitle         String            // Snapshot judul kuis / nama tugas
+
+  // Konteks materi (hanya diisi jika sourceType = MATERIAL_QUIZ)
+  categoryName        String?
+  pageTitle           String?
+  pageSlug            String?
+
+  // Hasil asesmen
+  score               Float
+  passingScore        Float             // Snapshot KKM saat itu
+  isPassed            Boolean
+  totalQuestions      Int
+  correctAnswers      Int
+  essayCount          Int               @default(0)
+  timeTakenSeconds    Int?
+
+  completedAt         TimestamptzString
+  createdAt           TimestamptzString @default(now())
+
+  student             User              @relation(fields: [studentId], references: [id])
+  classroom           Classroom?        @relation(fields: [classroomId], references: [id])
 }
 
 

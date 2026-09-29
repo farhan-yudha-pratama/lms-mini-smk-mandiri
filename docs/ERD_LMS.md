@@ -239,4 +239,81 @@ Ref: StudentAnswer.selectedOptionId > QuestionOption.id
 
 Ref: PageAccess.pageId > Page.id
 Ref: PageAccess.studentId > User.id
+
+// ================================
+// TABEL TAMBAHAN v1.0.0
+// Score Summary & Quiz History
+// ================================
+
+Enum HistorySourceType {
+  MATERIAL_QUIZ   // Berasal dari kuis pada halaman materi
+  ASSIGNMENT      // Berasal dari tugas mandiri (Assignment)
+}
+
+Table StudentScoreSummary {
+  id                          String    [pk, note: 'UUID']
+  studentId                   String    [unique, note: 'FK → User (MURID). 1 murid = 1 baris summary']
+  classroomId                 String    [null, note: 'FK → Classroom. Snapshot kelas saat data terakhir diupdate']
+  classroomName               String    [null, note: 'Snapshot nama kelas agar tetap terbaca walau kelas dihapus']
+
+  // Statistik Kuis Materi
+  totalMaterialQuizCompleted  Int       [default: 0, note: 'Jumlah kuis materi yang pernah diselesaikan']
+  totalMaterialQuizPassed     Int       [default: 0, note: 'Jumlah kuis materi yang lulus (>= passingScore)']
+  averageMaterialQuizScore    Float     [null, note: 'Rata-rata skor kuis materi']
+
+  // Statistik Tugas Mandiri
+  totalAssignmentCompleted    Int       [default: 0, note: 'Jumlah tugas mandiri yang pernah disubmit']
+  totalAssignmentPassed       Int       [default: 0, note: 'Jumlah tugas mandiri yang lulus']
+  averageAssignmentScore      Float     [null, note: 'Rata-rata skor tugas mandiri']
+
+  // Statistik Global
+  overallAverageScore         Float     [null, note: 'Rata-rata gabungan semua jenis asesmen']
+  totalPointsEarned           Float     [default: 0, note: 'Akumulasi total poin yang pernah diraih']
+  totalMaterialCompleted      Int       [default: 0, note: 'Jumlah halaman materi berstatus COMPLETED']
+  lastActivityAt              DateTime  [null, note: 'Timestamp terakhir murid mengerjakan sesuatu']
+  updatedAt                   DateTime
+
+  Note: 'Tabel denormalisasi (cache agregasi). Di-update setiap kali QuizAttempt atau AssignmentAttempt selesai dinilai. Dirancang untuk konsumsi API pihak ketiga — query cukup satu row per murid tanpa JOIN berat.'
+}
+
+Table QuizCompletionRecord {
+  id                  String            [pk, note: 'UUID']
+  studentId           String            [note: 'FK → User (MURID)']
+
+  // Snapshot data murid saat mengerjakan
+  studentName         String            [note: 'Snapshot nama murid agar history tetap akurat meski data User berubah']
+  studentEmail        String            [note: 'Snapshot email murid saat itu']
+  classroomId         String            [null, note: 'FK → Classroom (nullable, snapshot)']
+  classroomName       String            [null, note: 'Snapshot nama kelas saat itu']
+
+  // Sumber asesmen
+  sourceType          HistorySourceType [note: 'MATERIAL_QUIZ atau ASSIGNMENT']
+  sourceId            String            [note: 'ID dari QuizAttempt atau AssignmentAttempt yang bersangkutan']
+  sourceTitle         String            [note: 'Judul kuis atau nama tugas (snapshot)']
+
+  // Konteks materi (hanya diisi jika sourceType = MATERIAL_QUIZ)
+  categoryName        String            [null, note: 'Snapshot nama kategori materi, contoh: HTML, CSS']
+  pageTitle           String            [null, note: 'Snapshot judul halaman materi yang dikuiskan']
+  pageSlug            String            [null, note: 'Snapshot slug halaman materi']
+
+  // Hasil asesmen
+  score               Float             [note: 'Skor yang diraih murid']
+  passingScore        Float             [note: 'Skor minimum lulus saat itu (snapshot)']
+  isPassed            Boolean           [note: 'true jika score >= passingScore']
+  totalQuestions      Int               [note: 'Total soal dalam asesmen ini']
+  correctAnswers      Int               [note: 'Jumlah jawaban benar (auto-graded)']
+  essayCount          Int               [default: 0, note: 'Jumlah soal essay dalam asesmen ini']
+  timeTakenSeconds    Int               [null, note: 'Durasi pengerjaan dalam detik']
+
+  completedAt         DateTime          [note: 'Waktu murid menyelesaikan / submit asesmen']
+  createdAt           DateTime          [default: `now()`]
+
+  Note: 'Tabel IMMUTABLE — tidak pernah diupdate setelah dibuat. Setiap kali murid menyelesaikan kuis atau tugas, satu record baru dibuat. Berfungsi sebagai bukti historis pengerjaan untuk murid dan sumber data API pihak ketiga.'
+}
+
+// Relasi tabel baru v1.0.0
+Ref: StudentScoreSummary.studentId - User.id
+Ref: StudentScoreSummary.classroomId > Classroom.id
+Ref: QuizCompletionRecord.studentId > User.id
+Ref: QuizCompletionRecord.classroomId > Classroom.id
 ```
