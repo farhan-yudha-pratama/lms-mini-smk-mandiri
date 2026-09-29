@@ -22,14 +22,21 @@ export default function ClientQuizGenerator({
   // Tahap 1 State: Form Input
   const [questionType, setQuestionType] = useState<"PILIHAN_GANDA" | "ESSAY">("PILIHAN_GANDA");
   const [totalQuestions, setTotalQuestions] = useState<number | string>("5");
+  const [variantCount, setVariantCount] = useState<number | string>("1");
   const [difficulty, setDifficulty] = useState({ easy: 30, medium: 50, hard: 20 });
-  const [variantName, setVariantName] = useState(`Paket AI - ${new Date().toLocaleDateString('id-ID')}`);
   const [model, setModel] = useState<string>(defaultModel || "free-tier");
 
   // Flow State
   const [isGenerating, setIsGenerating] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [generatedQuestions, setGeneratedQuestions] = useState<any[] | null>(null);
+  const [generatedPackages, setGeneratedPackages] = useState<{ variantName: string, questions: any[] }[] | null>(null);
+  const [activeTab, setActiveTab] = useState(0);
+  
+  // Fitur Review & Save Per Paket
+  const [savedPackages, setSavedPackages] = useState<number[]>([]);
+  const [isRegenerating, setIsRegenerating] = useState(false);
+  const [packageImprovements, setPackageImprovements] = useState<string[]>([]);
+  const [savingTabIndex, setSavingTabIndex] = useState<number | null>(null);
+
   const [errorMsg, setErrorMsg] = useState("");
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
@@ -40,69 +47,169 @@ export default function ClientQuizGenerator({
       return;
     }
 
-    setIsGenerating(true);
     const parsedTotal = parseInt(String(totalQuestions), 10);
     if (isNaN(parsedTotal) || parsedTotal < 1) {
-      setErrorMsg("Jumlah soal tidak valid.");
+      setErrorMsg("Jumlah soal per paket tidak valid.");
       return;
     }
 
-    const res = await generateQuizAction(summaryText, {
-      questionType,
-      totalQuestions: parsedTotal,
-      difficultyDistribution: difficulty,
-      model: model.trim() || "free-tier",
-    });
-
-    if (res?.success && res.data) {
-      setGeneratedQuestions(res.data as any[]);
-    } else {
-      setErrorMsg(res?.message || "Terjadi kesalahan saat generate soal dengan AI.");
+    const parsedVariantCount = parseInt(String(variantCount), 10);
+    if (isNaN(parsedVariantCount) || parsedVariantCount < 1 || parsedVariantCount > 5) {
+      setErrorMsg("Jumlah paket (varian) harus antara 1 sampai 5.");
+      return;
     }
-    setIsGenerating(false);
+
+    setIsGenerating(true);
+
+    try {
+      const promises = Array.from({ length: parsedVariantCount }).map(async (_, index) => {
+        const res = await generateQuizAction(summaryText, {
+          questionType,
+          totalQuestions: parsedTotal,
+          difficultyDistribution: difficulty,
+          model: model.trim() || "free-tier",
+        });
+
+        if (!res?.success || !res.data) {
+          throw new Error(res?.message || `Terjadi kesalahan saat generate Paket ${index + 1}`);
+        }
+
+        const dateStr = new Date().toLocaleDateString('id-ID');
+        
+        const questionsWithTag = (res.data as any[]).map(q => ({
+          ...q,
+          packageTag: `Paket ${index + 1}`,
+        }));
+
+        return {
+          variantName: `Paket ${index + 1} - AI ${dateStr}`,
+          questions: questionsWithTag,
+        };
+      });
+
+      const packages = await Promise.all(promises);
+      setGeneratedPackages(packages);
+      setActiveTab(0);
+      setSavedPackages([]);
+      setPackageImprovements(Array(parsedVariantCount).fill(""));
+    } catch (err: any) {
+      setErrorMsg(err.message || "Terjadi kesalahan saat generate soal dengan AI.");
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
-  const handleSave = async () => {
-    if (!generatedQuestions) return;
-    setIsSaving(true);
+  const handleRegeneratePackage = async (index: number) => {
+    if (!generatedPackages) return;
+    setIsRegenerating(true);
     setErrorMsg("");
 
-    const payload = {
-      pageId,
-      quizTitle: `Kuis: ${pageTitle}`,
-      variantName: variantName,
-      questionType,
-      questions: generatedQuestions,
-    };
+    try {
+      const parsedTotal = parseInt(String(totalQuestions), 10);
+      const improvement = packageImprovements[index];
+      
+      const promptToUse = improvement?.trim() 
+        ? `INSTRUKSI TAMBAHAN/PERBAIKAN DARI PENGGUNA:\n${improvement}\n\nMATERI UTAMA:\n${summaryText}`
+        : summaryText;
 
-    const res = await saveQuizPackageAction(payload);
-    if (res?.success) {
-      setShowSuccessModal(true);
-    } else {
-      setErrorMsg(res?.message || "Gagal menyimpan kuis.");
-      setIsSaving(false);
+      const res = await generateQuizAction(promptToUse, {
+        questionType,
+        totalQuestions: parsedTotal,
+        difficultyDistribution: difficulty,
+        model: model.trim() || "free-tier",
+      });
+
+      if (!res?.success || !res.data) {
+        throw new Error(res?.message || `Terjadi kesalahan saat generate ulang Paket ${index + 1}`);
+      }
+
+      const questionsWithTag = (res.data as any[]).map(q => ({
+        ...q,
+        packageTag: `Paket ${index + 1} (Regenerated)`,
+      }));
+
+      const updatedPackages = [...generatedPackages];
+      updatedPackages[index].questions = questionsWithTag;
+      setGeneratedPackages(updatedPackages);
+
+      if (savedPackages.includes(index)) {
+        setSavedPackages(savedPackages.filter(i => i !== index));
+      }
+    } catch (err: any) {
+      setErrorMsg(err.message || "Gagal generate ulang paket ini.");
+    } finally {
+      setIsRegenerating(false);
     }
   };
 
-  const handleQuestionChange = (index: number, newText: string) => {
-    const updated = [...(generatedQuestions || [])];
-    updated[index].questionText = newText;
-    setGeneratedQuestions(updated);
+  const handleSavePackage = async (index: number) => {
+    if (!generatedPackages || !generatedPackages[index]) return;
+    setSavingTabIndex(index);
+    setErrorMsg("");
+
+    const pkg = generatedPackages[index];
+
+    try {
+      const res = await saveQuizPackageAction({
+        pageId,
+        quizTitle: `Kuis: ${pageTitle}`,
+        variantName: pkg.variantName,
+        questionType,
+        questions: pkg.questions,
+      });
+
+      if (res?.success) {
+        const updatedSaved = [...savedPackages, index];
+        setSavedPackages(updatedSaved);
+        
+        if (updatedSaved.length === generatedPackages.length) {
+          setShowSuccessModal(true);
+        }
+      } else {
+        setErrorMsg(res?.message || `Gagal menyimpan Paket ${index + 1}.`);
+      }
+    } catch (err: any) {
+      setErrorMsg(err.message || "Gagal menyimpan kuis.");
+    } finally {
+      setSavingTabIndex(null);
+    }
+  };
+
+  const handleImprovementChange = (index: number, val: string) => {
+    const updated = [...packageImprovements];
+    updated[index] = val;
+    setPackageImprovements(updated);
+  };
+
+  const handleVariantNameChange = (newText: string) => {
+    if (!generatedPackages) return;
+    const updated = [...generatedPackages];
+    updated[activeTab].variantName = newText;
+    setGeneratedPackages(updated);
+  };
+
+  const handleQuestionChange = (qIndex: number, newText: string) => {
+    if (!generatedPackages) return;
+    const updated = [...generatedPackages];
+    updated[activeTab].questions[qIndex].questionText = newText;
+    setGeneratedPackages(updated);
   };
 
   const handleOptionChange = (qIndex: number, optIndex: number, newText: string) => {
-    const updated = [...(generatedQuestions || [])];
-    updated[qIndex].options[optIndex].optionText = newText;
-    setGeneratedQuestions(updated);
+    if (!generatedPackages) return;
+    const updated = [...generatedPackages];
+    updated[activeTab].questions[qIndex].options[optIndex].optionText = newText;
+    setGeneratedPackages(updated);
   };
 
   const handleSetCorrectOption = (qIndex: number, optIndex: number) => {
-    const updated = [...(generatedQuestions || [])];
-    updated[qIndex].options = updated[qIndex].options.map((opt: any, idx: number) => ({
+    if (!generatedPackages) return;
+    const updated = [...generatedPackages];
+    updated[activeTab].questions[qIndex].options = updated[activeTab].questions[qIndex].options.map((opt: any, idx: number) => ({
       ...opt,
       isCorrect: idx === optIndex
     }));
-    setGeneratedQuestions(updated);
+    setGeneratedPackages(updated);
   };
 
   if (!isAiEnabled) {
@@ -134,7 +241,7 @@ export default function ClientQuizGenerator({
       )}
 
       {/* TAHAP 1: KONFIGURASI GENERATOR */}
-      {!generatedQuestions && (
+      {!generatedPackages && (
         <div className="p-5 sm:p-6 bg-white border border-gray-200 rounded-xl shadow-sm space-y-6">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-4 border-b border-gray-100">
             <div>
@@ -146,7 +253,7 @@ export default function ClientQuizGenerator({
             </span>
           </div>
           
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
             <div className="space-y-1.5">
               <label className="block text-sm font-semibold text-gray-700">Tipe Soal Kuis</label>
               <select 
@@ -160,7 +267,7 @@ export default function ClientQuizGenerator({
             </div>
 
             <div className="space-y-1.5">
-              <label className="block text-sm font-semibold text-gray-700">Jumlah Soal</label>
+              <label className="block text-sm font-semibold text-gray-700">Jumlah Soal (Per Paket)</label>
               <input 
                 type="number" 
                 min="1" 
@@ -169,7 +276,20 @@ export default function ClientQuizGenerator({
                 value={totalQuestions}
                 onChange={(e) => setTotalQuestions(e.target.value)}
               />
-              <p className="text-xs text-gray-400">Rekomendasi: 5 - 15 butir soal.</p>
+              <p className="text-xs text-gray-400">Rekomendasi: 5 - 15 butir.</p>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="block text-sm font-semibold text-gray-700">Jumlah Paket (Varian)</label>
+              <input 
+                type="number" 
+                min="1" 
+                max="5"
+                className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-shadow"
+                value={variantCount}
+                onChange={(e) => setVariantCount(e.target.value)}
+              />
+              <p className="text-xs text-gray-400">Maks: 5 paket sekaligus.</p>
             </div>
 
             <div className="space-y-1.5">
@@ -258,14 +378,14 @@ export default function ClientQuizGenerator({
               <span className="material-symbols-outlined text-lg">
                 {isGenerating ? "autorenew" : "psychology"}
               </span>
-              <span>{isGenerating ? "Menganalisis & Menyusun Soal..." : "Mulai Generate Soal (AI)"}</span>
+              <span>{isGenerating ? "Menganalisis & Menyusun Paket Soal..." : "Mulai Generate Soal (AI)"}</span>
             </button>
           </div>
         </div>
       )}
 
       {/* TAHAP 2: REVIEW & EDIT DRAFT SOAL */}
-      {generatedQuestions && (
+      {generatedPackages && (
         <div className="space-y-6">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-indigo-50 p-4 rounded-xl border border-indigo-200">
             <div>
@@ -274,37 +394,72 @@ export default function ClientQuizGenerator({
                 <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 border border-indigo-200 font-semibold">
                   Model: {model || "free-tier"}
                 </span>
+                <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 font-semibold">
+                  {generatedPackages.length} Paket
+                </span>
               </div>
-              <p className="text-xs text-indigo-700 mt-0.5">Periksa dan koreksi redaksi soal atau kunci jawaban sebelum disimpan.</p>
+              <p className="text-xs text-indigo-700 mt-0.5">Periksa dan koreksi redaksi soal atau kunci jawaban per paket sebelum disimpan.</p>
             </div>
             <button 
               type="button"
-              onClick={() => setGeneratedQuestions(null)}
+              onClick={() => setGeneratedPackages(null)}
               className="text-xs px-3 py-1.5 bg-white text-gray-700 border border-indigo-200 rounded-lg hover:bg-gray-50 transition-colors font-medium self-start sm:self-auto shrink-0"
             >
               Ubah Parameter
             </button>
           </div>
 
+          {/* TABS UNTUK PAKET SOAL */}
+          {generatedPackages.length > 1 && (
+            <div className="flex flex-wrap gap-2 border-b border-gray-200 pb-0">
+              {generatedPackages.map((pkg, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => setActiveTab(idx)}
+                  className={`px-4 py-2.5 rounded-t-lg text-sm font-semibold transition-colors border-b-2 -mb-[2px] flex items-center gap-2 ${
+                    activeTab === idx 
+                      ? "bg-indigo-50/50 text-indigo-700 border-indigo-600" 
+                      : "bg-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50 border-transparent"
+                  }`}
+                >
+                  Paket {idx + 1}
+                  {savedPackages.includes(idx) && (
+                    <span className="material-symbols-outlined text-[14px] text-emerald-600 font-bold" title="Tersimpan">check</span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+
           <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm space-y-1.5">
-            <label className="block text-sm font-semibold text-gray-700">Nama Varian Kuis</label>
+            <label className="block text-sm font-semibold text-gray-700">
+              Nama Varian Kuis (Paket {activeTab + 1})
+            </label>
             <input 
               type="text" 
               className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
-              value={variantName}
-              onChange={(e) => setVariantName(e.target.value)}
+              value={generatedPackages[activeTab].variantName}
+              onChange={(e) => handleVariantNameChange(e.target.value)}
               placeholder="Contoh: Paket A - Soal AI Semester 1"
             />
           </div>
 
           {/* List Kartu Soal */}
           <div className="space-y-4">
-            {generatedQuestions.map((q, qIndex) => (
+            {generatedPackages[activeTab].questions.map((q, qIndex) => (
               <div key={qIndex} className="p-4 sm:p-5 bg-white border border-gray-200 rounded-xl shadow-sm space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded">
-                    Butir Soal #{qIndex + 1}
-                  </span>
+                  <div className="flex gap-2 items-center">
+                    <span className="text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded">
+                      Butir Soal #{qIndex + 1}
+                    </span>
+                    {q.packageTag && (
+                      <span className="text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-100 px-1.5 py-0.5 rounded">
+                        {q.packageTag}
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 <div>
@@ -357,25 +512,67 @@ export default function ClientQuizGenerator({
             ))}
           </div>
 
-          <div className="pt-2 flex flex-col sm:flex-row justify-end gap-3">
-            <button 
-              type="button"
-              onClick={() => setGeneratedQuestions(null)}
-              className="px-4 py-2.5 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-lg text-sm font-medium transition-colors"
-            >
-              Batal & Konfigurasi Ulang
-            </button>
-            <button 
-              type="button"
-              onClick={handleSave} 
-              disabled={isSaving}
-              className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2 shadow-sm disabled:opacity-50"
-            >
-              <span className="material-symbols-outlined text-lg">
-                {isSaving ? "sync" : "save"}
-              </span>
-              <span>{isSaving ? "Menyimpan ke Paket Kuis..." : "Simpan Sebagai Varian Kuis"}</span>
-            </button>
+          {/* Aksi Per Paket (Generate Ulang & Simpan) */}
+          <div className="pt-4 mt-4 border-t border-gray-100 flex flex-col gap-4">
+            <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+              <label className="block text-sm font-semibold text-gray-700 mb-1">
+                Catatan Perbaikan AI (Opsional)
+              </label>
+              <p className="text-xs text-gray-500 mb-3">
+                Jika ada soal yang kurang tepat, Anda bisa menuliskan instruksi tambahan dan melakukan generate ulang khusus untuk <strong>Paket {activeTab + 1}</strong>.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <input 
+                  type="text" 
+                  className="flex-1 px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                  placeholder="Contoh: Buat soalnya lebih sulit dan fokus ke bab 2"
+                  value={packageImprovements[activeTab] || ""}
+                  onChange={(e) => handleImprovementChange(activeTab, e.target.value)}
+                  disabled={isRegenerating || savedPackages.includes(activeTab)}
+                />
+                <button 
+                  type="button"
+                  onClick={() => handleRegeneratePackage(activeTab)} 
+                  disabled={isRegenerating || savedPackages.includes(activeTab)}
+                  className="px-4 py-2.5 bg-white border border-indigo-200 text-indigo-700 hover:bg-indigo-50 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2 shadow-sm disabled:opacity-50 shrink-0"
+                >
+                  <span className="material-symbols-outlined text-lg">
+                    {isRegenerating ? "autorenew" : "magic_button"}
+                  </span>
+                  <span>{isRegenerating ? "Memproses..." : "Generate Ulang Paket Ini"}</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
+              <button 
+                type="button"
+                onClick={() => setGeneratedPackages(null)}
+                className="px-4 py-2.5 text-gray-600 hover:text-gray-800 text-sm font-medium transition-colors w-full sm:w-auto text-left"
+              >
+                Batal & Buat Baru Semua
+              </button>
+
+              <button 
+                type="button"
+                onClick={() => handleSavePackage(activeTab)} 
+                disabled={savingTabIndex === activeTab || savedPackages.includes(activeTab)}
+                className={`px-6 py-2.5 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2 shadow-sm w-full sm:w-auto disabled:opacity-50 ${
+                  savedPackages.includes(activeTab)
+                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                    : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                }`}
+              >
+                <span className="material-symbols-outlined text-lg">
+                  {savedPackages.includes(activeTab) ? "check_circle" : (savingTabIndex === activeTab ? "sync" : "save")}
+                </span>
+                <span>
+                  {savedPackages.includes(activeTab) 
+                    ? "Paket Tersimpan" 
+                    : (savingTabIndex === activeTab ? "Menyimpan..." : "Simpan Paket Ini")}
+                </span>
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -391,7 +588,7 @@ export default function ClientQuizGenerator({
               Kuis Berhasil Disimpan!
             </h3>
             <p className="text-xs text-gray-600 mb-6 leading-relaxed">
-              Varian kuis <strong>{variantName}</strong> telah berhasil dibuat dan siap ditugaskan kepada siswa.
+              <strong>{generatedPackages?.length || 1} Varian kuis</strong> telah berhasil dibuat dan siap ditugaskan kepada siswa.
             </p>
             <button
               type="button"
