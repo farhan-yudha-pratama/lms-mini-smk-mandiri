@@ -2,6 +2,7 @@
 
 import Headbar from '@/components/Headbar';
 import Sidebar from '@/components/Sidebar';
+import QuizTrigger from '@/components/quiz-engine/QuizTrigger';
 import { useState } from 'react';
 
 export default function TeknisDatabasePage() {
@@ -219,6 +220,9 @@ export default function TeknisDatabasePage() {
                 </div>
               </div>
             </section>
+            
+            <QuizTrigger pageSlug="teknis-database-modern" />
+
             
             {/* Footer Nav */}
             <div className="flex justify-between items-center pt-8">

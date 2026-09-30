@@ -2,6 +2,7 @@
 
 import Headbar from '@/components/Headbar';
 import Sidebar from '@/components/Sidebar';
+import QuizTrigger from '@/components/quiz-engine/QuizTrigger';
 import { useState } from 'react';
 
 export default function KonsepDatabasePage() {
@@ -169,6 +170,9 @@ export default function KonsepDatabasePage() {
                 </div>
               </div>
             </section>
+            
+            <QuizTrigger pageSlug="konsep-database" />
+
             
             {/* Footer Nav */}
             <div className="flex justify-end pt-8">

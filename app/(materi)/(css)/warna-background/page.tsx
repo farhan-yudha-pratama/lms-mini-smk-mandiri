@@ -2,6 +2,7 @@
 
 import Headbar from '@/components/Headbar';
 import Sidebar from '@/components/Sidebar';
+import QuizTrigger from '@/components/quiz-engine/QuizTrigger';
 import CodeBlock from '@/components/CodeBlock';
 
 export default function WarnaBackgroundPage() {
@@ -177,6 +178,9 @@ export default function WarnaBackgroundPage() {
               </div>
 
             </section>
+
+            <QuizTrigger pageSlug="warna-background" />
+
 
             {/* Footer / Penutup */}
             <footer className="bg-jade-vibrant border-4 border-black p-8 md:p-12 shadow-neo-xl text-center relative hover:-translate-y-1 transition-transform">

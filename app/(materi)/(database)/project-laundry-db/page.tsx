@@ -2,6 +2,7 @@
 
 import Headbar from '@/components/Headbar';
 import Sidebar from '@/components/Sidebar';
+import QuizTrigger from '@/components/quiz-engine/QuizTrigger';
 import { useState } from 'react';
 
 export default function ProjectLaundryPage() {
@@ -206,6 +207,9 @@ export default function ProjectLaundryPage() {
                 </p>
               </div>
             </section>
+
+            <QuizTrigger pageSlug="project-laundry-db" />
+
 
             {/* Footer Nav */}
             <div className="flex flex-col sm:flex-row justify-between items-center pt-8 gap-4">

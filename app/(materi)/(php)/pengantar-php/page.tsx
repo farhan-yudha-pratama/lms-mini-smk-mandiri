@@ -2,6 +2,7 @@
 
 import Headbar from '@/components/Headbar';
 import Sidebar from '@/components/Sidebar';
+import QuizTrigger from '@/components/quiz-engine/QuizTrigger';
 import CodeBlock from '@/components/CodeBlock';
 import { useState } from 'react';
 
@@ -169,6 +170,9 @@ Halo Dunia!`}
                 </div>
               </div>
             </section>
+
+            <QuizTrigger pageSlug="pengantar-php" />
+
 
             {/* Footer Nav */}
             <div className="flex flex-col sm:flex-row justify-between items-center pt-8 gap-4">

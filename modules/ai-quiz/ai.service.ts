@@ -121,6 +121,7 @@ Format JSON jika Essay:
       },
       body: JSON.stringify({
         model: model,
+        max_tokens: 4000,
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: `Materi:\n\n${summaryText}\n\nBuatkan soalnya sekarang.` }
@@ -148,7 +149,14 @@ Format JSON jika Essay:
     // Bersihkan backticks markdown jika ada (misal: ```json ... ```)
     content = content.replace(/^```json\s*/, '').replace(/\s*```$/, '');
 
-    const parsed = JSON.parse(content);
+    let parsed;
+    try {
+      parsed = JSON.parse(content);
+    } catch (parseError: any) {
+      console.error("JSON Parse Error:", parseError, "Raw Content:", content);
+      throw new Error(`AI berhenti menghasilkan respons sebelum selesai (terpotong). Silakan ulangi generate atau kurangi jumlah soal.`);
+    }
+
     return {
       success: true,
       data: parsed.questions,
@@ -157,7 +165,7 @@ Format JSON jika Essay:
     console.error("AI Generation Error:", error);
     return {
       success: false,
-      message: error.message || "Gagal menghubungi AI (9Router). Silakan coba lagi.",
+      message: error.message || "Gagal menghubungi AI. Silakan coba lagi.",
     };
   }
 }
