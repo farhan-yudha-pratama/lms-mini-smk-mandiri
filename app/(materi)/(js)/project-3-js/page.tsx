@@ -2,6 +2,7 @@
 
 import Headbar from '@/components/Headbar';
 import Sidebar from '@/components/Sidebar';
+import QuizTrigger from '@/components/quiz-engine/QuizTrigger';
 import CodeBlock from '@/components/CodeBlock';
 import { useState } from 'react';
 
@@ -912,6 +913,9 @@ window.hapusSemua = function() {
                 </div>
               </div>
             </section>
+
+            <QuizTrigger pageSlug="project-3-js" />
+
 
             {/* Footer */}
             <div className="mt-8 mb-8 flex flex-col md:flex-row justify-between items-center gap-4 border-t-4 border-black pt-8">

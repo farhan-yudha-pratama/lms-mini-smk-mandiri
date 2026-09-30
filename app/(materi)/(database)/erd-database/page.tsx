@@ -2,6 +2,7 @@
 
 import Headbar from '@/components/Headbar';
 import Sidebar from '@/components/Sidebar';
+import QuizTrigger from '@/components/quiz-engine/QuizTrigger';
 import { useState } from 'react';
 
 export default function ErdDatabasePage() {
@@ -270,6 +271,9 @@ export default function ErdDatabasePage() {
 
               </div>
             </section>
+            
+            <QuizTrigger pageSlug="erd-database" />
+
             
             {/* Footer Nav */}
             <div className="flex justify-between items-center pt-8">

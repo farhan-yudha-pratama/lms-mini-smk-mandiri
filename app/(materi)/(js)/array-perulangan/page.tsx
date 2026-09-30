@@ -2,6 +2,7 @@
 
 import Headbar from '@/components/Headbar';
 import Sidebar from '@/components/Sidebar';
+import QuizTrigger from '@/components/quiz-engine/QuizTrigger';
 import CodeBlock from '@/components/CodeBlock';
 import { useState } from 'react';
 
@@ -334,6 +335,9 @@ for (let i = 0; i < dataKemampuan.length; i++) {
               </div>
 
             </section>
+
+            <QuizTrigger pageSlug="array-perulangan" />
+
 
             {/* Footer / Penutup */}
             <div className="mt-16 mb-8 flex flex-col md:flex-row justify-between items-center gap-4 border-t-4 border-black pt-8">

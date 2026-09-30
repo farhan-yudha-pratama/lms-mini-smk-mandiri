@@ -2,6 +2,7 @@
 
 import Headbar from '@/components/Headbar';
 import Sidebar from '@/components/Sidebar';
+import QuizTrigger from '@/components/quiz-engine/QuizTrigger';
 import CodeBlock from '@/components/CodeBlock';
 
 export default function SatuanUkuranPage() {
@@ -151,6 +152,9 @@ export default function SatuanUkuranPage() {
               </div>
 
             </section>
+
+            <QuizTrigger pageSlug="satuan-ukuran" />
+
 
             {/* Footer / Penutup */}
             <footer className="bg-pine-deep border-4 border-black p-8 md:p-12 shadow-neo-xl text-center relative hover:-translate-y-1 transition-transform">

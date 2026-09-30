@@ -2,6 +2,7 @@
 
 import Headbar from '@/components/Headbar';
 import Sidebar from '@/components/Sidebar';
+import QuizTrigger from '@/components/quiz-engine/QuizTrigger';
 import CodeBlock from '@/components/CodeBlock';
 
 export default function BoxModelPage() {
@@ -174,6 +175,9 @@ export default function BoxModelPage() {
               </div>
 
             </section>
+
+            <QuizTrigger pageSlug="box-model" />
+
 
             {/* Footer / Penutup */}
             <footer className="bg-jade-vibrant border-4 border-black p-6 md:p-12 shadow-neo-xl text-center relative rotate-1 hover:rotate-0 transition-transform">

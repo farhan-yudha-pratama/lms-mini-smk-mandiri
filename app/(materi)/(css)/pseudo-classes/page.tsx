@@ -2,6 +2,7 @@
 
 import Headbar from '@/components/Headbar';
 import Sidebar from '@/components/Sidebar';
+import QuizTrigger from '@/components/quiz-engine/QuizTrigger';
 import CodeBlock from '@/components/CodeBlock';
 
 export default function PseudoClassesPage() {
@@ -182,6 +183,9 @@ li:nth-child(3) {
               </div>
 
             </section>
+
+            <QuizTrigger pageSlug="pseudo-classes" />
+
 
             {/* Footer / Penutup */}
             <footer className="bg-jade-vibrant border-4 border-black p-8 md:p-12 shadow-neo-xl text-center relative hover:-translate-y-1 transition-transform">

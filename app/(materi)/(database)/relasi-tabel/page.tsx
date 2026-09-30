@@ -2,6 +2,7 @@
 
 import Headbar from '@/components/Headbar';
 import Sidebar from '@/components/Sidebar';
+import QuizTrigger from '@/components/quiz-engine/QuizTrigger';
 import { useState } from 'react';
 
 export default function RelasiTabelPage() {
@@ -229,6 +230,9 @@ export default function RelasiTabelPage() {
                 </div>
               </div>
             </section>
+
+            <QuizTrigger pageSlug="relasi-tabel" />
+
 
             {/* Footer Nav */}
             <div className="flex flex-col sm:flex-row justify-between items-center pt-8 gap-4">

@@ -2,6 +2,7 @@
 
 import Headbar from '@/components/Headbar';
 import Sidebar from '@/components/Sidebar';
+import QuizTrigger from '@/components/quiz-engine/QuizTrigger';
 import CodeBlock from '@/components/CodeBlock';
 import { useState } from 'react';
 
@@ -180,6 +181,9 @@ export default function PengenalanCSSPage() {
                 </div>
               </div>
             </section>
+
+            <QuizTrigger pageSlug="pengenalan-css" />
+
 
             {/* Footer / Penutup */}
             <footer className="bg-jade-vibrant border-4 border-black p-8 md:p-12 shadow-neo-xl text-center relative rotate-1 hover:rotate-0 transition-transform">
