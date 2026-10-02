@@ -40,6 +40,10 @@
       "model": "QuestionOption",
       "namespace": "public"
     },
+    "quizAntiCheatConfig": {
+      "model": "QuizAntiCheatConfig",
+      "namespace": "public"
+    },
     "quizAssignment": {
       "model": "QuizAssignment",
       "namespace": "public"
@@ -1236,6 +1240,84 @@
               "table": "questionOption"
             }
           },
+          "QuizAntiCheatConfig": {
+            "fields": {
+              "enableFullscreen": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/bool@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "preventCopyPaste": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/bool@1",
+                  "kind": "scalar"
+                }
+              },
+              "preventTabSwitch": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/bool@1",
+                  "kind": "scalar"
+                }
+              },
+              "quizVariantId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {
+              "variant": {
+                "cardinality": "N:1",
+                "nullable": false,
+                "on": {
+                  "localFields": [
+                    "quizVariantId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "QuizVariant",
+                  "namespace": "public"
+                }
+              }
+            },
+            "storage": {
+              "fields": {
+                "enableFullscreen": {
+                  "column": "enableFullscreen"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "preventCopyPaste": {
+                  "column": "preventCopyPaste"
+                },
+                "preventTabSwitch": {
+                  "column": "preventTabSwitch"
+                },
+                "quizVariantId": {
+                  "column": "quizVariantId"
+                }
+              },
+              "namespaceId": "public",
+              "table": "quizAntiCheatConfig"
+            }
+          },
           "QuizAssignment": {
             "fields": {
               "assignedAt": {
@@ -1938,6 +2020,22 @@
               }
             },
             "relations": {
+              "antiCheatConfig": {
+                "cardinality": "1:1",
+                "nullable": true,
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "quizVariantId"
+                  ]
+                },
+                "to": {
+                  "model": "QuizAntiCheatConfig",
+                  "namespace": "public"
+                }
+              },
               "assignments": {
                 "cardinality": "1:N",
                 "on": {
@@ -3490,6 +3588,79 @@
               },
               "uniques": []
             },
+            "quizAntiCheatConfig": {
+              "columns": {
+                "enableFullscreen": {
+                  "codecId": "pg/bool@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": true
+                  },
+                  "nativeType": "bool",
+                  "nullable": false
+                },
+                "id": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "preventCopyPaste": {
+                  "codecId": "pg/bool@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": true
+                  },
+                  "nativeType": "bool",
+                  "nullable": false
+                },
+                "preventTabSwitch": {
+                  "codecId": "pg/bool@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": true
+                  },
+                  "nativeType": "bool",
+                  "nullable": false
+                },
+                "quizVariantId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [
+                {
+                  "onDelete": "cascade",
+                  "source": {
+                    "columns": [
+                      "quizVariantId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "quizAntiCheatConfig"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "quizVariant"
+                  }
+                }
+              ],
+              "indexes": [],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": [
+                {
+                  "columns": [
+                    "quizVariantId"
+                  ]
+                }
+              ]
+            },
             "quizAssignment": {
               "columns": {
                 "assignedAt": {
@@ -4632,10 +4803,10 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "300643908e8b0d5a8758fa83adb133f00907274ec393f99951d8bff767913002"
+    "storageHash": "77bb90323aa50f4e3ffa179396b2faf96ab6d8722536707ccdb68c1b21c4b58c"
   },
   "execution": {
-    "executionHash": "86fd5ca411e3c59e4c7970090670dd88ed5c7a90e87636cd0e2f1bb5c3627c31",
+    "executionHash": "29f4bac2ba348759a4304b1941a5cec37d06fdabd5b379556c4d27aa6756d044",
     "mutations": {
       "defaults": [
         {
@@ -4814,6 +4985,17 @@
             "column": "id",
             "namespace": "public",
             "table": "questionOption"
+          }
+        },
+        {
+          "onCreate": {
+            "id": "uuidv4",
+            "kind": "generator"
+          },
+          "ref": {
+            "column": "id",
+            "namespace": "public",
+            "table": "quizAntiCheatConfig"
           }
         },
         {

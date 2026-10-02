@@ -200,6 +200,8 @@ export default function QuizEngineModal({
   // Anti-Cheat Event Listeners (Armed only when quizStage === 'ACTIVE')
   useEffect(() => {
     if (quizStage !== 'ACTIVE' || submittingRef.current || cheatingRef.current) return;
+    
+    const config = data?.antiCheatConfig;
 
     // Detect exiting fullscreen
     const handleFullscreenChange = () => {
@@ -218,7 +220,6 @@ export default function QuizEngineModal({
     };
 
     // Detect window blur (losing focus) with 500ms debounce
-    // This prevents false positive triggers in Google Chrome during transient focus shifts
     const handleBlur = () => {
       if (!isArmedRef.current || submittingRef.current || cheatingRef.current) return;
       if (isInternalModalOpenRef.current) return;
@@ -226,7 +227,7 @@ export default function QuizEngineModal({
       if (blurTimeoutRef.current) clearTimeout(blurTimeoutRef.current);
       blurTimeoutRef.current = setTimeout(() => {
         if (isArmedRef.current && !submittingRef.current && !cheatingRef.current && !isInternalModalOpenRef.current) {
-          if (document.hidden || !getFullscreenElement() || !document.hasFocus()) {
+          if (document.hidden || (!getFullscreenElement() && config?.enableFullscreen && isFullscreenSupported()) || !document.hasFocus()) {
             submitCheater('Layar kehilangan fokus atau beralih ke aplikasi lain');
           }
         }
@@ -245,141 +246,149 @@ export default function QuizEngineModal({
 
     // Prevent shortcuts and developer inspection
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Prevent F11 (browser fullscreen toggle) and F12 (DevTools)
-      if (e.key === 'F11' || e.key === 'F12') {
+      if (e.key === 'F11' && config?.enableFullscreen) {
         e.preventDefault();
         return;
       }
-
-      // Prevent Inspect Shortcuts: Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+Shift+C
+      if (e.key === 'F12') {
+        e.preventDefault();
+        return;
+      }
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && ['I', 'i', 'J', 'j', 'C', 'c'].includes(e.key)) {
         e.preventDefault();
         return;
       }
-
-      // Prevent View Source: Ctrl+U
       if ((e.ctrlKey || e.metaKey) && (e.key === 'u' || e.key === 'U')) {
         e.preventDefault();
         return;
       }
-
-      // Prevent Tab Switching Shortcuts: Ctrl+Tab, Ctrl+W, Ctrl+T
       if ((e.ctrlKey || e.metaKey) && ['t', 'T', 'w', 'W', 'Tab'].includes(e.key)) {
         e.preventDefault();
         return;
       }
     };
 
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
-    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
-    document.addEventListener('mozfullscreenchange', handleFullscreenChange);
-    document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+    if (config?.enableFullscreen) {
+      document.addEventListener('fullscreenchange', handleFullscreenChange);
+      document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+      document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+      document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+    }
 
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('blur', handleBlur);
-    window.addEventListener('focus', handleFocus);
+    if (config?.preventTabSwitch) {
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+      window.addEventListener('blur', handleBlur);
+      window.addEventListener('focus', handleFocus);
+    }
 
-    document.addEventListener('contextmenu', handleContextMenu);
-    document.addEventListener('keydown', handleKeyDown);
+    if (config?.preventCopyPaste) {
+      document.addEventListener('contextmenu', handleContextMenu);
+      document.addEventListener('keydown', handleKeyDown);
+    }
 
     return () => {
       if (blurTimeoutRef.current) {
         clearTimeout(blurTimeoutRef.current);
         blurTimeoutRef.current = null;
       }
-      document.removeEventListener('fullscreenchange', handleFullscreenChange);
-      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
-      document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
-      document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
-
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('blur', handleBlur);
-      window.removeEventListener('focus', handleFocus);
-
-      document.removeEventListener('contextmenu', handleContextMenu);
-      document.removeEventListener('keydown', handleKeyDown);
+      if (config?.enableFullscreen) {
+        document.removeEventListener('fullscreenchange', handleFullscreenChange);
+        document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+        document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
+        document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
+      }
+      if (config?.preventTabSwitch) {
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+        window.removeEventListener('blur', handleBlur);
+        window.removeEventListener('focus', handleFocus);
+      }
+      if (config?.preventCopyPaste) {
+        document.removeEventListener('contextmenu', handleContextMenu);
+        document.removeEventListener('keydown', handleKeyDown);
+      }
     };
-  }, [quizStage, submitCheater]);
+  }, [quizStage, submitCheater, data?.antiCheatConfig]);
 
   // Handle Fullscreen Permission Request & Quiz Start
   const handleStartQuiz = async () => {
-    if (!isFullscreenSupported()) {
-      isInternalModalOpenRef.current = true;
-      setModalConfig({
-        isOpen: true,
-        type: 'warning',
-        title: 'Layar Penuh Tidak Didukung',
-        message: 'Browser Anda tidak mendukung fitur Layar Penuh. Silakan gunakan Google Chrome versi terbaru di perangkat desktop atau laptop untuk mengerjakan kuis.',
-        confirmText: 'Mengerti',
-        onConfirm: () => {
-          setModalConfig(null);
-          isInternalModalOpenRef.current = false;
-        }
-      });
-      return;
-    }
+    const requiresFullscreen = data?.antiCheatConfig?.enableFullscreen;
 
-    // Request fullscreen upon user click gesture
-    const success = await requestFullscreen(document.documentElement);
-
-    if (!success) {
-      isInternalModalOpenRef.current = true;
-      setModalConfig({
-        isOpen: true,
-        type: 'warning',
-        title: 'Izin Layar Penuh Diperlukan',
-        message: (
-          <div className="space-y-2">
-            <p>
-              Google Chrome memblokir atau gagal mengaktifkan mode Layar Penuh.
-            </p>
-            <p className="text-xs text-gray-600">
-              Pastikan Anda mengizinkan mode layar penuh pada peramban ini lalu klik <strong>Coba Lagi</strong>.
-            </p>
-          </div>
-        ),
-        confirmText: 'Coba Lagi',
-        cancelText: 'Batal',
-        onConfirm: () => {
-          setModalConfig(null);
-          isInternalModalOpenRef.current = false;
-          handleStartQuiz();
-        },
-        onCancel: () => {
-          setModalConfig(null);
-          isInternalModalOpenRef.current = false;
-        }
-      });
-      return;
-    }
-
-    // Enter PREPARING stage (Grace Period to settle Chrome UI toast & window focus)
-    setQuizStage('PREPARING');
-    window.focus();
-
-    // 1500ms grace period to let Chrome's fullscreen toast settle
-    setTimeout(() => {
-      if (getFullscreenElement()) {
+    if (requiresFullscreen) {
+      if (!isFullscreenSupported()) {
+        // Fallback for devices that don't support fullscreen API (e.g. iOS Safari)
         setQuizStage('ACTIVE');
         isArmedRef.current = true;
         window.focus();
-      } else {
-        // Fullscreen was dismissed during preparation
-        setQuizStage('PRE_START');
+        return;
+      }
+
+      // Request fullscreen upon user click gesture
+      const success = await requestFullscreen(document.documentElement);
+
+      if (!success) {
         isInternalModalOpenRef.current = true;
         setModalConfig({
           isOpen: true,
           type: 'warning',
-          title: 'Layar Penuh Terputus',
-          message: 'Mode Layar Penuh belum aktif sempurna. Silakan klik tombol di bawah untuk memulai kembali.',
+          title: 'Izin Layar Penuh Diperlukan',
+          message: (
+            <div className="space-y-2">
+              <p>
+                Google Chrome memblokir atau gagal mengaktifkan mode Layar Penuh.
+              </p>
+              <p className="text-xs text-gray-600">
+                Pastikan Anda mengizinkan mode layar penuh pada peramban ini lalu klik <strong>Coba Lagi</strong>.
+              </p>
+            </div>
+          ),
           confirmText: 'Coba Lagi',
+          cancelText: 'Batal',
           onConfirm: () => {
+            setModalConfig(null);
+            isInternalModalOpenRef.current = false;
+            handleStartQuiz();
+          },
+          onCancel: () => {
             setModalConfig(null);
             isInternalModalOpenRef.current = false;
           }
         });
+        return;
       }
-    }, 1500);
+
+      // Enter PREPARING stage (Grace Period to settle Chrome UI toast & window focus)
+      setQuizStage('PREPARING');
+      window.focus();
+
+      // 1500ms grace period to let Chrome's fullscreen toast settle
+      setTimeout(() => {
+        if (getFullscreenElement()) {
+          setQuizStage('ACTIVE');
+          isArmedRef.current = true;
+          window.focus();
+        } else {
+          // Fullscreen was dismissed during preparation
+          setQuizStage('PRE_START');
+          isInternalModalOpenRef.current = true;
+          setModalConfig({
+            isOpen: true,
+            type: 'warning',
+            title: 'Layar Penuh Terputus',
+            message: 'Mode Layar Penuh belum aktif sempurna. Silakan klik tombol di bawah untuk memulai kembali.',
+            confirmText: 'Coba Lagi',
+            onConfirm: () => {
+              setModalConfig(null);
+              isInternalModalOpenRef.current = false;
+            }
+          });
+        }
+      }, 1500);
+    } else {
+      // If fullscreen is not required, just start immediately
+      setQuizStage('ACTIVE');
+      isArmedRef.current = true;
+      window.focus();
+    }
   };
 
   // Submission Flow with Modal Confirmation
@@ -465,15 +474,21 @@ export default function QuizEngineModal({
       submittingRef.current = false;
       isArmedRef.current = true;
       isInternalModalOpenRef.current = true;
+      const isAlreadyCompleted = (res as any).message === 'Kuis telah diselesaikan' || (res as any).message === 'Status kuis tidak valid';
       setModalConfig({
         isOpen: true,
         type: 'error',
-        title: 'Gagal Mengumpulkan',
-        message: (res as any).message || 'Terjadi kesalahan saat mengumpulkan kuis. Silakan periksa koneksi dan coba lagi.',
+        title: isAlreadyCompleted ? 'Kuis Sudah Terkumpul' : 'Gagal Mengumpulkan',
+        message: isAlreadyCompleted 
+          ? 'Kuis ini sudah diselesaikan sebelumnya. Memperbarui status...' 
+          : ((res as any).message || 'Terjadi kesalahan saat mengumpulkan kuis. Silakan periksa koneksi dan coba lagi.'),
         confirmText: 'Mengerti',
         onConfirm: () => {
           setModalConfig(null);
           isInternalModalOpenRef.current = false;
+          if (isAlreadyCompleted) {
+             onComplete(0, false); // Fallback data, handleComplete will refresh state
+          }
         }
       });
     }
@@ -511,59 +526,74 @@ export default function QuizEngineModal({
             
             <div className="space-y-3">
               {/* 1. Fullscreen Permission */}
-              <div className="flex items-start justify-between gap-3 bg-[#F4F0EA] border-2 border-black p-3">
-                <div className="flex items-start gap-2.5">
-                  <span className="material-symbols-outlined text-lg mt-0.5">fullscreen</span>
-                  <div>
-                    <div className="font-bold text-sm">Mode Layar Penuh (Fullscreen)</div>
-                    <div className="text-xs text-gray-600">Google Chrome memerlukan izin layar penuh untuk mencegah kecurangan.</div>
+              {data.antiCheatConfig?.enableFullscreen && (
+                <div className="flex items-start justify-between gap-3 bg-[#F4F0EA] border-2 border-black p-3">
+                  <div className="flex items-start gap-2.5">
+                    <span className="material-symbols-outlined text-lg mt-0.5">fullscreen</span>
+                    <div>
+                      <div className="font-bold text-sm">Mode Layar Penuh (Fullscreen)</div>
+                      <div className="text-xs text-gray-600">Google Chrome memerlukan izin layar penuh untuk mencegah kecurangan.</div>
+                    </div>
                   </div>
+                  <span className={`shrink-0 px-2.5 py-1 text-xs font-black uppercase border border-black ${fullscreenSupported ? 'bg-emerald-300 text-black' : 'bg-red-400 text-white'}`}>
+                    {fullscreenSupported ? 'Siap' : 'Tidak Didukung'}
+                  </span>
                 </div>
-                <span className={`shrink-0 px-2.5 py-1 text-xs font-black uppercase border border-black ${fullscreenSupported ? 'bg-emerald-300 text-black' : 'bg-red-400 text-white'}`}>
-                  {fullscreenSupported ? 'Siap' : 'Tidak Didukung'}
-                </span>
-              </div>
+              )}
 
               {/* 2. Anti-cheat / Tab Switching */}
-              <div className="flex items-start justify-between gap-3 bg-[#F4F0EA] border-2 border-black p-3">
-                <div className="flex items-start gap-2.5">
-                  <span className="material-symbols-outlined text-lg mt-0.5">tab_close</span>
-                  <div>
-                    <div className="font-bold text-sm">Deteksi Pindah Tab & Aplikasi</div>
-                    <div className="text-xs text-gray-600">Berpindah tab atau meminimalkan browser akan otomatis menggagalkan ujian (Nilai 0).</div>
+              {data.antiCheatConfig?.preventTabSwitch && (
+                <div className="flex items-start justify-between gap-3 bg-[#F4F0EA] border-2 border-black p-3">
+                  <div className="flex items-start gap-2.5">
+                    <span className="material-symbols-outlined text-lg mt-0.5">tab_close</span>
+                    <div>
+                      <div className="font-bold text-sm">Deteksi Pindah Tab & Aplikasi</div>
+                      <div className="text-xs text-gray-600">Berpindah tab atau meminimalkan browser akan otomatis menggagalkan ujian (Nilai 0).</div>
+                    </div>
                   </div>
+                  <span className="shrink-0 px-2.5 py-1 text-xs font-black uppercase bg-emerald-300 text-black border border-black">
+                    Aktif
+                  </span>
                 </div>
-                <span className="shrink-0 px-2.5 py-1 text-xs font-black uppercase bg-emerald-300 text-black border border-black">
-                  Aktif
-                </span>
-              </div>
+              )}
 
               {/* 3. Keyboard / Mouse Protection */}
-              <div className="flex items-start justify-between gap-3 bg-[#F4F0EA] border-2 border-black p-3">
-                <div className="flex items-start gap-2.5">
-                  <span className="material-symbols-outlined text-lg mt-0.5">lock</span>
-                  <div>
-                    <div className="font-bold text-sm">Proteksi Input & Tombol Pintasan</div>
-                    <div className="text-xs text-gray-600">Klik kanan dan shortcut inspect telah dinonaktifkan.</div>
+              {data.antiCheatConfig?.preventCopyPaste && (
+                <div className="flex items-start justify-between gap-3 bg-[#F4F0EA] border-2 border-black p-3">
+                  <div className="flex items-start gap-2.5">
+                    <span className="material-symbols-outlined text-lg mt-0.5">lock</span>
+                    <div>
+                      <div className="font-bold text-sm">Proteksi Input & Tombol Pintasan</div>
+                      <div className="text-xs text-gray-600">Klik kanan dan shortcut inspect telah dinonaktifkan.</div>
+                    </div>
                   </div>
+                  <span className="shrink-0 px-2.5 py-1 text-xs font-black uppercase bg-emerald-300 text-black border border-black">
+                    Aktif
+                  </span>
                 </div>
-                <span className="shrink-0 px-2.5 py-1 text-xs font-black uppercase bg-emerald-300 text-black border border-black">
-                  Aktif
-                </span>
-              </div>
+              )}
+
+              {(!data.antiCheatConfig?.enableFullscreen && !data.antiCheatConfig?.preventTabSwitch && !data.antiCheatConfig?.preventCopyPaste) && (
+                <div className="p-3 text-sm font-bold text-gray-600 text-center italic">
+                  Tidak ada batasan Anti-Cheat yang diaktifkan untuk kuis ini.
+                </div>
+              )}
             </div>
           </div>
 
           {/* Warning Banner */}
-          <div className="bg-yellow-100 border-4 border-black p-4 mb-6 text-left">
-            <div className="flex items-center gap-2 text-red-600 font-black text-sm uppercase mb-1">
-              <span className="material-symbols-outlined text-base">warning</span>
-              Aturan Ketat
+          {(data.antiCheatConfig?.enableFullscreen || data.antiCheatConfig?.preventTabSwitch) && (
+            <div className="bg-yellow-100 border-4 border-black p-4 mb-6 text-left">
+              <div className="flex items-center gap-2 text-red-600 font-black text-sm uppercase mb-1">
+                <span className="material-symbols-outlined text-base">warning</span>
+                Aturan Ketat
+              </div>
+              <p className="text-xs md:text-sm font-bold text-gray-800 leading-relaxed">
+                {data.antiCheatConfig?.enableFullscreen && "Saat Anda mengklik tombol di bawah, browser akan meminta izin untuk beralih ke Mode Layar Penuh. "}
+                {data.antiCheatConfig?.preventTabSwitch && "Pastikan Anda tidak keluar atau berpindah tab sampai seluruh jawaban dikumpulkan."}
+              </p>
             </div>
-            <p className="text-xs md:text-sm font-bold text-gray-800 leading-relaxed">
-              Saat Anda mengklik tombol di bawah, browser akan meminta izin untuk beralih ke Mode Layar Penuh. Pastikan Anda tidak keluar atau berpindah tab sampai seluruh jawaban dikumpulkan.
-            </p>
-          </div>
+          )}
 
           <div className="flex flex-col sm:flex-row gap-3">
             <button 
@@ -576,10 +606,11 @@ export default function QuizEngineModal({
             <button 
               type="button"
               onClick={handleStartQuiz}
-              disabled={!fullscreenSupported}
-              className="w-full sm:w-2/3 bg-black text-white font-black uppercase text-base md:text-lg py-4 border-4 border-black hover:bg-white hover:text-black transition-colors shadow-neo-sm hover:-translate-y-0.5 disabled:opacity-50"
+              className="w-full sm:w-2/3 bg-black text-white font-black uppercase text-base md:text-lg py-4 border-4 border-black hover:bg-white hover:text-black transition-colors shadow-neo-sm hover:-translate-y-0.5"
             >
-              Izinkan Layar Penuh & Mulai Kuis
+              {data.antiCheatConfig?.enableFullscreen && fullscreenSupported 
+                ? 'Izinkan Layar Penuh & Mulai' 
+                : 'Mulai Kuis'}
             </button>
           </div>
         </div>
@@ -697,7 +728,8 @@ export default function QuizEngineModal({
                       value={answers[currentQ.id] || ''}
                       onChange={(e) => setAnswers(prev => ({ ...prev, [currentQ.id]: e.target.value }))}
                       placeholder="Tuliskan penjelasan dan uraian jawaban Anda di sini secara lengkap..."
-                      className="w-full p-4 border-2 border-black focus:ring-2 focus:ring-black outline-none font-sans text-sm md:text-base leading-relaxed bg-[#FFFDF9] resize-y"
+                      disabled={submitting || cheatingWarning}
+                      className="w-full p-4 border-2 border-black focus:ring-2 focus:ring-black outline-none font-sans text-sm md:text-base leading-relaxed bg-[#FFFDF9] resize-y disabled:opacity-50 disabled:cursor-not-allowed"
                     />
                     <div className="p-3 bg-yellow-50 border border-black/20 text-xs font-medium text-gray-700 flex items-center gap-2">
                       <span className="material-symbols-outlined text-sm text-yellow-700">info</span>
@@ -708,18 +740,20 @@ export default function QuizEngineModal({
                   <div className="space-y-3">
                     {currentQ.options.map((opt: any) => {
                       const isSelected = answers[currentQ.id] === opt.id;
+                      const isDisabled = submitting || cheatingWarning;
                       return (
                         <label 
                           key={opt.id} 
-                          className={`block border-2 border-black p-4 cursor-pointer transition-colors ${
+                          className={`block border-2 border-black p-4 transition-colors ${
                             isSelected ? 'bg-black text-white' : 'bg-white hover:bg-gray-50'
-                          }`}
+                          } ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                         >
                           <input 
                             type="radio" 
                             name={`q-${currentQ.id}`} 
                             className="hidden"
                             checked={isSelected}
+                            disabled={isDisabled}
                             onChange={() => setAnswers(prev => ({ ...prev, [currentQ.id]: opt.id }))}
                           />
                           <span className="font-medium">{opt.text}</span>

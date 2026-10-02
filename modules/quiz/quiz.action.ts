@@ -7,7 +7,8 @@ import {
   deleteQuizPackage,
   createQuizVariant,
   updateQuizVariant,
-  deleteQuizVariant
+  deleteQuizVariant,
+  updateAntiCheatConfig
 } from './quiz.service';
 import { 
   createQuestion, 
@@ -172,5 +173,18 @@ export async function deleteQuizVariantAction(id: string, packageId: string) {
     return { success: true };
   } catch (error) {
     return { success: false, message: error instanceof Error ? error.message : 'Gagal menghapus varian' };
+  }
+}
+
+export async function updateAntiCheatAction(
+  quizVariantId: string, 
+  config: { enableFullscreen: boolean; preventTabSwitch: boolean; preventCopyPaste: boolean }
+) {
+  try {
+    await updateAntiCheatConfig(quizVariantId, config);
+    revalidatePath(`/dashboard/quizzes/variants/${quizVariantId}/questions`);
+    return { success: true };
+  } catch (error) {
+    return { success: false, message: error instanceof Error ? error.message : 'Gagal menyimpan Anti-Cheat' };
   }
 }

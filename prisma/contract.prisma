@@ -154,6 +154,17 @@ model QuizPackage {
   assignments     QuizAssignment[]
 }
 
+// Konfigurasi Anti-Cheat terpisah per Varian Kuis
+model QuizAntiCheatConfig {
+  id               String       @id @default(uuid())
+  quizVariantId    String       @unique
+  enableFullscreen Boolean      @default(true) // Mengharuskan mode layar penuh
+  preventTabSwitch Boolean      @default(true) // Memaksa skor 0 jika pindah tab/minimize
+  preventCopyPaste Boolean      @default(true) // Memblokir klik kanan, copy, paste, & inspect
+  
+  variant          QuizVariant  @relation(fields: [quizVariantId], references: [id], onDelete: Cascade)
+}
+
 model QuizVariant {
   id             String   @id @default(uuid())
   quizPackageId  String
@@ -165,6 +176,7 @@ model QuizVariant {
   questions      Question[]
   attempts        QuizAttempt[]
   assignments     QuizAssignment[]
+  antiCheatConfig QuizAntiCheatConfig?
 }
 
 model Question {

@@ -40,20 +40,36 @@ export async function getQuizQuestionsAction(attemptId: string) {
   }
 }
 
+import { submitQuizSchema } from './quiz-engine.schema';
+
 export async function submitQuizAction(
-  attemptId: string, 
-  answers: { questionId: string; optionId?: string; essayAnswer?: string }[], 
-  forcedScoreZero: boolean = false
+  rawAttemptId: string, 
+  rawAnswers: { questionId: string; optionId?: string; essayAnswer?: string }[], 
+  rawForcedScoreZero: boolean = false
 ) {
   const session = await getUserSession();
   if (!session) return { success: false, message: 'Unauthorized' };
   
   try {
-    const result = await submitQuiz(attemptId, session.userId, answers, forcedScoreZero);
-    // We should revalidate all pages so the unlocked ones become accessible in the sidebar
+    const validated = submitQuizSchema.parse({
+      attemptId: rawAttemptId,
+      answers: rawAnswers,
+      forcedScoreZero: rawForcedScoreZero
+    });
+
+    const result = await submitQuiz(validated.attemptId, session.userId, validated.answers, validated.forcedScoreZero);
+    
+    // Invalidate specific page cache and layout
+    if (result.categorySlug && result.pageSlug) {
+      revalidatePath(`/materi/${result.categorySlug}/${result.pageSlug}`, 'page');
+    }
     revalidatePath('/', 'layout');
+    
     return { success: true, ...result };
   } catch (error) {
-    return { success: false, message: error instanceof Error ? error.message : 'Gagal submit kuis' };
+    if (error instanceof Error) {
+      return { success: false, message: error.message };
+    }
+    return { success: false, message: 'Gagal submit kuis' };
   }
 }
