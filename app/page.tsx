@@ -17,7 +17,7 @@ export default async function Page() {
   // Fake userId mapping for now since session only has email usually, unless it's properly set
   const userId = session?.userId || "";
 
-  let courses = [];
+  let courses: any[] = [];
   if (isSuperAdmin) {
     courses = await getCourses();
   } else if (userId) {
