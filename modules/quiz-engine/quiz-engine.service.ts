@@ -27,12 +27,19 @@ export async function getQuizStatus(pageSlug: string, studentId: string) {
   const rawQuestions = await db.orm.public.Question.where({ quizVariantId: assignment.quizVariantId }).all();
   const hasEssay = rawQuestions.some(q => q.questionType === 'ESSAY');
 
+  const antiCheatRow = await db.orm.public.QuizAntiCheatConfig.where({ quizVariantId: assignment.quizVariantId }).first();
+  const antiCheatConfig = antiCheatRow || {
+    enableFullscreen: true,
+    preventTabSwitch: true,
+    preventCopyPaste: true
+  };
+
   if (!attempt) {
-    return { status: 'READY', assignmentId: assignment.id, packageTitle: pkg.title, hasEssay };
+    return { status: 'READY', assignmentId: assignment.id, packageTitle: pkg.title, hasEssay, antiCheatConfig };
   }
 
   if (attempt.status === 'IN_PROGRESS') {
-    return { status: 'IN_PROGRESS', attemptId: attempt.id, packageTitle: pkg.title, hasEssay };
+    return { status: 'IN_PROGRESS', attemptId: attempt.id, packageTitle: pkg.title, hasEssay, antiCheatConfig };
   }
 
   const needsReview = hasEssay && attempt.status === 'COMPLETED';
@@ -45,7 +52,8 @@ export async function getQuizStatus(pageSlug: string, studentId: string) {
     passingScore: pkg.passingScore,
     packageTitle: pkg.title,
     hasEssay,
-    needsReview
+    needsReview,
+    antiCheatConfig
   };
 }
 
@@ -104,12 +112,20 @@ export async function getQuizEngineData(attemptId: string, studentId: string) {
     });
   }
 
+  const antiCheatRow = await db.orm.public.QuizAntiCheatConfig.where({ quizVariantId: variant.id }).first();
+  const antiCheatConfig = antiCheatRow || {
+    enableFullscreen: true,
+    preventTabSwitch: true,
+    preventCopyPaste: true
+  };
+
   return {
     attemptId,
     title: pkg.title,
     timeLimit: pkg.timeLimit,
     startedAt: attempt.startedAt,
-    questions: safeQuestions
+    questions: safeQuestions,
+    antiCheatConfig
   };
 }
 
@@ -119,104 +135,137 @@ export async function submitQuiz(
   answers: { questionId: string; optionId?: string; essayAnswer?: string }[], 
   forcedScoreZero = false
 ) {
-  const attempt = await db.orm.public.QuizAttempt.where({ id: attemptId }).first();
-  if (!attempt || attempt.studentId !== studentId) throw new Error('Attempt tidak valid');
-  if (attempt.status !== 'IN_PROGRESS') throw new Error('Kuis sudah di-submit');
-
-  const variant = await db.orm.public.QuizVariant.where({ id: attempt.quizVariantId }).first();
-  const pkg = await db.orm.public.QuizPackage.where({ id: variant!.quizPackageId }).first();
-
-  let totalScore = 0;
-  let maxPossibleScore = 0;
-
-  const rawQuestions = await db.orm.public.Question.where({ quizVariantId: variant!.id }).all();
-  const hasEssay = rawQuestions.some(q => q.questionType === 'ESSAY');
-
-  for (const q of rawQuestions) {
-    maxPossibleScore += q.points;
-    const studentAns = answers.find(a => a.questionId === q.id);
-    let pointsEarned = 0;
-    let isCorrect: boolean | null = false;
-
-    if (q.questionType === 'PILIHAN_GANDA') {
-      if (studentAns && studentAns.optionId && !forcedScoreZero) {
-        const option = await db.orm.public.QuestionOption.where({ id: studentAns.optionId }).first();
-        if (option && option.isCorrect) {
-          isCorrect = true;
-          pointsEarned = q.points;
-          totalScore += q.points;
-        }
-      }
-
-      await db.orm.public.StudentAnswer.create({
-        id: randomUUID(),
-        quizAttemptId: attemptId,
-        questionId: q.id,
-        selectedOptionId: studentAns?.optionId || null,
-        essayAnswer: null,
-        isCorrect,
-        pointsEarned
-      });
-    } else if (q.questionType === 'ESSAY') {
-      // Essay question: initial pointsEarned is 0, isCorrect is null pending manual teacher review
-      await db.orm.public.StudentAnswer.create({
-        id: randomUUID(),
-        quizAttemptId: attemptId,
-        questionId: q.id,
-        selectedOptionId: null,
-        essayAnswer: studentAns?.essayAnswer?.trim() || null,
-        isCorrect: null,
-        pointsEarned: 0
-      });
+  return await db.transaction(async (tx) => {
+    const attempt = await tx.orm.public.QuizAttempt.where({ id: attemptId }).first();
+    if (!attempt || attempt.studentId !== studentId) throw new Error('Attempt tidak valid');
+    if (attempt.status === 'COMPLETED' || attempt.status === 'GRADED') {
+      throw new Error('Kuis telah diselesaikan');
     }
-  }
+    if (attempt.status !== 'IN_PROGRESS') throw new Error('Status kuis tidak valid');
 
-  const finalScore = forcedScoreZero ? 0 : (maxPossibleScore > 0 ? (totalScore / maxPossibleScore) * 100 : 0);
-  const roundedScore = Math.round(finalScore * 100) / 100;
+    const variant = await tx.orm.public.QuizVariant.where({ id: attempt.quizVariantId }).first();
+    const pkg = await tx.orm.public.QuizPackage.where({ id: variant!.quizPackageId }).first();
+    
+    // Fetch slugs for revalidation
+    const page = await tx.orm.public.Page.where({ id: pkg!.pageId }).first();
+    const category = await tx.orm.public.MaterialCategory.where({ id: page!.categoryId }).first();
+    const pageSlug = page?.slug;
+    const categorySlug = category?.slug;
 
-  // Status is COMPLETED (if essay present, it will await teacher review/grading to become GRADED)
-  await db.orm.public.QuizAttempt.where({ id: attemptId }).update({
-    score: roundedScore,
-    status: 'COMPLETED',
-    finishedAt: new Date().toISOString()
-  });
+    let totalScore = 0;
+    let maxPossibleScore = 0;
 
-  // UNLOCKING LOGIC
-  const passed = roundedScore >= pkg!.passingScore;
-  if (passed) {
-    // Find pages that require this page as prerequisite
-    const sequences = await db.orm.public.PageSequence.where({ prerequisitePageId: pkg!.pageId }).all();
-    for (const seq of sequences) {
-      // Upsert PageAccess to UNLOCKED
-      const existingAccess = await db.orm.public.PageAccess.where({ 
-        pageId: seq.pageId, 
-        studentId 
+    const rawQuestions = await tx.orm.public.Question.where({ quizVariantId: variant!.id }).all();
+    const hasEssay = rawQuestions.some(q => q.questionType === 'ESSAY');
+
+    for (const q of rawQuestions) {
+      maxPossibleScore += q.points;
+      const studentAns = answers.find(a => a.questionId === q.id);
+      let pointsEarned = 0;
+      let isCorrect: boolean | null = false;
+
+      if (q.questionType === 'PILIHAN_GANDA') {
+        if (studentAns && studentAns.optionId && !forcedScoreZero) {
+          const option = await tx.orm.public.QuestionOption.where({ id: studentAns.optionId }).first();
+          if (option && option.isCorrect) {
+            isCorrect = true;
+            pointsEarned = q.points;
+            totalScore += q.points;
+          }
+        }
+
+        await tx.orm.public.StudentAnswer.create({
+          id: randomUUID(),
+          quizAttemptId: attemptId,
+          questionId: q.id,
+          selectedOptionId: studentAns?.optionId || null,
+          essayAnswer: null,
+          isCorrect,
+          pointsEarned
+        });
+      } else if (q.questionType === 'ESSAY') {
+        await tx.orm.public.StudentAnswer.create({
+          id: randomUUID(),
+          quizAttemptId: attemptId,
+          questionId: q.id,
+          selectedOptionId: null,
+          essayAnswer: studentAns?.essayAnswer?.trim() || null,
+          isCorrect: null,
+          pointsEarned: 0
+        });
+      }
+    }
+
+    const finalScore = forcedScoreZero ? 0 : (maxPossibleScore > 0 ? (totalScore / maxPossibleScore) * 100 : 0);
+    const roundedScore = Math.round(finalScore * 100) / 100;
+
+    await tx.orm.public.QuizAttempt.where({ id: attemptId }).update({
+      score: roundedScore,
+      status: 'COMPLETED',
+      finishedAt: new Date().toISOString()
+    });
+
+    const passed = roundedScore >= pkg!.passingScore;
+    if (passed) {
+      // 1. Mark CURRENT page as COMPLETED
+      const currentPageAccess = await tx.orm.public.PageAccess.where({
+        pageId: pkg!.pageId,
+        studentId
       }).first();
 
-      if (existingAccess) {
-        if (existingAccess.status === 'LOCKED') {
-          await db.orm.public.PageAccess.where({ id: existingAccess.id }).update({
+      if (currentPageAccess) {
+        if (currentPageAccess.status !== 'COMPLETED') {
+          await tx.orm.public.PageAccess.where({ id: currentPageAccess.id }).update({
+            status: 'COMPLETED',
+            completedAt: new Date().toISOString()
+          });
+        }
+      } else {
+        await tx.orm.public.PageAccess.create({
+          id: randomUUID(),
+          pageId: pkg!.pageId,
+          studentId,
+          status: 'COMPLETED',
+          unlockedAt: new Date().toISOString(),
+          completedAt: new Date().toISOString()
+        });
+      }
+
+      // 2. Unlock next pages based on PageSequence
+      const sequences = await tx.orm.public.PageSequence.where({ prerequisitePageId: pkg!.pageId }).all();
+      for (const seq of sequences) {
+        const existingAccess = await tx.orm.public.PageAccess.where({ 
+          pageId: seq.pageId, 
+          studentId 
+        }).first();
+
+        if (existingAccess) {
+          if (existingAccess.status === 'LOCKED') {
+            await tx.orm.public.PageAccess.where({ id: existingAccess.id }).update({
+              status: 'UNLOCKED',
+              unlockedAt: new Date().toISOString()
+            });
+          }
+        } else {
+          await tx.orm.public.PageAccess.create({
+            id: randomUUID(),
+            pageId: seq.pageId,
+            studentId,
             status: 'UNLOCKED',
             unlockedAt: new Date().toISOString()
           });
         }
-      } else {
-        await db.orm.public.PageAccess.create({
-          id: randomUUID(),
-          pageId: seq.pageId,
-          studentId,
-          status: 'UNLOCKED',
-          unlockedAt: new Date().toISOString()
-        });
       }
     }
-  }
 
-  return { 
-    score: roundedScore, 
-    passed, 
-    hasEssay, 
-    needsReview: hasEssay,
-    status: 'COMPLETED' as const
-  };
+    return { 
+      score: roundedScore, 
+      passed, 
+      hasEssay, 
+      needsReview: hasEssay,
+      status: 'COMPLETED' as const,
+      pageSlug,
+      categorySlug
+    };
+  });
 }

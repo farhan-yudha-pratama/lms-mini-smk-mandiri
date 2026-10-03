@@ -2,6 +2,7 @@
 
 import React, { useState, useRef } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { createCategory, updateCategory, deleteCategory, reorderCategories } from '@/app/actions/materi';
 import { getPagesByCategory } from '@/app/actions/pages';
 
@@ -15,6 +16,9 @@ type Category = {
 };
 
 export default function CategoryList({ initialCategories }: { initialCategories: Category[] }) {
+  const searchParams = useSearchParams();
+  const courseId = searchParams.get('courseId') || undefined;
+
   const [categories, setCategories] = useState(initialCategories);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
@@ -122,7 +126,7 @@ export default function CategoryList({ initialCategories }: { initialCategories:
         showToast('success', `Kategori "${updated.name}" berhasil diperbarui.`);
       } else {
         const created = await createCategory({
-          name, slug, description, orderIndex: finalOrderIndex
+          name, slug, description, orderIndex: finalOrderIndex, courseId
         });
         setCategories([...categories, created]);
         showToast('success', `Kategori "${created.name}" berhasil ditambahkan.`);

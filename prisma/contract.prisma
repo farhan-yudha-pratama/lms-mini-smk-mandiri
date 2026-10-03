@@ -62,6 +62,7 @@ model User {
 }
 
 model MaterialCategory {
+  courseId    String?
   id          String    @id @default(uuid())
   name        String
   slug        String    @unique
@@ -72,6 +73,7 @@ model MaterialCategory {
   createdAt   TimestamptzString @default(now())
   updatedAt   temporal.updatedAtString()
 
+  course      Course?   @relation(fields: [courseId], references: [id])
   pages       Page[]
 }
 
@@ -154,6 +156,17 @@ model QuizPackage {
   assignments     QuizAssignment[]
 }
 
+// Konfigurasi Anti-Cheat terpisah per Varian Kuis
+model QuizAntiCheatConfig {
+  id               String       @id @default(uuid())
+  quizVariantId    String       @unique
+  enableFullscreen Boolean      @default(true) // Mengharuskan mode layar penuh
+  preventTabSwitch Boolean      @default(true) // Memaksa skor 0 jika pindah tab/minimize
+  preventCopyPaste Boolean      @default(true) // Memblokir klik kanan, copy, paste, & inspect
+  
+  variant          QuizVariant  @relation(fields: [quizVariantId], references: [id], onDelete: Cascade)
+}
+
 model QuizVariant {
   id             String   @id @default(uuid())
   quizPackageId  String
@@ -165,6 +178,7 @@ model QuizVariant {
   questions      Question[]
   attempts        QuizAttempt[]
   assignments     QuizAssignment[]
+  antiCheatConfig QuizAntiCheatConfig?
 }
 
 model Question {
@@ -261,7 +275,7 @@ model AuditLog {
 }
 
 // ============================================================
-// TAMBAHAN v1.0.0 — Score Summary & Quiz History
+// TAMBAHAN v1.0.0 â€” Score Summary & Quiz History
 // ============================================================
 
 enum HistorySourceType {
@@ -271,7 +285,7 @@ enum HistorySourceType {
 
 /// Tabel denormalisasi (cache agregasi nilai per murid).
 /// Di-update setiap kali QuizAttempt atau AssignmentAttempt selesai dinilai.
-/// Dirancang untuk konsumsi API pihak ketiga — query cukup ONE ROW per murid tanpa JOIN berat.
+/// Dirancang untuk konsumsi API pihak ketiga â€” query cukup ONE ROW per murid tanpa JOIN berat.
 model StudentScoreSummary {
   id                          String            @id @default(uuid())
   studentId                   String            @unique
@@ -299,7 +313,7 @@ model StudentScoreSummary {
   classroom                   Classroom?        @relation(fields: [classroomId], references: [id])
 }
 
-/// Tabel IMMUTABLE — tidak pernah diupdate setelah dibuat.
+/// Tabel IMMUTABLE â€” tidak pernah diupdate setelah dibuat.
 /// Setiap kali murid menyelesaikan kuis atau tugas, satu record baru INSERT.
 /// Berfungsi sebagai bukti historis (audit trail) pengerjaan untuk murid
 /// dan sumber data mentah untuk API pihak ketiga.
@@ -342,3 +356,42 @@ model QuizCompletionRecord {
 
 
 
+
+// ============================================================
+// TAMBAHAN v1.1.0 — Course (Mata Pelajaran)
+// ============================================================
+model Course {
+  id          String   @id @default(uuid())
+  name        String
+  slug        String   @unique
+  joinCode    String   @unique
+  description String?
+  coverImage  String?
+  isActive    Boolean  @default(true)
+  createdAt   TimestamptzString @default(now())
+  updatedAt   temporal.updatedAtString()
+
+  categories  MaterialCategory[]
+  teachers    CourseTeacher[]
+  students    CourseStudent[]
+}
+
+model CourseTeacher {
+  id        String @id @default(uuid())
+  courseId  String
+  teacherId String
+
+  course  Course @relation(fields: [courseId], references: [id])
+  teacher User   @relation(fields: [teacherId], references: [id])
+  @@unique([courseId, teacherId])
+}
+
+model CourseStudent {
+  id        String @id @default(uuid())
+  courseId  String
+  studentId String
+
+  course  Course @relation(fields: [courseId], references: [id])
+  student User   @relation(fields: [studentId], references: [id])
+  @@unique([courseId, studentId])
+}

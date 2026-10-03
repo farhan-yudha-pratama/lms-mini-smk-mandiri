@@ -85,6 +85,9 @@ export default function QuizTrigger({ pageSlug }: { pageSlug: string }) {
     }
 
     router.refresh();
+
+    // Trigger sidebar to re-fetch navigation data
+    window.dispatchEvent(new Event('sidebar:refresh'));
   };
 
   if (loading) {
@@ -134,9 +137,25 @@ export default function QuizTrigger({ pageSlug }: { pageSlug: string }) {
             {status.status === 'IN_PROGRESS' ? 'Lanjutkan Kuis' : 'Mulai Kuis Sekarang'}
           </button>
 
-          <p className="mt-4 text-sm font-bold text-red-600 max-w-lg mx-auto bg-white border-2 border-black p-2">
-            Perhatian: Selama kuis berlangsung, Anda WAJIB berada di mode layar penuh. Berpindah tab, meminimalkan jendela, atau menekan tombol kembali akan otomatis menghentikan kuis dengan nilai 0!
-          </p>
+          {(status.antiCheatConfig?.enableFullscreen || status.antiCheatConfig?.preventTabSwitch) && (
+            <div className="mt-4 text-sm font-bold text-red-600 max-w-lg mx-auto bg-white border-2 border-black p-3 space-y-1 text-left">
+              <p className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-lg">warning</span>
+                <span>PERHATIAN! Kuis ini dipantau oleh sistem Anti-Cheat:</span>
+              </p>
+              <ul className="list-disc list-inside pl-6 text-gray-800 text-xs mt-1 space-y-0.5">
+                {status.antiCheatConfig?.enableFullscreen && (
+                  <li>Anda <strong>WAJIB</strong> berada di mode layar penuh.</li>
+                )}
+                {status.antiCheatConfig?.preventTabSwitch && (
+                  <li>Berpindah tab atau meminimalkan jendela akan <strong>otomatis menghentikan kuis dengan nilai 0</strong>!</li>
+                )}
+                {status.antiCheatConfig?.preventCopyPaste && (
+                  <li>Klik kanan, *copy-paste*, dan akses *inspect element* dinonaktifkan.</li>
+                )}
+              </ul>
+            </div>
+          )}
         </div>
       )}
 

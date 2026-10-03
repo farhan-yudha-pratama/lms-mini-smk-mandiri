@@ -65,6 +65,15 @@ export async function saveQuizPackageAction(data: any) {
       name: payload.variantName, // Misalnya "Paket AI - Pilihan Ganda"
     });
 
+    // 3.5. Otomatis buat konfigurasi Anti-Cheat default (enable all) untuk varian baru ini
+    await db.orm.public.QuizAntiCheatConfig.create({
+      id: randomUUID(),
+      quizVariantId: quizVariant.id,
+      enableFullscreen: true,
+      preventTabSwitch: true,
+      preventCopyPaste: true,
+    });
+
     // 4. Masukkan semua pertanyaan dan opsinya
     for (let i = 0; i < payload.questions.length; i++) {
       const q = payload.questions[i];

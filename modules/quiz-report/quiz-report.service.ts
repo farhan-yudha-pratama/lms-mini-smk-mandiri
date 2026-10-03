@@ -564,6 +564,31 @@ export async function gradeQuizAttempt(
   // Prerequisite Unlocking Logic
   const passed = roundedScore >= (pkg?.passingScore || 70);
   if (passed && pkg?.pageId) {
+    // 1. Mark CURRENT page as COMPLETED
+    const currentPageAccess = await db.orm.public.PageAccess.where({
+      pageId: pkg.pageId,
+      studentId: attempt.studentId
+    }).first();
+
+    if (currentPageAccess) {
+      if (currentPageAccess.status !== 'COMPLETED') {
+        await db.orm.public.PageAccess.where({ id: currentPageAccess.id }).update({
+          status: 'COMPLETED',
+          completedAt: new Date().toISOString()
+        });
+      }
+    } else {
+      await db.orm.public.PageAccess.create({
+        id: randomUUID(),
+        pageId: pkg.pageId,
+        studentId: attempt.studentId,
+        status: 'COMPLETED',
+        unlockedAt: new Date().toISOString(),
+        completedAt: new Date().toISOString()
+      });
+    }
+
+    // 2. Unlock next pages based on PageSequence
     const sequences = await db.orm.public.PageSequence.where({ prerequisitePageId: pkg.pageId }).all();
     for (const seq of sequences) {
       const existingAccess = await db.orm.public.PageAccess.where({ 
@@ -899,4 +924,100 @@ export async function getUnfinishedStudentsReport(params: {
       totalAllQuizzes: targetPackages.length,
     },
   };
+}
+
+export interface TaskRecapItem {
+  packageId: string;
+  packageTitle: string;
+  pageTitle: string;
+  categoryName: string;
+  orderIndex: number; // page.orderIndex for sorting
+  passingScore: number;
+  stats: {
+    totalStudents: number;
+    completedCount: number;
+    needReviewCount: number;
+    averageScore: number;
+  };
+  studentAttempts: QuizReportItem[];
+}
+
+export interface TaskRecapResponse {
+  items: TaskRecapItem[];
+}
+
+export async function getTaskRecapList(params: {
+  classId?: string;
+}): Promise<TaskRecapResponse> {
+  const { classId } = params;
+
+  // We can leverage the existing getQuizReports logic which already handles all the joining and formatting.
+  // We just fetch all attempts for the specified class, then group them by package.
+  const baseData = await getQuizReports({
+    classId,
+    limit: 10000, // Fetch all for grouping
+    page: 1
+  });
+
+  const allPackages = await db.orm.public.QuizPackage.all();
+  const allPages = await db.orm.public.Page.all();
+  const allCategories = await db.orm.public.MaterialCategory.all();
+
+  const packageMap = new Map(allPackages.map(p => [p.id, p]));
+  const pageMap = new Map(allPages.map(p => [p.id, p]));
+  const catMap = new Map(allCategories.map(c => [c.id, c]));
+
+  // Find all active packages
+  const activePackages = allPackages.filter(p => p.isActive);
+  
+  // Create a map to group student attempts by packageId
+  const attemptsByPackage = new Map<string, QuizReportItem[]>();
+  for (const item of baseData.items) {
+    if (!item.packageId) continue;
+    const list = attemptsByPackage.get(item.packageId) || [];
+    list.push(item);
+    attemptsByPackage.set(item.packageId, list);
+  }
+
+  const items: TaskRecapItem[] = [];
+
+  for (const pkg of activePackages) {
+    const page = pageMap.get(pkg.pageId);
+    if (!page) continue;
+    const category = catMap.get(page.categoryId);
+    const catName = category?.name || 'Umum';
+
+    const attempts = attemptsByPackage.get(pkg.id) || [];
+    
+    // Because baseData limits total records by students * variants,
+    // if a student hasn't started, getQuizReports still returns 'NOT_STARTED' records for them!
+    // So 'attempts' naturally contains all students in the class.
+
+    const completedAttempts = attempts.filter(a => a.status === 'COMPLETED' || a.status === 'GRADED');
+    const needReviewCount = attempts.filter(a => a.needsReview).length;
+    
+    const sumScore = completedAttempts.reduce((acc, a) => acc + (a.score || 0), 0);
+    const avg = completedAttempts.length > 0 ? Math.round((sumScore / completedAttempts.length) * 10) / 10 : 0;
+
+    items.push({
+      packageId: pkg.id,
+      packageTitle: pkg.title,
+      pageTitle: page.title,
+      categoryName: catName,
+      orderIndex: (category?.orderIndex || 0) * 1000 + page.orderIndex,
+      passingScore: pkg.passingScore,
+      stats: {
+        totalStudents: attempts.length,
+        completedCount: completedAttempts.length,
+        needReviewCount,
+        averageScore: avg
+      },
+      studentAttempts: attempts.sort((a, b) => a.studentName.localeCompare(b.studentName))
+    });
+  }
+
+  // Sort tasks primarily by category and then by page order
+  items.sort((a, b) => a.orderIndex - b.orderIndex);
+
+  return { items };
 }

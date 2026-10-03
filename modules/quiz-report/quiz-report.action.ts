@@ -98,3 +98,16 @@ export async function getUnfinishedStudentsReportAction(params: {
     };
   }
 }
+
+export async function getTaskRecapAction(params: { classId?: string }) {
+  try {
+    const { getTaskRecapList } = await import('./quiz-report.service');
+    const data = await getTaskRecapList(params);
+    return { success: true, data };
+  } catch (error) {
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Gagal mengambil rekapan tugas'
+    };
+  }
+}

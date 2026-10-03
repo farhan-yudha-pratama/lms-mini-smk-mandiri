@@ -9,6 +9,7 @@ import {
 } from '@/modules/quiz-report/quiz-report.action';
 import { QuizReportItem, QuizReportsResponse, UnfinishedStudentsResponse } from '@/modules/quiz-report/quiz-report.service';
 import UnfinishedStudentsView from './UnfinishedStudentsView';
+import TaskRecapView from './TaskRecapView';
 
 type Package = { id: string; title: string; pageTitle: string; categoryName: string; };
 type ClassType = { id: string; name: string; };
@@ -52,7 +53,7 @@ export default function QuizReportView({
   initialReports?: QuizReportsResponse;
   initialUnfinishedReports?: UnfinishedStudentsResponse;
 }) {
-  const [activeTab, setActiveTab] = useState<'REPORTS' | 'UNFINISHED'>('REPORTS');
+  const [activeTab, setActiveTab] = useState<'REPORTS' | 'UNFINISHED' | 'TASK_RECAP'>('REPORTS');
   const [selectedClassId, setSelectedClassId] = useState<string>('');
   const [selectedPackageId, setSelectedPackageId] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -76,6 +77,7 @@ export default function QuizReportView({
   const [attemptDetail, setAttemptDetail] = useState<any | null>(null);
   const [essayGrades, setEssayGrades] = useState<Record<string, number>>({});
   const [savingGrades, setSavingGrades] = useState(false);
+  const [copiedQuestionId, setCopiedQuestionId] = useState<string | null>(null);
 
   // Group packages by category for clean dropdown rendering
   const packagesByCategory = useMemo(() => {
@@ -217,6 +219,14 @@ export default function QuizReportView({
       ...prev,
       [questionId]: clamped
     }));
+  };
+
+  const handleCopyAnswer = (questionId: string, text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedQuestionId(questionId);
+    setTimeout(() => {
+      setCopiedQuestionId(null);
+    }, 2000);
   };
 
   // Save manual essay grades
@@ -403,9 +413,27 @@ export default function QuizReportView({
             </span>
           )}
         </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('TASK_RECAP')}
+          className={`flex items-center gap-2 px-5 py-3 font-semibold text-sm border-b-2 transition-all cursor-pointer whitespace-nowrap ${
+            activeTab === 'TASK_RECAP'
+              ? 'border-blue-600 text-blue-600 bg-blue-50/50 rounded-t-lg'
+              : 'border-transparent text-gray-500 hover:text-gray-900 hover:border-gray-300'
+          }`}
+        >
+          <span className="material-symbols-outlined text-lg">view_list</span>
+          <span>Rekapan Berdasarkan Tugas</span>
+        </button>
       </div>
 
-      {activeTab === 'UNFINISHED' ? (
+      {activeTab === 'TASK_RECAP' ? (
+        <TaskRecapView
+          classes={classes}
+          onOpenDetail={handleOpenDetail}
+        />
+      ) : activeTab === 'UNFINISHED' ? (
         <UnfinishedStudentsView
           packages={packages}
           classes={classes}
@@ -904,6 +932,8 @@ export default function QuizReportView({
           </div>
         </div>
       </div>
+        </>
+      )}
 
       {/* DETAIL & REVIEW JAWABAN MODAL */}
       {detailModalOpen && (
@@ -1109,9 +1139,31 @@ export default function QuizReportView({
                             <div className="pt-2 border-t border-purple-100 space-y-3">
                               {/* Student's Essay Text */}
                               <div>
-                                <div className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-1 flex items-center gap-1">
-                                  <span className="material-symbols-outlined text-sm text-purple-700">chat</span>
-                                  Jawaban Essay Siswa:
+                                <div className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-1 flex items-center justify-between gap-1">
+                                  <div className="flex items-center gap-1">
+                                    <span className="material-symbols-outlined text-sm text-purple-700">chat</span>
+                                    Jawaban Essay Siswa:
+                                  </div>
+                                  {studentAns?.essayAnswer?.trim() && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleCopyAnswer(q.id, studentAns.essayAnswer)}
+                                      className="flex items-center gap-1 px-2 py-0.5 border border-gray-300 rounded bg-white hover:bg-gray-50 text-[10px] text-gray-700 transition-colors shadow-sm"
+                                      title="Salin jawaban essay ini"
+                                    >
+                                      {copiedQuestionId === q.id ? (
+                                        <>
+                                          <span className="material-symbols-outlined text-[12px] text-green-600">check</span>
+                                          <span className="text-green-700 font-bold">Tersalin!</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <span className="material-symbols-outlined text-[12px]">content_copy</span>
+                                          Salin Jawaban
+                                        </>
+                                      )}
+                                    </button>
+                                  )}
                                 </div>
                                 <div className="p-4 bg-[#FFFDF9] border border-gray-200/40 text-sm md:text-base text-gray-900 font-mono leading-relaxed whitespace-pre-wrap min-h-[80px]">
                                   {studentAns?.essayAnswer?.trim() ? (
@@ -1289,8 +1341,6 @@ export default function QuizReportView({
             </div>
           </div>
         </div>
-      )}
-        </>
       )}
     </div>
   );

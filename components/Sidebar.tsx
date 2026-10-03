@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { getUserSession } from '@/app/actions';
 import { getMaterialNav } from '@/app/actions/access';
 
@@ -13,13 +13,26 @@ export default function Sidebar() {
   const [navData, setNavData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Reusable fetch function
+  const fetchNavData = useCallback(async () => {
+    const data = await getMaterialNav();
+    setNavData(data);
+    setLoading(false);
+  }, []);
+
   useEffect(() => {
     getUserSession().then(setUser);
-    getMaterialNav().then(data => {
-      setNavData(data);
-      setLoading(false);
-    });
-  }, []);
+    fetchNavData();
+  }, [fetchNavData]);
+
+  // Listen for custom refresh events (fired after quiz completion)
+  useEffect(() => {
+    const handleRefresh = () => {
+      fetchNavData();
+    };
+    window.addEventListener('sidebar:refresh', handleRefresh);
+    return () => window.removeEventListener('sidebar:refresh', handleRefresh);
+  }, [fetchNavData]);
 
   useEffect(() => {
     // Scroll active link into view when pathname changes

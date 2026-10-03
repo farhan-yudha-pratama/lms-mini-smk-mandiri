@@ -126,11 +126,21 @@ export async function deleteQuizPackage(id: string) {
 }
 
 export async function createQuizVariant(data: QuizVariantFormValues) {
-  return await db.orm.public.QuizVariant.create({
+  const variant = await db.orm.public.QuizVariant.create({
     id: randomUUID(),
     quizPackageId: data.quizPackageId,
     name: data.name,
   });
+  
+  await db.orm.public.QuizAntiCheatConfig.create({
+    id: randomUUID(),
+    quizVariantId: variant.id,
+    enableFullscreen: true,
+    preventTabSwitch: true,
+    preventCopyPaste: true,
+  });
+
+  return variant;
 }
 
 export async function updateQuizVariant(id: string, name: string) {
@@ -178,4 +188,26 @@ export async function deleteQuizVariant(id: string) {
   // 4. Hapus data varian kuis
   await db.orm.public.QuizVariant.where({ id }).delete();
   return { id };
+}
+
+export async function updateAntiCheatConfig(
+  quizVariantId: string, 
+  config: { enableFullscreen: boolean; preventTabSwitch: boolean; preventCopyPaste: boolean }
+) {
+  const existing = await db.orm.public.QuizAntiCheatConfig.where({ quizVariantId }).first();
+  if (existing) {
+    await db.orm.public.QuizAntiCheatConfig.where({ id: existing.id }).update({
+      enableFullscreen: config.enableFullscreen,
+      preventTabSwitch: config.preventTabSwitch,
+      preventCopyPaste: config.preventCopyPaste,
+    });
+  } else {
+    await db.orm.public.QuizAntiCheatConfig.create({
+      id: randomUUID(),
+      quizVariantId,
+      enableFullscreen: config.enableFullscreen,
+      preventTabSwitch: config.preventTabSwitch,
+      preventCopyPaste: config.preventCopyPaste,
+    });
+  }
 }
