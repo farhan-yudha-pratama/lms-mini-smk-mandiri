@@ -630,27 +630,40 @@ export default function UnfinishedStudentsView({
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    <div className="text-xs text-gray-500 mb-2">
+                    <div className="text-xs text-gray-500 mb-4">
                       Daftar halaman materi yang masih berstatus terkunci (belum dibuka):
                     </div>
-                    {selectedStudent.unopenedPagesSummary.map((p, idx) => (
-                      <div
-                        key={p.id}
-                        className="p-3 bg-purple-50/40 border border-purple-200 rounded-lg flex items-center justify-between gap-3 text-sm"
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <span className="w-5 h-5 rounded-full bg-purple-200 text-purple-800 text-xs font-bold flex items-center justify-center shrink-0">
-                            {idx + 1}
-                          </span>
-                          <div>
-                            <div className="font-semibold text-gray-900">{p.title}</div>
-                            <div className="text-[11px] text-gray-500">Kategori: {p.categoryName}</div>
-                          </div>
+                    {Object.entries(
+                      selectedStudent.unopenedPagesSummary.reduce((acc, p) => {
+                        const cat = p.categoryName || 'Tanpa Kategori';
+                        if (!acc[cat]) acc[cat] = [];
+                        acc[cat].push(p);
+                        return acc;
+                      }, {} as Record<string, typeof selectedStudent.unopenedPagesSummary>)
+                    ).map(([categoryName, pages]) => (
+                      <div key={categoryName} className="mb-4 last:mb-0">
+                        <div className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-2 bg-gray-100 px-3 py-1.5 rounded">{categoryName}</div>
+                        <div className="space-y-2">
+                          {pages.map((p, idx) => (
+                            <div
+                              key={p.id}
+                              className="p-3 bg-purple-50/40 border border-purple-200 rounded-lg flex items-center justify-between gap-3 text-sm"
+                            >
+                              <div className="flex items-center gap-2.5">
+                                <span className="w-5 h-5 rounded-full bg-purple-200 text-purple-800 text-xs font-bold flex items-center justify-center shrink-0">
+                                  {idx + 1}
+                                </span>
+                                <div>
+                                  <div className="font-semibold text-gray-900">{p.title}</div>
+                                </div>
+                              </div>
+                              <span className="inline-flex items-center gap-1 text-xs font-bold text-purple-700 bg-purple-100 px-2.5 py-0.5 rounded">
+                                <span className="material-symbols-outlined text-xs">lock</span>
+                                Terkunci
+                              </span>
+                            </div>
+                          ))}
                         </div>
-                        <span className="inline-flex items-center gap-1 text-xs font-bold text-purple-700 bg-purple-100 px-2.5 py-0.5 rounded">
-                          <span className="material-symbols-outlined text-xs">lock</span>
-                          Terkunci
-                        </span>
                       </div>
                     ))}
                   </div>
@@ -663,30 +676,44 @@ export default function UnfinishedStudentsView({
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    <div className="text-xs text-gray-500 mb-2">
+                    <div className="text-xs text-gray-500 mb-4">
                       Daftar kuis evaluasi yang belum dikerjakan / diselesaikan:
                     </div>
-                    {selectedStudent.uncompletedQuizzesSummary.map((q, idx) => (
-                      <div
-                        key={q.packageId}
-                        className="p-3 bg-amber-50/50 border border-amber-200 rounded-lg flex items-center justify-between gap-3 text-sm"
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <span className="w-5 h-5 rounded-full bg-amber-200 text-amber-900 text-xs font-bold flex items-center justify-center shrink-0">
-                            {idx + 1}
-                          </span>
-                          <div>
-                            <div className="font-semibold text-gray-900">{q.title}</div>
-                            <div className="text-[11px] text-gray-500">
-                              Materi: {q.pageTitle} • Kategori: {q.categoryName}
+                    {Object.entries(
+                      selectedStudent.uncompletedQuizzesSummary.reduce((acc, q) => {
+                        const cat = q.categoryName || 'Tanpa Kategori';
+                        if (!acc[cat]) acc[cat] = [];
+                        acc[cat].push(q);
+                        return acc;
+                      }, {} as Record<string, typeof selectedStudent.uncompletedQuizzesSummary>)
+                    ).map(([categoryName, quizzes]) => (
+                      <div key={categoryName} className="mb-4 last:mb-0">
+                        <div className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-2 bg-gray-100 px-3 py-1.5 rounded">{categoryName}</div>
+                        <div className="space-y-2">
+                          {quizzes.map((q, idx) => (
+                            <div
+                              key={q.packageId}
+                              className="p-3 bg-amber-50/50 border border-amber-200 rounded-lg flex items-center justify-between gap-3 text-sm"
+                            >
+                              <div className="flex items-center gap-2.5">
+                                <span className="w-5 h-5 rounded-full bg-amber-200 text-amber-900 text-xs font-bold flex items-center justify-center shrink-0">
+                                  {idx + 1}
+                                </span>
+                                <div>
+                                  <div className="font-semibold text-gray-900">{q.title}</div>
+                                  <div className="text-[11px] text-gray-500">
+                                    Materi: {q.pageTitle}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="text-right shrink-0">
+                                <span className="inline-flex items-center gap-1 text-xs font-bold text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded">
+                                  Belum Dikerjakan
+                                </span>
+                                <div className="text-[10px] text-gray-400 mt-0.5">KKM: {q.passingScore}</div>
+                              </div>
                             </div>
-                          </div>
-                        </div>
-                        <div className="text-right shrink-0">
-                          <span className="inline-flex items-center gap-1 text-xs font-bold text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded">
-                            Belum Dikerjakan
-                          </span>
-                          <div className="text-[10px] text-gray-400 mt-0.5">KKM: {q.passingScore}</div>
+                          ))}
                         </div>
                       </div>
                     ))}
