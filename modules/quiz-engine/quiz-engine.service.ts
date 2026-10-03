@@ -207,6 +207,31 @@ export async function submitQuiz(
 
     const passed = roundedScore >= pkg!.passingScore;
     if (passed) {
+      // 1. Mark CURRENT page as COMPLETED
+      const currentPageAccess = await tx.orm.public.PageAccess.where({
+        pageId: pkg!.pageId,
+        studentId
+      }).first();
+
+      if (currentPageAccess) {
+        if (currentPageAccess.status !== 'COMPLETED') {
+          await tx.orm.public.PageAccess.where({ id: currentPageAccess.id }).update({
+            status: 'COMPLETED',
+            completedAt: new Date().toISOString()
+          });
+        }
+      } else {
+        await tx.orm.public.PageAccess.create({
+          id: randomUUID(),
+          pageId: pkg!.pageId,
+          studentId,
+          status: 'COMPLETED',
+          unlockedAt: new Date().toISOString(),
+          completedAt: new Date().toISOString()
+        });
+      }
+
+      // 2. Unlock next pages based on PageSequence
       const sequences = await tx.orm.public.PageSequence.where({ prerequisitePageId: pkg!.pageId }).all();
       for (const seq of sequences) {
         const existingAccess = await tx.orm.public.PageAccess.where({ 

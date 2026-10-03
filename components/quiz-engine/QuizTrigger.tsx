@@ -85,6 +85,9 @@ export default function QuizTrigger({ pageSlug }: { pageSlug: string }) {
     }
 
     router.refresh();
+
+    // Trigger sidebar to re-fetch navigation data
+    window.dispatchEvent(new Event('sidebar:refresh'));
   };
 
   if (loading) {

@@ -564,6 +564,31 @@ export async function gradeQuizAttempt(
   // Prerequisite Unlocking Logic
   const passed = roundedScore >= (pkg?.passingScore || 70);
   if (passed && pkg?.pageId) {
+    // 1. Mark CURRENT page as COMPLETED
+    const currentPageAccess = await db.orm.public.PageAccess.where({
+      pageId: pkg.pageId,
+      studentId: attempt.studentId
+    }).first();
+
+    if (currentPageAccess) {
+      if (currentPageAccess.status !== 'COMPLETED') {
+        await db.orm.public.PageAccess.where({ id: currentPageAccess.id }).update({
+          status: 'COMPLETED',
+          completedAt: new Date().toISOString()
+        });
+      }
+    } else {
+      await db.orm.public.PageAccess.create({
+        id: randomUUID(),
+        pageId: pkg.pageId,
+        studentId: attempt.studentId,
+        status: 'COMPLETED',
+        unlockedAt: new Date().toISOString(),
+        completedAt: new Date().toISOString()
+      });
+    }
+
+    // 2. Unlock next pages based on PageSequence
     const sequences = await db.orm.public.PageSequence.where({ prerequisitePageId: pkg.pageId }).all();
     for (const seq of sequences) {
       const existingAccess = await db.orm.public.PageAccess.where({ 
