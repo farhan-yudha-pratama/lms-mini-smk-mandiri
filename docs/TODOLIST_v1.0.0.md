@@ -191,9 +191,9 @@
 > Styling mengikuti panduan **Tactile Neo Brutalism** dari [`DESIGN.md`](./DESIGN.md).
 
 ### 5.1 Student Dashboard
-- [ ] **5.1.1** Buat route `app/(dashboard)/murid/page.tsx` (RSC):
+- [ ] **5.1.1** Perbarui route `app/page.tsx` (RSC):
   - Panggil `getStudentDashboardData(studentId)` dari service layer
-  - Render komponen-komponen berikut
+  - Render komponen-komponen berikut di bawah daftar Mata Pelajaran
 
 - [ ] **5.1.2** Buat komponen `components/dashboard/SummaryWidget.tsx`:
   - 3 kartu statistik: Materi Aktif, Kuis Menunggu, Tugas Pending
@@ -211,13 +211,13 @@
   - Tombol "Mulai" / "Lanjutkan" / "Lihat Hasil"
 
 ### 5.2 Halaman Pengerjaan Tugas
-- [ ] **5.2.1** Buat route `app/(dashboard)/murid/tugas/[assignmentId]/page.tsx` (RSC):
+- [ ] **5.2.1** Buat route `app/tugas/[assignmentId]/page.tsx` (RSC):
   - Halaman intro: judul, deskripsi, info (jumlah soal, batas waktu, passing score, deadline)
   - Tombol "Mulai Sekarang" → `startAttemptAction()` → redirect ke halaman pengerjaan
   - Jika sudah ada attempt IN_PROGRESS → tampilkan tombol "Lanjutkan"
   - Jika sudah SUBMITTED/GRADED → redirect ke halaman hasil
 
-- [ ] **5.2.2** Buat route `app/(dashboard)/murid/tugas/[assignmentId]/kerjakan/page.tsx` (Client Component utama):
+- [ ] **5.2.2** Buat route `app/tugas/[assignmentId]/kerjakan/page.tsx` (Client Component utama):
   - Fetch soal sesuai `questionsSnapshot` pada attempt murid ini
   - Render komponen timer countdown (`react-countdown-circle-timer` atau custom)
   - Render navigasi soal (nomor soal, indikator status: belum dijawab/sudah dijawab)
@@ -242,7 +242,7 @@
   - Tombol "Submit Jawaban Ini" → `saveCodeAnswerAction()` → simpan kode + hasil tes terakhir
 
 ### 5.3 Halaman Hasil Tugas
-- [ ] **5.3.1** Buat route `app/(dashboard)/murid/tugas/[assignmentId]/hasil/page.tsx` (RSC):
+- [ ] **5.3.1** Buat route `app/tugas/[assignmentId]/hasil/page.tsx` (RSC):
   - Tampilkan total skor dan status lulus/tidak lulus (vs passingScore)
   - Breakdown per soal: tipe, soal, jawaban murid, status, poin diperoleh
   - Untuk soal Essay yang belum dinilai: tampilkan badge "Menunggu Penilaian Guru"
@@ -328,7 +328,7 @@
 > Data dari `StudentScoreSummary` dan `QuizCompletionRecord` diekspos ke dua arah: (1) halaman Murid sebagai bukti pengerjaan, (2) API Route untuk dikonsumsi sistem luar.
 
 ### 8A.1 Halaman Riwayat Murid (Student-Facing)
-- [ ] **8A.1.1** Buat route `app/(dashboard)/murid/riwayat/page.tsx` (RSC):
+- [ ] **8A.1.1** Buat route `app/riwayat/page.tsx` (RSC):
   - Summary card nilai gabungan (overallAverageScore, totalPointsEarned)
   - Progress bar: materi selesai vs total materi aktif
   - Tabel riwayat `QuizCompletionRecord` murid sendiri dengan kolom:
@@ -342,7 +342,7 @@
   - Fitur: Sort berdasarkan tanggal (terbaru/terlama)
   - Fitur: Pagination (10 data per halaman)
 
-- [ ] **8A.1.2** Buat route `app/(dashboard)/murid/riwayat/[recordId]/page.tsx` (RSC):
+- [ ] **8A.1.2** Buat route `app/riwayat/[recordId]/page.tsx` (RSC):
   - Halaman detail satu record sebagai **bukti pengerjaan**:
     - Header: Nama murid, email, kelas, tanggal pengerjaan
     - Nama kuis / tugas, kategori (jika kuis materi), skor, KKM, status lulus
@@ -433,7 +433,7 @@
 ## 🗂️ FASE 8 — Integrasi & Polish
 
 - [ ] **8.1** Pastikan middleware Next.js sudah melindungi semua route baru:
-  - `/murid/*` → hanya role `MURID`
+  - `/tugas/*` dan `/riwayat/*` → pastikan user ter-autentikasi (semua role bisa)
   - `/guru/tugas/*` → hanya role `GURU` atau `SUPERADMIN`
   - `/guru/tugas/*/grading/*` → hanya role `GURU` atau `SUPERADMIN`
 
@@ -441,10 +441,10 @@
   - Link "Tugas Mandiri" → `/guru/tugas`
   - Link "Penilaian Essay" → (badge count menunggu penilaian)
 
-- [ ] **8.3** Tambahkan item navigasi di sidebar Murid:
-  - Link "Dashboard" → `/murid`
-  - Link "Tugas Saya" → `/murid/tugas` (daftar semua tugas)
-  - Link "Nilai Saya" → (Fase berikutnya)
+- [ ] **8.3** Tambahkan item navigasi di Headbar Murid (karena tidak ada sidebar Dashboard):
+  - Link "Dashboard" → `/`
+  - Link "Tugas Saya" → `/tugas` (daftar semua tugas)
+  - Link "Riwayat Nilai" → `/riwayat`
 
 - [ ] **8.4** Error handling & edge cases:
   - [ ] Jika murid mencoba akses tugas yang belum `PUBLISHED` → redirect + pesan error

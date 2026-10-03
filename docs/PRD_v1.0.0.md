@@ -556,7 +556,7 @@ Ref: AssignmentAnswer.selectedOptionId > AssignmentOption.id
 Berdasarkan **Fase 1-7** yang sudah ada di [`PRD.md`](./PRD.md), fitur-fitur v1.0.0 ini dimasukkan ke dalam fase baru:
 
 ### Fase 8: Student Dashboard
-1. Buat route `app/(dashboard)/murid/page.tsx` sebagai RSC.
+1. Perbarui route `app/page.tsx` sebagai RSC utama untuk murid.
 2. Buat Server Action / query Prisma untuk fetch semua data summary dashboard dalam satu fungsi optimal (hindari N+1 queries, gunakan `include`).
 3. Implementasi komponen Widget Summary, Daftar Materi, dan Daftar Tugas Aktif.
 4. Styling menggunakan panduan **Neo Brutalism** dari [`DESIGN.md`](./DESIGN.md).
@@ -576,7 +576,7 @@ Berdasarkan **Fase 1-7** yang sudah ada di [`PRD.md`](./PRD.md), fitur-fitur v1.
 3. Buat komponen `components/code-challenge/` (`CodeEditor.tsx`, `TestCasePanel.tsx`, `OutputConsole.tsx`).
 
 ### Fase 11: Assignment Execution (Pengerjaan Murid)
-1. Buat route `app/(dashboard)/murid/tugas/[assignmentId]/page.tsx`.
+1. Buat route `app/tugas/[assignmentId]/page.tsx`.
 2. Logika pengambilan soal random dan penyimpanan `questionsSnapshot` saat attempt dibuat.
 3. Integrasi Code Challenge Engine ke dalam halaman pengerjaan.
 4. Implementasi timer countdown.

@@ -20,7 +20,15 @@ export async function getMaterialNav() {
 
   const bypass = role === 'SUPERADMIN' || role === 'GURU';
 
-  const categories = await db.orm.public.MaterialCategory.where({ isActive: true }).all();
+  let categories = await db.orm.public.MaterialCategory.where({ isActive: true }).all();
+
+  if (!bypass) {
+    // Only show categories that have no courseId, or where the student is enrolled in that course
+    const enrollments = await db.orm.public.CourseStudent.where({ studentId: userId }).all();
+    const enrolledCourseIds = enrollments.map(e => e.courseId);
+    categories = categories.filter(c => !c.courseId || enrolledCourseIds.includes(c.courseId));
+  }
+
   categories.sort((a, b) => a.orderIndex - b.orderIndex);
 
   const pages = await db.orm.public.Page.where({ isPublished: true }).all();
@@ -110,6 +118,14 @@ export async function verifyPageAccess(userId: string, role: string, pageSlug: s
   const pages = await db.orm.public.Page.where({ slug: pageSlug }).all();
   const page = pages[0];
   if (!page) return { isUnlocked: false, reason: 'PAGE_NOT_FOUND' };
+
+  const category = await db.orm.public.MaterialCategory.where({ id: page.categoryId }).first();
+  if (category && category.courseId) {
+    const enrollment = await db.orm.public.CourseStudent.where({ courseId: category.courseId, studentId: userId }).first();
+    if (!enrollment) {
+      return { isUnlocked: false, reason: 'NOT_ENROLLED_IN_COURSE' };
+    }
+  }
 
   const accesses = await db.orm.public.PageAccess.where({ pageId: page.id, studentId: userId }).all();
   const access = accesses[0];

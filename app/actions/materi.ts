@@ -4,18 +4,25 @@ import { db } from '@/prisma/db';
 import { revalidatePath } from 'next/cache';
 import { randomUUID } from 'crypto';
 
-export async function getCategories() {
-  const categories = await db.orm.public.MaterialCategory.all();
+export async function getCategories(courseId?: string) {
+  let categories;
+  if (courseId) {
+    categories = await db.orm.public.MaterialCategory.where({ courseId }).all();
+  } else {
+    categories = await db.orm.public.MaterialCategory.all();
+  }
   return categories.sort((a, b) => a.orderIndex - b.orderIndex);
 }
 
-export async function createCategory(data: { name: string; slug: string; description?: string | null; orderIndex: number }) {
+export async function createCategory(data: { name: string; slug: string; description?: string | null; orderIndex: number; courseId?: string }) {
   const id = randomUUID();
   const newCat = await db.orm.public.MaterialCategory.create({
+    id,
     name: data.name,
     slug: data.slug,
     description: data.description,
     orderIndex: data.orderIndex,
+    courseId: data.courseId || null,
     isActive: true,
   });
   revalidatePath('/dashboard/materi');
