@@ -22,6 +22,8 @@ RUN npx prisma contract emit
 ARG DATABASE_URL
 ENV DATABASE_URL=${DATABASE_URL:-"postgresql://dummy:dummy@localhost:5432/dummy"}
 
+RUN npm run build
+
 # =================================================================
 # STAGE 3: Final Web Application (Next.js)
 # =================================================================
