@@ -64,12 +64,21 @@ export default function StudentDashboardShell({
           </div>
 
           <div className="flex items-center gap-3 md:gap-4 shrink-0">
-            <div className="hidden md:flex items-center gap-3 bg-white border-2 border-black px-3 py-1.5 shadow-[2px_2px_0px_0px_#000]">
-              <div className="w-8 h-8 bg-[#092328] border-2 border-black rounded-full flex items-center justify-center">
-                <span className="material-symbols-outlined text-[#8BBB92] text-base">person</span>
+            {roleLabel.toUpperCase() === 'SUPERADMIN' ? (
+              <Link href="/dashboard" className="hidden md:flex items-center gap-3 bg-[#EAF4ED] border-4 border-black px-3 py-1.5 shadow-[4px_4px_0px_0px_#000] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_#000] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none transition-all cursor-pointer">
+                <div className="w-8 h-8 bg-[#2A835F] border-2 border-black rounded-full flex items-center justify-center">
+                  <span className="material-symbols-outlined text-white text-base">admin_panel_settings</span>
+                </div>
+                <span className="font-black uppercase text-sm tracking-tight max-w-[160px] truncate">{userName} (Admin)</span>
+              </Link>
+            ) : (
+              <div className="hidden md:flex items-center gap-3 bg-white border-2 border-black px-3 py-1.5 shadow-[2px_2px_0px_0px_#000]">
+                <div className="w-8 h-8 bg-[#092328] border-2 border-black rounded-full flex items-center justify-center">
+                  <span className="material-symbols-outlined text-[#8BBB92] text-base">person</span>
+                </div>
+                <span className="font-black uppercase text-sm tracking-tight max-w-[160px] truncate">{userName}</span>
               </div>
-              <span className="font-black uppercase text-sm tracking-tight max-w-[160px] truncate">{userName}</span>
-            </div>
+            )}
 
             <button
               type="button"

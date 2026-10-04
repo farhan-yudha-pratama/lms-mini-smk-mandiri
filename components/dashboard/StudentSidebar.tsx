@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 
 interface StudentSidebarProps {
   isOpen: boolean;
@@ -15,25 +16,24 @@ type MenuItem = {
   label: string;
   icon: string;
   href?: string;
-  active?: boolean;
 };
 
 const MAIN_MENU: MenuItem[] = [
-  { label: 'Dashboard', icon: 'dashboard', href: '/', active: true },
-  { label: 'Mapel Saya', icon: 'book', href: '/#mapel-saya' },
-  { label: 'Tugas Mandiri', icon: 'assignment_late' },
+  { label: 'Dashboard', icon: 'dashboard', href: '/student' },
+  { label: 'Mapel Saya', icon: 'book', href: '/student/materi' },
 ];
 
 const ACHIEVEMENT_MENU: MenuItem[] = [
-  { label: 'Riwayat Nilai', icon: 'history' },
+  { label: 'Riwayat Nilai', icon: 'history', href: '/student/riwayat-nilai' },
   { label: 'Peringkat', icon: 'leaderboard' },
 ];
 
 const PUSH =
   'shadow-[4px_4px_0px_0px_#000] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_#000] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none transition-all';
 
-function MenuLink({ item, index, onClose }: { item: MenuItem; index: number; onClose: () => void }) {
+function MenuLink({ item, index, onClose, pathname }: { item: MenuItem; index: number; onClose: () => void; pathname: string }) {
   const tag = String(index + 1).padStart(2, '0');
+  const isActive = item.href === pathname || (item.href !== '/' && item.href !== '/student' && pathname.startsWith(item.href || '###'));
 
   // Not built yet: render as disabled block, not a dead "#" link
   if (!item.href) {
@@ -55,19 +55,17 @@ function MenuLink({ item, index, onClose }: { item: MenuItem; index: number; onC
     <Link
       href={item.href}
       onClick={onClose}
-      aria-current={item.active ? 'page' : undefined}
-      className={`flex items-center justify-between gap-3 border-4 border-black p-3 font-black uppercase text-sm tracking-tight ${PUSH} ${
-        item.active ? 'bg-[#2A835F] text-white' : 'bg-[#EAF4ED] text-black hover:bg-[#8BBB92]'
-      }`}
+      aria-current={isActive ? 'page' : undefined}
+      className={`flex items-center justify-between gap-3 border-4 border-black p-3 font-black uppercase text-sm tracking-tight ${PUSH} ${isActive ? 'bg-[#2A835F] text-white' : 'bg-[#EAF4ED] text-black hover:bg-[#8BBB92]'
+        }`}
     >
       <span className="flex items-center gap-3">
         <span className="material-symbols-outlined">{item.icon}</span>
         {item.label}
       </span>
       <span
-        className={`text-[10px] px-1.5 py-0.5 border-2 border-black ${
-          item.active ? 'bg-[#092328] text-[#8BBB92]' : 'bg-[#092328] text-white'
-        }`}
+        className={`text-[10px] px-1.5 py-0.5 border-2 border-black ${isActive ? 'bg-[#092328] text-[#8BBB92]' : 'bg-[#092328] text-white'
+          }`}
       >
         {tag}
       </span>
@@ -76,6 +74,7 @@ function MenuLink({ item, index, onClose }: { item: MenuItem; index: number; onC
 }
 
 export default function StudentSidebar({ isOpen, onClose, userName, userClass, onLogout }: StudentSidebarProps) {
+  const pathname = usePathname();
   return (
     <>
       {/* Mobile overlay (solid, no blur) */}
@@ -110,7 +109,7 @@ export default function StudentSidebar({ isOpen, onClose, userName, userClass, o
           </p>
           <nav className="space-y-3">
             {MAIN_MENU.map((item, i) => (
-              <MenuLink key={item.label} item={item} index={i} onClose={onClose} />
+              <MenuLink key={item.label} item={item} index={i} onClose={onClose} pathname={pathname} />
             ))}
           </nav>
         </section>
@@ -121,7 +120,7 @@ export default function StudentSidebar({ isOpen, onClose, userName, userClass, o
           </p>
           <nav className="space-y-3">
             {ACHIEVEMENT_MENU.map((item, i) => (
-              <MenuLink key={item.label} item={item} index={MAIN_MENU.length + i} onClose={onClose} />
+              <MenuLink key={item.label} item={item} index={MAIN_MENU.length + i} onClose={onClose} pathname={pathname} />
             ))}
           </nav>
         </section>
