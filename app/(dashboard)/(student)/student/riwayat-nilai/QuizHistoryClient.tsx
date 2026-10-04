@@ -125,7 +125,8 @@ export default function QuizHistoryClient({ history, courses, initialSearch, ini
               className="w-full bg-white border-4 border-black px-4 py-3 font-bold focus:outline-none appearance-none"
             >
               <option value="">Semua Status</option>
-              <option value="FINISHED">Selesai</option>
+              <option value="COMPLETED">Selesai (Completed)</option>
+              <option value="GRADED">Dinilai (Graded)</option>
               <option value="IN_PROGRESS">Sedang Dikerjakan</option>
             </select>
           </div>
@@ -175,7 +176,7 @@ export default function QuizHistoryClient({ history, courses, initialSearch, ini
                     Selesai: {h.finishedAt ? formatDate(h.finishedAt) : '-'}
                   </td>
                   <td className="px-6 py-4 border-r-4 border-black text-center">
-                    {h.status === 'FINISHED' ? (
+                    {h.status === 'COMPLETED' || h.status === 'GRADED' ? (
                        <span className={`inline-block border-4 border-black px-3 py-1 font-black text-xl shadow-[2px_2px_0px_0px_#000] ${h.score !== null && h.score >= 70 ? 'bg-[#8BBB92] text-black' : 'bg-red-400 text-black'}`}>
                          {h.score !== null ? h.score : 'N/A'}
                        </span>
@@ -227,7 +228,7 @@ export default function QuizHistoryClient({ history, courses, initialSearch, ini
 
             <div className="flex items-center justify-between mt-2 pt-3 border-t-4 border-black">
               <div>
-                {h.status === 'FINISHED' ? (
+                {h.status === 'COMPLETED' || h.status === 'GRADED' ? (
                    <span className={`inline-block border-4 border-black px-4 py-1 font-black text-2xl shadow-[2px_2px_0px_0px_#000] ${h.score !== null && h.score >= 70 ? 'bg-[#8BBB92] text-black' : 'bg-red-400 text-black'}`}>
                      {h.score !== null ? h.score : 'N/A'}
                    </span>

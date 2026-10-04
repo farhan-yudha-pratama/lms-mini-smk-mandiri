@@ -19,7 +19,7 @@ type MenuItem = {
 };
 
 const MAIN_MENU: MenuItem[] = [
-  { label: 'Dashboard', icon: 'dashboard', href: '/student' },
+  { label: 'Dashboard', icon: 'dashboard', href: '/' },
   { label: 'Mapel Saya', icon: 'book', href: '/student/materi' },
 ];
 
