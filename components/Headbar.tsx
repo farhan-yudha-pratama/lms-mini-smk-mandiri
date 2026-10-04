@@ -19,7 +19,7 @@ export default function Headbar({ links }: HeadbarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [user, setUser] = useState<{ role: string } | null>(null);
-  
+
   useEffect(() => {
     getUserSession().then((session) => {
       if (session) setUser({ role: session.role });
@@ -43,7 +43,7 @@ export default function Headbar({ links }: HeadbarProps) {
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-canvas border-b-4 border-black shadow-neo-md flex justify-between items-center w-full px-4 md:px-8 py-3 md:py-4">
       <div className="flex items-center gap-4 md:gap-8 w-full justify-between">
-        
+
         {/* Logo Box & Global Navigation */}
         <div className="flex items-center gap-6 flex-1 min-w-0">
           <Link href="/" className="flex items-center gap-2 md:gap-3 flex-shrink-0 hover:-translate-y-1 transition-transform">

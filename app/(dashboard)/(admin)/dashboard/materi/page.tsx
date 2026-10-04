@@ -5,8 +5,9 @@ export const metadata = {
   title: 'Manajemen Materi Kategori',
 };
 
-export default async function MateriPage({ searchParams }: { searchParams: { courseId?: string } }) {
-  const courseId = searchParams.courseId;
+export default async function MateriPage({ searchParams }: { searchParams: Promise<{ courseId?: string }> }) {
+  const resolvedSearchParams = await searchParams;
+  const courseId = resolvedSearchParams.courseId;
   const categories = await getCategories(courseId);
 
   return (
