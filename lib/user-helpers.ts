@@ -1,4 +1,4 @@
-import { UserRow, SortColumn, SortDirection } from '@/app/(dashboard)/dashboard/users/types';
+import { UserRow, SortColumn, SortDirection } from '@/app/(dashboard)/(admin)/dashboard/users/types';
 
 /**
  * Format string ISO date to a readable local string
@@ -19,9 +19,9 @@ export function formatDate(isoString: string): string {
  */
 export function filterUsers(users: UserRow[], query: string): UserRow[] {
   if (!query.trim()) return users;
-  
+
   const lowerQuery = query.toLowerCase();
-  return users.filter(user => 
+  return users.filter(user =>
     user.name.toLowerCase().includes(lowerQuery) ||
     user.email.toLowerCase().includes(lowerQuery) ||
     user.role.toLowerCase().includes(lowerQuery)

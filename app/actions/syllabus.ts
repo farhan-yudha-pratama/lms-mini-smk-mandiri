@@ -1,7 +1,7 @@
 'use server';
 
 import { db } from '@/prisma/db';
-import { PageAccessStatus } from '@/app/(dashboard)/dashboard/student-access/types';
+import { PageAccessStatus } from '@/app/(dashboard)/(admin)/dashboard/student-access/types';
 
 export async function getCourseSyllabusWithProgress(courseSlug: string, studentId: string) {
   // 1. Ambil Course
@@ -35,15 +35,15 @@ export async function getCourseSyllabusWithProgress(courseSlug: string, studentI
       .map(page => {
         const access = accesses.find(a => a.pageId === page.id);
         let defaultStatus: PageAccessStatus = 'LOCKED';
-        
+
         if (!access) {
-            const seq = sequences.find(s => s.pageId === page.id);
-            // Jika tidak punya prerequisite, maka defaultnya UNLOCKED
-            if (!seq || !seq.prerequisitePageId) {
-                defaultStatus = 'UNLOCKED';
-            }
+          const seq = sequences.find(s => s.pageId === page.id);
+          // Jika tidak punya prerequisite, maka defaultnya UNLOCKED
+          if (!seq || !seq.prerequisitePageId) {
+            defaultStatus = 'UNLOCKED';
+          }
         }
-        
+
         return {
           id: page.id,
           title: page.title,
@@ -53,7 +53,7 @@ export async function getCourseSyllabusWithProgress(courseSlug: string, studentI
           accessStatus: (access?.status as PageAccessStatus) || defaultStatus
         };
       });
-      
+
     return {
       id: category.id,
       name: category.name,
@@ -61,6 +61,6 @@ export async function getCourseSyllabusWithProgress(courseSlug: string, studentI
       pages: categoryPages
     };
   });
-  
+
   return { course, syllabus };
 }

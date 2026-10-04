@@ -33,6 +33,7 @@ export default function Headbar({ links }: HeadbarProps) {
 
   const getDashboardUrl = () => {
     if (user?.role === 'SUPERADMIN' || user?.role === 'GURU') return '/dashboard';
+    if (user?.role === 'MURID') return '/';
     return null;
   };
 

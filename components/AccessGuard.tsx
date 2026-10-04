@@ -11,7 +11,7 @@ export default function AccessGuard({ slug, children }: { slug?: string, childre
   const [access, setAccess] = useState<{ isUnlocked: boolean, reason?: string } | null>(null);
   const pathname = usePathname();
   
-  const derivedSlug = slug || (pathname ? pathname.split('/').filter(Boolean)[0] : '');
+  const derivedSlug = slug || (pathname ? pathname.split('/').filter(Boolean).pop() : '');
 
   useEffect(() => {
     if (!derivedSlug) return;

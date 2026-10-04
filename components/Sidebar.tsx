@@ -44,9 +44,8 @@ export default function Sidebar() {
 
   const isLinkActive = (slug: string, catSlug: string) => {
     if (!pathname) return false;
-    // We assume the URL structure is `/materi/{catSlug}/{pageSlug}` or just `/{pageSlug}`
-    // Based on previous hardcoded hrefs like `/pengenalan-html`
-    const href = `/${slug}`;
+    // URL structure after moving folders is /course/pemrograman-web-dasar/{pageSlug}
+    const href = `/course/pemrograman-web-dasar/${slug}`;
     return pathname === href || pathname.startsWith(`${href}/`);
   };
 
@@ -116,10 +115,11 @@ export default function Sidebar() {
                     const linkColor = getLinkColor(pageIndex);
                     
                     if (page.isUnlocked) {
+                      const pageUrl = `/course/pemrograman-web-dasar/${page.slug}`;
                       return (
                         <Link
                           key={page.id}
-                          href={`/${page.slug}`}
+                          href={pageUrl}
                           onClick={() => setIsOpen(false)}
                           data-active={isActive}
                           className={`border-4 border-black p-3 flex items-center gap-3 transition-all font-sans uppercase font-black tracking-tight ${linkColor} ${

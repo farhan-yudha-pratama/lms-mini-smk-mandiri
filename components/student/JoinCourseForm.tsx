@@ -45,14 +45,14 @@ export default function JoinCourseForm({ studentId }: { studentId: string }) {
         <button
           type="submit"
           disabled={status === 'loading'}
-          className="bg-[#2A835F] text-white font-black uppercase border-4 border-black px-6 py-3 shadow-[4px_4px_0px_0px_#000] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none hover:-translate-y-1 hover:-translate-x-1 hover:shadow-[6px_6px_0px_0px_#000] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          className="bg-[#2A835F] text-white font-black uppercase border-4 border-black px-6 py-3 shadow-[4px_4px_0px_0px_#000] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_#000] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none transition-all disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {status === 'loading' ? 'Memproses...' : 'Gabung'}
         </button>
       </div>
 
       {status === 'error' && (
-        <div className="bg-red-200 text-red-900 border-2 border-red-900 p-2 text-xs font-bold uppercase">
+        <div role="alert" className="bg-[#092328] text-white border-2 border-black p-2 text-xs font-bold uppercase">
           {message}
         </div>
       )}
