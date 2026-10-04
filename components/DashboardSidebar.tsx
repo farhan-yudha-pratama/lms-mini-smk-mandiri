@@ -32,7 +32,7 @@ export default function DashboardSidebar({
     { label: 'Mata Pelajaran', icon: 'auto_stories', href: '/dashboard/courses', roles: ['SUPERADMIN'] },
     { label: 'Mapel Saya', icon: 'book', href: '/dashboard/my-courses', roles: ['GURU'] },
     { label: 'Kelola Materi', icon: 'menu_book', href: '/dashboard/materi', roles: ['SUPERADMIN', 'GURU'] },
-    { label: 'Summary AI', icon: 'summarize', href: '/dashboard/summaries', roles: ['SUPERADMIN', 'GURU'] },
+    { label: 'Summary AI', icon: 'summarize', href: '/dashboard/summaries', roles: ['SUPERADMIN'] },
     { label: 'Akses Siswa', icon: 'lock_open', href: '/dashboard/student-access', roles: ['SUPERADMIN', 'GURU'] },
     { label: 'Manajemen Kuis', icon: 'quiz', href: '/dashboard/quizzes', roles: ['SUPERADMIN'] },
     { label: 'Evaluasi & Kuis', icon: 'quiz', href: '/dashboard/quizzes', roles: ['GURU'] },

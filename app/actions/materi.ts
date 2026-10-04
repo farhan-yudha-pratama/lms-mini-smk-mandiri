@@ -4,13 +4,26 @@ import { db } from '@/prisma/db';
 import { revalidatePath } from 'next/cache';
 import { randomUUID } from 'crypto';
 
+import { getSession } from '@/lib/session';
+
 export async function getCategories(courseId?: string) {
+  const session = await getSession();
+  if (!session) return [];
+
   let categories;
   if (courseId) {
     categories = await db.orm.public.MaterialCategory.where({ courseId }).all();
   } else {
     categories = await db.orm.public.MaterialCategory.all();
   }
+
+  // Jika GURU, hanya tampilkan kategori dari mapel yang di-assign ke guru tersebut
+  if (session.role === 'GURU') {
+    const assignments = await db.orm.public.CourseTeacher.where({ teacherId: session.userId }).all();
+    const assignedCourseIds = assignments.map(a => a.courseId);
+    categories = categories.filter(c => c.courseId && assignedCourseIds.includes(c.courseId));
+  }
+
   return categories.sort((a, b) => a.orderIndex - b.orderIndex);
 }
 

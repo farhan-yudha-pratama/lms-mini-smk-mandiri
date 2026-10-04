@@ -23,22 +23,35 @@ Struktur direktori dipisahkan secara modular untuk memisahkan UI, logika bisnis,
 /
 ├── app/                  # Next.js App Router
 │   ├── (auth)/           # Route group untuk halaman Login & Register
-│   ├── (dashboard)/      # Route group untuk layout Dashboard
-│   ├── (materi)/         # Route group seluruh materi pembelajaran
-│   │   ├── layout.tsx    # Unified layout dengan AccessGuard
-│   │   ├── (arsitektur-web)/
-│   │   ├── (bootstrap)/
-│   │   ├── (css)/
-│   │   ├── (database)/
-│   │   ├── (html)/
-│   │   ├── (js)/
-│   │   └── (php)/
+│   ├── (dashboard)/      # Route group untuk area Dashboard
+│   │   ├── (admin)/      # Area untuk SUPERADMIN / GURU
+│   │   │   └── dashboard/
+│   │   │       └── layout.tsx  # Layout khusus Admin (memblokir Murid)
+│   │   └── (student)/    # Area khusus untuk MURID
+│   │       └── student/
+│   │           ├── layout.tsx  # Layout khusus Murid (StudentDashboardShell)
+│   │           └── materi/     # Halaman materi siswa
+│   ├── course/           # Route group seluruh materi pembelajaran
+│   │   └── pemrograman-web-dasar/
+│   │       ├── (arsitektur-web)/
+│   │       ├── (bootstrap)/
+│   │       ├── (css)/
+│   │       ├── (database)/
+│   │       ├── (html)/
+│   │       ├── (js)/
+│   │       └── (php)/
+│   ├── join-class/       # Halaman partisipasi murid ke dalam kelas
+│   ├── rapor/            # Halaman rapor penilaian murid
 │   ├── actions/          # Server Actions (access.ts, materi.ts, dll)
 │   ├── globals.css       # Tailwind base styles
 │   ├── layout.tsx        # Root layout
 │   └── page.tsx          # Halaman utama (Landing Page)
 ├── components/           # Reusable UI components
-│   ├── quiz/             # Komponen kuis (engine & report)
+│   ├── dashboard/        # Komponen khusus bagian dashboard
+│   ├── quiz/             # Komponen manajemen kuis
+│   ├── quiz-engine/      # UI khusus runtime pengerjaan kuis
+│   ├── quiz-report/      # UI khusus laporan hasil kuis
+│   ├── student/          # Komponen khusus halaman murid
 │   ├── AccessGuard.tsx   # Guard komponen berbasis role
 │   ├── CodeBlock.tsx     # Komponen syntax highlighter materi
 │   ├── DashboardShell.tsx# Komponen layout dashboard
@@ -46,6 +59,7 @@ Struktur direktori dipisahkan secara modular untuk memisahkan UI, logika bisnis,
 │   ├── Headbar.tsx       # Komponen navigasi atas
 │   └── Sidebar.tsx       # Komponen navigasi samping
 ├── docs/                 # Dokumentasi (ARCHITECTURE.md, ERD_LMS.md, dll)
+│   └── materi/           # Source asli materi pembelajaran
 ├── lib/                  # Konfigurasi library & utilitas umum
 │   ├── session.ts        # Utilitas manajemen JWT & Cookie
 │   └── user-helpers.ts   # Helper data user
@@ -54,13 +68,17 @@ Struktur direktori dipisahkan secara modular untuk memisahkan UI, logika bisnis,
 │   ├── ai-quiz/          # Generator kuis berbasis AI
 │   ├── auth/             # Logika verifikasi dan JWT
 │   ├── class/            # Manajemen kelas
-│   ├── quiz/             # Logika validasi dan assignment kuis
+│   ├── dashboard/        # Pengambilan data spesifik dashboard
+│   ├── quiz/             # Manajemen bank soal & entitas kuis
+│   ├── quiz-assignment/  # Penugasan kuis ke kelas
 │   ├── quiz-engine/      # Core logic pengerjaan kuis
-│   ├── quiz-report/      # Laporan nilai
+│   ├── quiz-report/      # Analisis dan rekapitulasi nilai kuis
+│   ├── student-access/   # Kontrol akses dan progres materi siswa
 │   └── summary/          # Ekstraksi dan pembuatan rangkuman
 ├── prisma/               # Schema dan konfigurasi Prisma
 │   ├── contract.prisma   # Definisi model database LMS
 │   └── db.ts             # Instansiasi Prisma client
+├── scripts/              # Skrip utilitas/maintenance
 └── public/               # Asset statis
 ```
 
