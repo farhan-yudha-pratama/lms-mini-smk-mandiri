@@ -13,6 +13,7 @@ export interface QuizReportItem {
   packageTitle: string;
   pageTitle: string;
   categoryName: string;
+  courseName: string;
   passingScore: number;
   score: number | null;
   status: 'COMPLETED' | 'GRADED' | 'IN_PROGRESS' | 'NOT_STARTED';
@@ -57,7 +58,7 @@ export async function getQuizReports(params: {
   const { classId, packageId, search, page = 1, limit = 50, reviewFilter = 'ALL' } = params;
 
   // 1. Fetch reference collections including questions for essay detection
-  const [classrooms, categories, pages, quizPackages, quizVariants, allStudents, allQuestions] = await Promise.all([
+  const [classrooms, categories, pages, quizPackages, quizVariants, allStudents, allQuestions, courses] = await Promise.all([
     db.orm.public.Classroom.all(),
     db.orm.public.MaterialCategory.all(),
     db.orm.public.Page.all(),
@@ -65,15 +66,17 @@ export async function getQuizReports(params: {
     db.orm.public.QuizVariant.all(),
     db.orm.public.User.where({ role: 'MURID' }).all(),
     db.orm.public.Question.all(),
+    db.orm.public.Course.all(),
   ]);
 
   // Lookup dictionaries
   const classMap = new Map(classrooms.map(c => [c.id, c.name]));
-  const categoryMap = new Map(categories.map(c => [c.id, c.name]));
+  const categoryMap = new Map(categories.map(c => [c.id, c]));
   const pageMap = new Map(pages.map(p => [p.id, p]));
   const packageMap = new Map(quizPackages.map(pkg => [pkg.id, pkg]));
   const variantMap = new Map(quizVariants.map(v => [v.id, v]));
   const studentMap = new Map(allStudents.map(s => [s.id, s]));
+  const courseMap = new Map(courses.map(c => [c.id, c.name]));
 
   // Variant stats map: total questions and essay question count
   const variantQuestionMap = new Map<string, { total: number; essayCount: number }>();
@@ -112,7 +115,9 @@ export async function getQuizReports(params: {
   if (classId && packageId) {
     const pkg = packageMap.get(packageId);
     const pageObj = pkg ? pageMap.get(pkg.pageId) : null;
-    const catName = pageObj ? (categoryMap.get(pageObj.categoryId) || 'Umum') : 'Umum';
+    const cat = pageObj ? categoryMap.get(pageObj.categoryId) : null;
+    const catName = cat ? cat.name : 'Umum';
+    const courseName = cat?.courseId ? (courseMap.get(cat.courseId) || 'Tanpa Mata Pelajaran') : 'Tanpa Mata Pelajaran';
     const pkgTitle = pkg ? pkg.title : 'Kuis';
     const pageTitle = pageObj ? pageObj.title : pkgTitle;
     const passingScore = pkg?.passingScore || 70;
@@ -146,6 +151,7 @@ export async function getQuizReports(params: {
         packageTitle: pkgTitle,
         pageTitle,
         categoryName: catName,
+        courseName,
         passingScore,
         score,
         status: (attempt?.status || 'NOT_STARTED') as any,
@@ -167,7 +173,9 @@ export async function getQuizReports(params: {
       const variant = variantMap.get(attempt.quizVariantId);
       const pkg = variant ? packageMap.get(variant.quizPackageId) : null;
       const pageObj = pkg ? pageMap.get(pkg.pageId) : null;
-      const catName = pageObj ? (categoryMap.get(pageObj.categoryId) || 'Umum') : 'Umum';
+      const cat = pageObj ? categoryMap.get(pageObj.categoryId) : null;
+      const catName = cat ? cat.name : 'Umum';
+      const courseName = cat?.courseId ? (courseMap.get(cat.courseId) || 'Tanpa Mata Pelajaran') : 'Tanpa Mata Pelajaran';
       const className = (student?.classId && classMap.get(student.classId)) || 'Tanpa Kelas';
       const passingScore = pkg?.passingScore || 70;
       const score = attempt.score ?? null;
@@ -191,6 +199,7 @@ export async function getQuizReports(params: {
         packageTitle: pkg?.title || 'Kuis',
         pageTitle: pageObj?.title || pkg?.title || 'Halaman Kuis',
         categoryName: catName,
+        courseName,
         passingScore,
         score,
         status: attempt.status as any,
@@ -931,6 +940,7 @@ export interface TaskRecapItem {
   packageTitle: string;
   pageTitle: string;
   categoryName: string;
+  courseName: string;
   orderIndex: number; // page.orderIndex for sorting
   passingScore: number;
   stats: {
@@ -962,10 +972,12 @@ export async function getTaskRecapList(params: {
   const allPackages = await db.orm.public.QuizPackage.all();
   const allPages = await db.orm.public.Page.all();
   const allCategories = await db.orm.public.MaterialCategory.all();
+  const courses = await db.orm.public.Course.all();
 
   const packageMap = new Map(allPackages.map(p => [p.id, p]));
   const pageMap = new Map(allPages.map(p => [p.id, p]));
   const catMap = new Map(allCategories.map(c => [c.id, c]));
+  const courseMap = new Map(courses.map(c => [c.id, c.name]));
 
   // Find all active packages
   const activePackages = allPackages.filter(p => p.isActive);
@@ -986,6 +998,7 @@ export async function getTaskRecapList(params: {
     if (!page) continue;
     const category = catMap.get(page.categoryId);
     const catName = category?.name || 'Umum';
+    const courseName = category?.courseId ? (courseMap.get(category.courseId) || 'Tanpa Mata Pelajaran') : 'Tanpa Mata Pelajaran';
 
     const attempts = attemptsByPackage.get(pkg.id) || [];
     
@@ -1004,6 +1017,7 @@ export async function getTaskRecapList(params: {
       packageTitle: pkg.title,
       pageTitle: page.title,
       categoryName: catName,
+      courseName,
       orderIndex: (category?.orderIndex || 0) * 1000 + page.orderIndex,
       passingScore: pkg.passingScore,
       stats: {
