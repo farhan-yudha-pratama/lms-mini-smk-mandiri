@@ -95,5 +95,5 @@ export async function joinClassAction(studentId: string, formData: FormData) {
   }
 
   // Redirect outside try-catch
-  redirect('/dashboard');
+  redirect('/');
 }

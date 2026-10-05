@@ -10,7 +10,7 @@ export default async function JoinClassPage() {
   // Extra protection just in case
   if (!session) redirect('/login');
   if (session.role !== 'MURID') redirect('/dashboard');
-  if ((session as any).classId) redirect('/dashboard');
+  if ((session as any).classId) redirect('/');
 
   return (
     <div className="min-h-screen bg-[#F4F0EA] flex items-center justify-center p-4">
