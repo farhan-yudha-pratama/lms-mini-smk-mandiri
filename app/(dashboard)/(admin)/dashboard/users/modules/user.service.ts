@@ -64,5 +64,16 @@ export const userService = {
         await db.orm.public.User.where({ id }).delete();
       })
     );
+  },
+
+  /**
+   * Menghapus sesi / me-revoke token pengguna secara paksa.
+   */
+  async bulkRevokeSessions(userIds: string[]) {
+    await Promise.all(
+      userIds.map(id =>
+        db.orm.public.Session.where({ userId: id }).delete()
+      )
+    );
   }
 };

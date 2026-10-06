@@ -43,6 +43,7 @@ export interface FloatingActionBarProps {
   onBulkChangeRole: (newRole: Role) => void;
   onBulkToggleActive: (isActive: boolean) => void;
   onBulkDelete?: () => void;
+  onBulkRevokeToken?: () => void;
 }
 
 export interface UsersPaginationProps {

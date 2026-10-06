@@ -136,3 +136,20 @@ export async function bulkDeleteUsersAction(userIds: string[]): Promise<ActionRe
     };
   }
 }
+
+export async function bulkRevokeUserTokenAction(userIds: string[]): Promise<ActionResponse> {
+  try {
+    await requireSuperAdmin();
+    
+    // Validasi Input
+    const validatedData = BulkUserActionSchema.parse({ userIds });
+    
+    // Proses Logika
+    await userService.bulkRevokeSessions(validatedData.userIds);
+
+    revalidatePath('/dashboard/users');
+    return { success: true, message: 'Token pengguna berhasil di-revoke secara paksa.' };
+  } catch (error) {
+    return handleActionError(error);
+  }
+}
