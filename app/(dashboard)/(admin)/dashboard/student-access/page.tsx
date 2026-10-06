@@ -21,7 +21,8 @@ export default async function StudentAccessPage() {
     email: s.email,
     isActive: s.isActive,
     classId: s.classId,
-    className: s.classId ? classesMap.get(s.classId) || '-' : '-'
+    className: s.classId ? classesMap.get(s.classId) || '-' : '-',
+    stats: s.stats
   }));
 
   return (

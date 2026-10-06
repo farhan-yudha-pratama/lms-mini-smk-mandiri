@@ -14,6 +14,12 @@ export interface StudentRow {
   name: string;
   email: string;
   isActive: boolean;
+  stats?: {
+    locked: number;
+    unlocked: number;
+    completed: number;
+    total: number;
+  };
 }
 
 export interface AccessPage {

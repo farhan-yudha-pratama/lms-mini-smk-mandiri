@@ -9,22 +9,28 @@ type ClassType = { id: string; name: string; };
 
 export default function TaskRecapView({
   classes,
+  courses = [],
+  role = 'MURID',
   onOpenDetail,
 }: {
   classes: ClassType[];
+  courses?: { id: string; name: string }[];
+  role?: string;
   onOpenDetail: (attemptId: string) => void;
 }) {
   const [selectedClassId, setSelectedClassId] = useState<string>('');
-  const [selectedCourse, setSelectedCourse] = useState<string>('');
+  const [selectedCourseId, setSelectedCourseId] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [data, setData] = useState<TaskRecapResponse | null>(null);
   const [isPending, startTransition] = useTransition();
   const [expandedPackages, setExpandedPackages] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
 
-  const loadData = (classId?: string) => {
+  const loadData = (params?: { classId?: string; courseId?: string }) => {
+    const targetClassId = params?.classId !== undefined ? params.classId : selectedClassId;
+    const targetCourseId = params?.courseId !== undefined ? params.courseId : selectedCourseId;
     startTransition(async () => {
-      const res = await getTaskRecapAction({ classId });
+      const res = await getTaskRecapAction({ classId: targetClassId, courseId: targetCourseId });
       if (res.success && res.data) {
         setData(res.data);
         // Ensure all packages are closed by default
@@ -35,18 +41,23 @@ export default function TaskRecapView({
 
   // Initial load
   useEffect(() => {
-    loadData(selectedClassId);
+    loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Reset category when course changes
   useEffect(() => {
     setSelectedCategory('');
-  }, [selectedCourse]);
+  }, [selectedCourseId]);
 
   const handleClassChange = (newClassId: string) => {
     setSelectedClassId(newClassId);
-    loadData(newClassId);
+    loadData({ classId: newClassId });
+  };
+
+  const handleCourseChange = (newCourseId: string) => {
+    setSelectedCourseId(newCourseId);
+    loadData({ courseId: newCourseId });
   };
 
   const togglePackage = (pkgId: string) => {
@@ -115,27 +126,15 @@ export default function TaskRecapView({
     XLSX.writeFile(wb, fileName);
   };
 
-  // Get unique courses for dropdown
-  const uniqueCourses = useMemo(() => {
-    if (!data) return [];
-    const courses = new Set<string>();
-    data.items.forEach(item => {
-      if (item.courseName) courses.add(item.courseName);
-    });
-    return Array.from(courses).sort();
-  }, [data]);
-
-  // Get unique categories based on selected course
+  // Get unique categories
   const uniqueCategories = useMemo(() => {
     if (!data) return [];
     const categories = new Set<string>();
     data.items.forEach(item => {
-      if (!selectedCourse || item.courseName === selectedCourse) {
-        categories.add(item.categoryName);
-      }
+      categories.add(item.categoryName);
     });
     return Array.from(categories).sort();
-  }, [data, selectedCourse]);
+  }, [data]);
 
   // Group items by category
   const groupedByCategory = useMemo(() => {
@@ -143,10 +142,6 @@ export default function TaskRecapView({
     
     let filteredItems = data.items;
 
-    if (selectedCourse) {
-      filteredItems = filteredItems.filter(item => item.courseName === selectedCourse);
-    }
-    
     if (selectedCategory) {
       filteredItems = filteredItems.filter(item => item.categoryName === selectedCategory);
     }
@@ -185,7 +180,7 @@ export default function TaskRecapView({
     });
 
     return sortedCategories;
-  }, [data, searchQuery, selectedCourse, selectedCategory]);
+  }, [data, searchQuery, selectedCategory]);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
@@ -215,16 +210,18 @@ export default function TaskRecapView({
             </span>
           </div>
           
-          <select
-            value={selectedCourse}
-            onChange={e => setSelectedCourse(e.target.value)}
-            className="w-full md:w-auto px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-bold text-gray-700 outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer shadow-sm"
-          >
-            <option value="">Semua Mata Pelajaran</option>
-            {uniqueCourses.map(course => (
-              <option key={course} value={course}>{course}</option>
-            ))}
-          </select>
+          {role === 'SUPERADMIN' && (
+            <select
+              value={selectedCourseId}
+              onChange={e => handleCourseChange(e.target.value)}
+              className="w-full md:w-auto px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-bold text-gray-700 outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer shadow-sm"
+            >
+              <option value="">Semua Mata Pelajaran</option>
+              {courses.map(course => (
+                <option key={course.id} value={course.id}>{course.name}</option>
+              ))}
+            </select>
+          )}
 
           <select
             value={selectedCategory}

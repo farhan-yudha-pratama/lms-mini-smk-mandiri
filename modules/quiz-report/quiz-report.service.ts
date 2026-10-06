@@ -50,15 +50,17 @@ export interface QuizReportsResponse {
 export async function getQuizReports(params: {
   classId?: string;
   packageId?: string;
+  courseId?: string;
   search?: string;
   page?: number;
   limit?: number;
   reviewFilter?: 'ALL' | 'NEED_REVIEW' | 'HAS_ESSAY' | 'GRADED' | 'NO_ESSAY';
+  teacherId?: string;
 }): Promise<QuizReportsResponse> {
-  const { classId, packageId, search, page = 1, limit = 50, reviewFilter = 'ALL' } = params;
+  const { classId, packageId, courseId, search, page = 1, limit = 50, reviewFilter = 'ALL', teacherId } = params;
 
   // 1. Fetch reference collections including questions for essay detection
-  const [classrooms, categories, pages, quizPackages, quizVariants, allStudents, allQuestions, courses] = await Promise.all([
+  const [classrooms, categories, pages, quizPackages, quizVariants, allStudents, allQuestions, courses, allStudentCourses] = await Promise.all([
     db.orm.public.Classroom.all(),
     db.orm.public.MaterialCategory.all(),
     db.orm.public.Page.all(),
@@ -67,6 +69,7 @@ export async function getQuizReports(params: {
     db.orm.public.User.where({ role: 'MURID' }).all(),
     db.orm.public.Question.all(),
     db.orm.public.Course.all(),
+    db.orm.public.CourseStudent.all(),
   ]);
 
   // Lookup dictionaries
@@ -101,6 +104,44 @@ export async function getQuizReports(params: {
   if (packageId) {
     targetVariants = targetVariants.filter(v => v.quizPackageId === packageId);
   }
+
+  // Teacher Filter
+  if (teacherId) {
+    const teacherCourses = await db.orm.public.CourseTeacher.where({ teacherId }).all();
+    const validCourseIds = new Set(teacherCourses.map(c => c.courseId));
+    
+    // valid categories
+    const validCategoryIds = new Set(
+      categories.filter(c => c.courseId && validCourseIds.has(c.courseId)).map(c => c.id)
+    );
+
+    // valid pages
+    const validPageIds = new Set(
+      pages.filter(p => validCategoryIds.has(p.categoryId)).map(p => p.id)
+    );
+
+    // valid packages
+    const validPackageIds = new Set(
+      quizPackages.filter(p => p.pageId && validPageIds.has(p.pageId)).map(p => p.id)
+    );
+
+    targetVariants = targetVariants.filter(v => validPackageIds.has(v.quizPackageId));
+  }
+
+  // Course Filter (For Superadmin)
+  if (courseId) {
+    const validCategoryIds = new Set(
+      categories.filter(c => c.courseId === courseId).map(c => c.id)
+    );
+    const validPageIds = new Set(
+      pages.filter(p => validCategoryIds.has(p.categoryId)).map(p => p.id)
+    );
+    const validPackageIds = new Set(
+      quizPackages.filter(p => p.pageId && validPageIds.has(p.pageId)).map(p => p.id)
+    );
+    targetVariants = targetVariants.filter(v => validPackageIds.has(v.quizPackageId));
+  }
+
   const targetVariantIds = new Set(targetVariants.map(v => v.id));
 
   // 2. Fetch attempts
@@ -117,7 +158,8 @@ export async function getQuizReports(params: {
     const pageObj = pkg ? pageMap.get(pkg.pageId) : null;
     const cat = pageObj ? categoryMap.get(pageObj.categoryId) : null;
     const catName = cat ? cat.name : 'Umum';
-    const courseName = cat?.courseId ? (courseMap.get(cat.courseId) || 'Tanpa Mata Pelajaran') : 'Tanpa Mata Pelajaran';
+    const courseId = cat?.courseId || null;
+    const courseName = courseId ? (courseMap.get(courseId) || 'Tanpa Mata Pelajaran') : 'Tanpa Mata Pelajaran';
     const pkgTitle = pkg ? pkg.title : 'Kuis';
     const pageTitle = pageObj ? pageObj.title : pkgTitle;
     const passingScore = pkg?.passingScore || 70;
@@ -125,7 +167,15 @@ export async function getQuizReports(params: {
 
     const assignments = await db.orm.public.QuizAssignment.where({ quizPackageId: packageId }).all();
 
-    reportItems = targetStudents.map(student => {
+    // Filter students by course enrollment
+    const enrolledStudentIds = new Set(
+      courseId 
+        ? allStudentCourses.filter(cs => cs.courseId === courseId).map(cs => cs.studentId)
+        : targetStudents.map(s => s.id) // If no course, everyone is enrolled
+    );
+    const validStudents = targetStudents.filter(s => enrolledStudentIds.has(s.id));
+
+    reportItems = validStudents.map(student => {
       const attempt = relevantAttempts.find(a => a.studentId === student.id);
       const assignment = assignments.find(a => a.studentId === student.id);
       const score = attempt?.score ?? null;
@@ -322,14 +372,28 @@ export async function getQuizReports(params: {
 }
 
 export async function getLeaderboardByPackageAndClass(packageId: string, classId: string) {
+  const pkg = await db.orm.public.QuizPackage.where({ id: packageId }).first();
+  const page = pkg ? await db.orm.public.Page.where({ id: pkg.pageId }).first() : null;
+  const category = page ? await db.orm.public.MaterialCategory.where({ id: page.categoryId }).first() : null;
+  const courseId = category?.courseId || null;
+
   const students = await db.orm.public.User.where({ classId, role: 'MURID' }).all();
+  const studentCourses = courseId ? await db.orm.public.CourseStudent.where({ courseId }).all() : [];
+  const enrolledStudentIds = new Set(
+    courseId 
+      ? studentCourses.map(cs => cs.studentId)
+      : students.map(s => s.id)
+  );
+  
+  const validStudents = students.filter(s => enrolledStudentIds.has(s.id));
+
   const variants = await db.orm.public.QuizVariant.where({ quizPackageId: packageId }).all();
   const variantIds = variants.map(v => v.id);
   const assignments = await db.orm.public.QuizAssignment.where({ quizPackageId: packageId }).all();
   const attempts = await db.orm.public.QuizAttempt.all();
   const relevantAttempts = attempts.filter(a => variantIds.includes(a.quizVariantId));
 
-  const results = students.map(student => {
+  const results = validStudents.map(student => {
     const attempt = relevantAttempts.find(a => a.studentId === student.id);
     const assignment = assignments.find(a => a.studentId === student.id);
     
@@ -372,7 +436,7 @@ export async function getLeaderboardByPackageAndClass(packageId: string, classId
   return {
     leaderboard: results,
     stats: {
-      totalStudents: students.length,
+      totalStudents: validStudents.length,
       completedCount: completedStudents.length,
       averageScore: Math.round(averageScore * 100) / 100,
     }
@@ -670,20 +734,24 @@ export interface UnfinishedStudentsResponse {
 export async function getUnfinishedStudentsReport(params: {
   classId?: string;
   packageId?: string;
+  courseId?: string;
   filterMode?: 'ALL' | 'QUIZ_ONLY' | 'PAGE_ONLY';
   sortBy?: 'UNOPENED_DESC' | 'UNOPENED_ASC' | 'UNCOMPLETED_QUIZ_DESC' | 'NAME_ASC' | 'NAME_DESC';
   search?: string;
   page?: number;
   limit?: number;
+  teacherId?: string;
 }): Promise<UnfinishedStudentsResponse> {
   const {
     classId,
     packageId,
+    courseId,
     filterMode = 'ALL',
     sortBy = 'UNOPENED_DESC',
     search,
     page = 1,
-    limit = 50
+    limit = 50,
+    teacherId
   } = params;
 
   // 1. Fetch collections in parallel
@@ -696,7 +764,9 @@ export async function getUnfinishedStudentsReport(params: {
     allPageAccesses,
     allPackages,
     allVariants,
-    allAttempts
+    allAttempts,
+    allStudentCourses,
+    allCourseTeachers
   ] = await Promise.all([
     db.orm.public.User.where({ role: 'MURID' }).all(),
     db.orm.public.Classroom.all(),
@@ -707,6 +777,8 @@ export async function getUnfinishedStudentsReport(params: {
     db.orm.public.QuizPackage.where({ isActive: true }).all(),
     db.orm.public.QuizVariant.all(),
     db.orm.public.QuizAttempt.all(),
+    db.orm.public.CourseStudent.all(),
+    db.orm.public.CourseTeacher.all(),
   ]);
 
   // Lookup maps
@@ -714,10 +786,26 @@ export async function getUnfinishedStudentsReport(params: {
   const categoryMap = new Map(allCategories.map(c => [c.id, c.name]));
   const pageMap = new Map(allPages.map(p => [p.id, p]));
 
+  // Teacher & Course Filter
+  let validCategoryIds = new Set(allCategories.map(c => c.id));
+  if (teacherId) {
+    const teacherCourseIds = new Set(allCourseTeachers.filter(t => t.teacherId === teacherId).map(t => t.courseId));
+    validCategoryIds = new Set(allCategories.filter(c => c.courseId && teacherCourseIds.has(c.courseId)).map(c => c.id));
+  }
+  if (courseId) {
+    // If courseId is provided, intersect with validCategoryIds
+    validCategoryIds = new Set(
+      allCategories.filter(c => c.courseId === courseId && validCategoryIds.has(c.id)).map(c => c.id)
+    );
+  }
+  const filteredPages = allPages.filter(p => validCategoryIds.has(p.categoryId));
+  const filteredPageIds = new Set(filteredPages.map(p => p.id));
+  const filteredPackages = allPackages.filter(p => p.pageId && filteredPageIds.has(p.pageId));
+
   // Active quiz packages (filter by packageId if specified)
   const targetPackages = packageId 
-    ? allPackages.filter(p => p.id === packageId)
-    : allPackages;
+    ? filteredPackages.filter(p => p.id === packageId)
+    : filteredPackages;
 
   // Filter students by class if specified
   let targetStudents = allStudents;
@@ -757,8 +845,16 @@ export async function getUnfinishedStudentsReport(params: {
     const studentAccesses = accessByStudent.get(student.id) || [];
     const studentAttempts = attemptsByStudent.get(student.id) || [];
 
+    // Filter pages and packages by student's courses
+    const studentCourseIds = allStudentCourses.filter(cs => cs.studentId === student.id).map(cs => cs.courseId);
+    const studentCategories = allCategories.filter(c => c.courseId && studentCourseIds.includes(c.courseId));
+    const studentCategoryIds = new Set(studentCategories.map(c => c.id));
+    const studentPages = filteredPages.filter(p => studentCategoryIds.has(p.categoryId));
+    const studentPageIds = new Set(studentPages.map(p => p.id));
+    const studentPackages = targetPackages.filter(pkg => pkg.pageId && studentPageIds.has(pkg.pageId));
+
     // Helper: is page unlocked for this student?
-    const isPageUnlocked = (p: typeof allPages[0]): boolean => {
+    const isPageUnlocked = (p: typeof filteredPages[0]): boolean => {
       const explicit = studentAccesses.find(a => a.pageId === p.id);
       if (explicit && (explicit.status === 'UNLOCKED' || explicit.status === 'COMPLETED')) return true;
       if (explicit && explicit.status === 'LOCKED') return false;
@@ -785,7 +881,7 @@ export async function getUnfinishedStudentsReport(params: {
     const unopenedPagesSummary: { id: string; title: string; categoryName: string; orderIndex: number }[] = [];
     let openedPageCount = 0;
 
-    for (const p of allPages) {
+    for (const p of studentPages) {
       if (isPageUnlocked(p)) {
         openedPageCount++;
       } else {
@@ -800,14 +896,14 @@ export async function getUnfinishedStudentsReport(params: {
 
     unopenedPagesSummary.sort((a, b) => a.orderIndex - b.orderIndex);
 
-    const totalPublishedPages = allPages.length;
-    const unopenedPageCount = totalPublishedPages - openedPageCount;
+    const totalPublishedPages = studentPages.length;
+    const unopenedPageCount = unopenedPagesSummary.length;
 
     // Calculate Quiz Completion status
     const uncompletedQuizzesSummary: { packageId: string; title: string; pageTitle: string; categoryName: string; passingScore: number }[] = [];
     let completedQuizCount = 0;
 
-    for (const pkg of targetPackages) {
+    for (const pkg of studentPackages) {
       const vIds = packageVariantsMap.get(pkg.id) || [];
       const attempt = studentAttempts.find(a => vIds.includes(a.quizVariantId));
       const isDone = attempt && (attempt.status === 'COMPLETED' || attempt.status === 'GRADED');
@@ -826,7 +922,7 @@ export async function getUnfinishedStudentsReport(params: {
       }
     }
 
-    const totalActiveQuizzes = targetPackages.length;
+    const totalActiveQuizzes = studentPackages.length;
     const uncompletedQuizCount = totalActiveQuizzes - completedQuizCount;
 
     return {
@@ -958,13 +1054,17 @@ export interface TaskRecapResponse {
 
 export async function getTaskRecapList(params: {
   classId?: string;
+  courseId?: string;
+  teacherId?: string;
 }): Promise<TaskRecapResponse> {
-  const { classId } = params;
+  const { classId, courseId, teacherId } = params;
 
   // We can leverage the existing getQuizReports logic which already handles all the joining and formatting.
   // We just fetch all attempts for the specified class, then group them by package.
   const baseData = await getQuizReports({
     classId,
+    courseId,
+    teacherId,
     limit: 10000, // Fetch all for grouping
     page: 1
   });

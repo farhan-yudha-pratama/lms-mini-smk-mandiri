@@ -3,7 +3,57 @@ import { PageAccessStatus } from '@/app/(dashboard)/(admin)/dashboard/student-ac
 
 export async function getStudents() {
   const students = await db.orm.public.User.where({ role: 'MURID' }).all();
-  return students;
+  
+  // Cache all necessary data to avoid N+1 queries
+  const allStudentCourses = await db.orm.public.CourseStudent.all();
+  const allCategories = await db.orm.public.MaterialCategory.all();
+  const allPages = await db.orm.public.Page.all();
+  const allSequences = await db.orm.public.PageSequence.all();
+  const allAccesses = await db.orm.public.PageAccess.all();
+
+  const result = students.map(student => {
+    // 1. Get courses for this student
+    const joinedCourseIds = allStudentCourses
+      .filter(cs => cs.studentId === student.id)
+      .map(cs => cs.courseId);
+
+    // 2. Filter categories
+    const categories = allCategories.filter(c => c.courseId && joinedCourseIds.includes(c.courseId));
+    const categoryIds = categories.map(c => c.id);
+
+    // 3. Filter pages
+    const pages = allPages.filter(p => categoryIds.includes(p.categoryId));
+
+    let locked = 0;
+    let unlocked = 0;
+    let completed = 0;
+
+    // 4. Determine status for each page
+    pages.forEach(page => {
+      const access = allAccesses.find(a => a.studentId === student.id && a.pageId === page.id);
+      if (access) {
+        if (access.status === 'LOCKED') locked++;
+        else if (access.status === 'UNLOCKED') unlocked++;
+        else if (access.status === 'COMPLETED') completed++;
+      } else {
+        const seq = allSequences.find(s => s.pageId === page.id);
+        if (!seq || !seq.prerequisitePageId) unlocked++;
+        else locked++;
+      }
+    });
+
+    return {
+      ...student,
+      stats: {
+        locked,
+        unlocked,
+        completed,
+        total: pages.length
+      }
+    };
+  });
+
+  return result;
 }
 
 export async function getStudentById(studentId: string) {
@@ -12,9 +62,14 @@ export async function getStudentById(studentId: string) {
 }
 
 export async function getStudentAccessData(studentId: string) {
-  // Get all categories and pages
+  // Ambil course yang di-join oleh student
+  const studentCourses = await db.orm.public.CourseStudent.where({ studentId }).all();
+  const joinedCourseIds = studentCourses.map(cs => cs.courseId);
+
+  // Get all categories and pages, filtered by joined courses
   const categories = await db.orm.public.MaterialCategory.all();
-  const sortedCategories = categories.sort((a, b) => a.orderIndex - b.orderIndex);
+  const filteredCategories = categories.filter(c => c.courseId && joinedCourseIds.includes(c.courseId));
+  const sortedCategories = filteredCategories.sort((a, b) => a.orderIndex - b.orderIndex);
 
   const allPages = await db.orm.public.Page.all();
   const sequences = await db.orm.public.PageSequence.all();

@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { getSession } from '@/lib/session';
 import { 
   getLeaderboardByPackageAndClass, 
   resetQuizAttempt, 
@@ -15,13 +16,16 @@ import {
 export async function getQuizReportsAction(params: {
   classId?: string;
   packageId?: string;
+  courseId?: string;
   search?: string;
   page?: number;
   limit?: number;
   reviewFilter?: 'ALL' | 'NEED_REVIEW' | 'HAS_ESSAY' | 'GRADED' | 'NO_ESSAY';
 }): Promise<{ success: boolean; data?: QuizReportsResponse; message?: string }> {
   try {
-    const data = await getQuizReports(params);
+    const session = await getSession();
+    const teacherId = session?.role === 'GURU' ? session.userId : undefined;
+    const data = await getQuizReports({ ...params, teacherId });
     return { success: true, data };
   } catch (error) {
     return { 
@@ -82,6 +86,7 @@ export async function gradeQuizAttemptAction(
 export async function getUnfinishedStudentsReportAction(params: {
   classId?: string;
   packageId?: string;
+  courseId?: string;
   filterMode?: 'ALL' | 'QUIZ_ONLY' | 'PAGE_ONLY';
   sortBy?: 'UNOPENED_DESC' | 'UNOPENED_ASC' | 'UNCOMPLETED_QUIZ_DESC' | 'NAME_ASC' | 'NAME_DESC';
   search?: string;
@@ -89,7 +94,9 @@ export async function getUnfinishedStudentsReportAction(params: {
   limit?: number;
 }): Promise<{ success: boolean; data?: UnfinishedStudentsResponse; message?: string }> {
   try {
-    const data = await getUnfinishedStudentsReport(params);
+    const session = await getSession();
+    const teacherId = session?.role === 'GURU' ? session.userId : undefined;
+    const data = await getUnfinishedStudentsReport({ ...params, teacherId });
     return { success: true, data };
   } catch (error) {
     return {
@@ -99,10 +106,12 @@ export async function getUnfinishedStudentsReportAction(params: {
   }
 }
 
-export async function getTaskRecapAction(params: { classId?: string }) {
+export async function getTaskRecapAction(params: { classId?: string; courseId?: string }) {
   try {
+    const session = await getSession();
+    const teacherId = session?.role === 'GURU' ? session.userId : undefined;
     const { getTaskRecapList } = await import('./quiz-report.service');
-    const data = await getTaskRecapList(params);
+    const data = await getTaskRecapList({ ...params, teacherId });
     return { success: true, data };
   } catch (error) {
     return {

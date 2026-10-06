@@ -153,8 +153,14 @@ export default function AccessCategoryList({
       })}
 
       {categories.length === 0 && (
-        <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-500 text-sm shadow-sm">
-          Belum ada kategori materi yang terdaftar.
+        <div className="bg-white rounded-xl border border-gray-200 p-12 text-center shadow-sm flex flex-col items-center justify-center">
+          <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4 border border-gray-100">
+            <span className="material-symbols-outlined text-3xl text-gray-400">folder_off</span>
+          </div>
+          <h3 className="text-gray-900 font-bold text-lg mb-1">Tidak Ada Akses Materi</h3>
+          <p className="text-gray-500 text-sm max-w-md">
+            Siswa ini belum tergabung ke dalam kelas/mata pelajaran apapun, atau kelas yang diikuti belum memiliki materi.
+          </p>
         </div>
       )}
     </div>

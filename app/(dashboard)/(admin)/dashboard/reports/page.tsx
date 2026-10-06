@@ -2,15 +2,22 @@ import { getQuizzesWithPageStatus } from '@/modules/quiz/quiz.service';
 import { getAllClasses } from '@/modules/class/class.service';
 import { getQuizReports, getUnfinishedStudentsReport } from '@/modules/quiz-report/quiz-report.service';
 import QuizReportView from '@/components/quiz-report/QuizReportView';
+import { getSession } from '@/lib/session';
+import { db } from '@/prisma/db';
 
 export const dynamic = 'force-dynamic';
 
 export default async function QuizReportsPage() {
-  const [allPages, classes, initialReports, initialUnfinishedReports] = await Promise.all([
-    getQuizzesWithPageStatus(),
+  const session = await getSession();
+  const role = session?.role || 'MURID';
+  const teacherId = role === 'GURU' ? session?.userId : undefined;
+
+  const [allPages, classes, initialReports, initialUnfinishedReports, courses] = await Promise.all([
+    getQuizzesWithPageStatus(teacherId),
     getAllClasses(),
-    getQuizReports({ page: 1, limit: 50 }),
-    getUnfinishedStudentsReport({ page: 1, limit: 50, sortBy: 'UNOPENED_DESC', filterMode: 'ALL' }),
+    getQuizReports({ page: 1, limit: 50, teacherId }),
+    getUnfinishedStudentsReport({ page: 1, limit: 50, sortBy: 'UNOPENED_DESC', filterMode: 'ALL', teacherId }),
+    db.orm.public.Course.all()
   ]);
 
   const availablePackages = allPages
@@ -34,6 +41,8 @@ export default async function QuizReportsPage() {
       <QuizReportView 
         packages={availablePackages} 
         classes={classes} 
+        courses={courses}
+        role={role}
         initialReports={initialReports}
         initialUnfinishedReports={initialUnfinishedReports}
       />

@@ -98,8 +98,14 @@ export default function StudentAccessTable({ students, classes }: StudentAccessT
       {/* MOBILE VIEW: Cards */}
       <div className="md:hidden flex flex-col gap-3">
         {paginatedStudents.length === 0 ? (
-          <div className="p-8 text-center bg-white rounded-xl border border-gray-200 shadow-sm text-gray-500 text-sm">
-            {searchQuery ? 'Tidak ada siswa yang sesuai dengan filter pencarian.' : 'Belum ada data siswa terdaftar.'}
+          <div className="p-10 text-center bg-white rounded-xl border border-gray-200 shadow-sm flex flex-col items-center justify-center">
+            <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4 border border-gray-100">
+              <span className="material-symbols-outlined text-3xl text-gray-400">group_off</span>
+            </div>
+            <h3 className="text-gray-900 font-bold text-lg mb-1">Data Tidak Ditemukan</h3>
+            <p className="text-gray-500 text-sm max-w-xs">
+              {searchQuery ? 'Tidak ada siswa yang sesuai dengan filter pencarian Anda.' : 'Belum ada data siswa terdaftar di sistem.'}
+            </p>
           </div>
         ) : (
           paginatedStudents.map((student) => (
@@ -130,7 +136,19 @@ export default function StudentAccessTable({ students, classes }: StudentAccessT
                 </span>
               </div>
 
-              <div className="pt-2 border-t border-gray-100">
+              <div className="pt-2 border-t border-gray-100 flex flex-col gap-3">
+                {student.stats && (
+                  <div className="flex flex-col gap-1 w-full bg-gray-50 p-2.5 rounded-lg border border-gray-100">
+                    <div className="flex justify-between text-[10px] font-semibold text-gray-500">
+                      <span>Progress Akses Materi</span>
+                      <span>{student.stats.completed + student.stats.unlocked} / {student.stats.total} Terbuka</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden flex">
+                      <div className="bg-emerald-500 h-1.5" style={{ width: `${student.stats.total > 0 ? (student.stats.completed / student.stats.total) * 100 : 0}%` }}></div>
+                      <div className="bg-blue-500 h-1.5" style={{ width: `${student.stats.total > 0 ? (student.stats.unlocked / student.stats.total) * 100 : 0}%` }}></div>
+                    </div>
+                  </div>
+                )}
                 <Link
                   href={`/dashboard/student-access/${student.id}`}
                   className="w-full py-2 px-3 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-1.5"
@@ -154,14 +172,23 @@ export default function StudentAccessTable({ students, classes }: StudentAccessT
                 <th className="px-6 py-4">Kelas</th>
                 <th className="px-6 py-4">Email Akun</th>
                 <th className="px-6 py-4">Status Akun</th>
+                <th className="px-6 py-4">Progress Materi</th>
                 <th className="px-6 py-4 text-right">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {paginatedStudents.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-10 text-center text-gray-500">
-                    {searchQuery ? 'Tidak ada siswa yang sesuai dengan filter pencarian.' : 'Belum ada data siswa terdaftar.'}
+                  <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
+                    <div className="flex flex-col items-center justify-center">
+                      <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4 border border-gray-100">
+                        <span className="material-symbols-outlined text-3xl text-gray-400">group_off</span>
+                      </div>
+                      <h3 className="text-gray-900 font-bold text-lg mb-1">Data Tidak Ditemukan</h3>
+                      <p className="text-sm max-w-sm">
+                        {searchQuery ? 'Tidak ada siswa yang sesuai dengan filter pencarian Anda.' : 'Belum ada data siswa terdaftar di sistem.'}
+                      </p>
+                    </div>
                   </td>
                 </tr>
               ) : (
@@ -190,6 +217,21 @@ export default function StudentAccessTable({ students, classes }: StudentAccessT
                         <span className={`w-1.5 h-1.5 rounded-full ${student.isActive ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
                         {student.isActive ? 'Aktif' : 'Nonaktif'}
                       </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      {student.stats ? (
+                        <div className="flex flex-col gap-1 w-full max-w-[150px]">
+                          <div className="flex justify-between text-[10px] font-semibold text-gray-500">
+                            <span>{student.stats.completed + student.stats.unlocked} / {student.stats.total} Terbuka</span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden flex">
+                            <div className="bg-emerald-500 h-1.5" style={{ width: `${student.stats.total > 0 ? (student.stats.completed / student.stats.total) * 100 : 0}%` }}></div>
+                            <div className="bg-blue-500 h-1.5" style={{ width: `${student.stats.total > 0 ? (student.stats.unlocked / student.stats.total) * 100 : 0}%` }}></div>
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-gray-400">Tidak ada</span>
+                      )}
                     </td>
                     <td className="px-6 py-4 text-right">
                       <Link 
