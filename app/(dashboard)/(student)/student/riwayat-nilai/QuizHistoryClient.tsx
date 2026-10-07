@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { getStudentAttemptDetails } from '@/app/actions/student-quiz-answers';
 
 interface QuizHistoryItem {
   attemptId: string;
@@ -38,6 +39,31 @@ export default function QuizHistoryClient({ history, courses, initialSearch, ini
   const [search, setSearch] = useState(initialSearch || '');
   const [courseFilter, setCourseFilter] = useState(initialCourse || '');
   const [statusFilter, setStatusFilter] = useState(initialStatus || '');
+
+  // Modal State
+  const [selectedAttemptId, setSelectedAttemptId] = useState<string | null>(null);
+  const [answersData, setAnswersData] = useState<any[] | null>(null);
+  const [loadingAnswers, setLoadingAnswers] = useState(false);
+
+  const handleOpenAnswers = async (attemptId: string) => {
+    setSelectedAttemptId(attemptId);
+    setAnswersData(null);
+    setLoadingAnswers(true);
+    try {
+      const data = await getStudentAttemptDetails(attemptId);
+      setAnswersData(data);
+    } catch (error) {
+      console.error(error);
+      alert('Gagal memuat jawaban');
+    } finally {
+      setLoadingAnswers(false);
+    }
+  };
+
+  const closeAnswersModal = () => {
+    setSelectedAttemptId(null);
+    setAnswersData(null);
+  };
   
   const updateFilters = (s: string, c: string, st: string) => {
     const params = new URLSearchParams();
@@ -187,12 +213,12 @@ export default function QuizHistoryClient({ history, courses, initialSearch, ini
                     )}
                   </td>
                   <td className="px-6 py-4 text-center">
-                    <Link 
-                      href={`/course/${h.courseSlug}/${h.pageSlug}`}
+                    <button 
+                      onClick={() => handleOpenAnswers(h.attemptId)}
                       className="bg-white text-black border-4 border-black px-4 py-2 font-black uppercase text-sm shadow-[4px_4px_0px_0px_#000] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_#000] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none transition-all whitespace-nowrap inline-block"
                     >
-                      Buka Materi
-                    </Link>
+                      Lihat Jawaban
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -238,17 +264,97 @@ export default function QuizHistoryClient({ history, courses, initialSearch, ini
                    </span>
                 )}
               </div>
-              <Link 
-                href={`/course/${h.courseSlug}/${h.pageSlug}`}
-                className="bg-white text-black border-4 border-black p-2 font-black shadow-[4px_4px_0px_0px_#000] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_#000] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none transition-all flex items-center justify-center"
-                title="Buka Materi"
+              <button 
+                onClick={() => handleOpenAnswers(h.attemptId)}
+                className="bg-white text-black border-4 border-black p-2 px-4 font-black text-sm uppercase shadow-[4px_4px_0px_0px_#000] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_#000] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none transition-all flex items-center justify-center"
+                title="Lihat Jawaban"
               >
-                <span className="material-symbols-outlined font-black">arrow_forward</span>
-              </Link>
+                Lihat Jawaban
+              </button>
             </div>
           </div>
         ))}
       </div>
+
+      {/* Answers Modal */}
+      {selectedAttemptId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 overflow-y-auto backdrop-blur-sm">
+          <div className="bg-[#EAF4ED] border-4 border-black shadow-[8px_8px_0px_0px_#000] max-w-3xl w-full flex flex-col max-h-[90vh]">
+            <div className="flex justify-between items-center p-4 border-b-4 border-black bg-white">
+              <h2 className="font-black text-xl md:text-2xl uppercase">Jawaban Kamu</h2>
+              <button 
+                onClick={closeAnswersModal}
+                className="w-10 h-10 flex items-center justify-center bg-red-400 border-4 border-black shadow-[2px_2px_0px_0px_#000] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_#000] transition-all"
+              >
+                <span className="material-symbols-outlined font-black text-black">close</span>
+              </button>
+            </div>
+            
+            <div className="p-4 md:p-6 overflow-y-auto space-y-6">
+              {loadingAnswers ? (
+                <div className="text-center font-bold text-xl py-12">Memuat jawaban...</div>
+              ) : answersData && answersData.length > 0 ? (
+                answersData.map((q, idx) => (
+                  <div key={q.id} className="bg-white border-4 border-black p-4 md:p-6 shadow-[4px_4px_0px_0px_#000]">
+                    <div className="flex gap-4 mb-4 border-b-2 border-dashed border-gray-300 pb-4">
+                      <div className="w-10 h-10 shrink-0 bg-black text-white font-black flex items-center justify-center text-xl">
+                        {idx + 1}
+                      </div>
+                      <div 
+                        className="prose prose-sm max-w-none font-bold" 
+                        dangerouslySetInnerHTML={{ __html: q.text }} 
+                      />
+                    </div>
+                    
+                    {q.type === 'PILIHAN_GANDA' ? (
+                      <div className="space-y-3">
+                        {q.options.map((opt: any) => {
+                          const isSelected = q.studentSelectedOptionId === opt.id;
+                          return (
+                            <div 
+                              key={opt.id}
+                              className={`p-3 border-4 border-black flex gap-3 ${isSelected ? 'bg-blue-200' : 'bg-gray-50 opacity-70'}`}
+                            >
+                              <div className="mt-0.5">
+                                {isSelected ? (
+                                  <span className="material-symbols-outlined text-black font-black">radio_button_checked</span>
+                                ) : (
+                                  <span className="material-symbols-outlined text-gray-400 font-black">radio_button_unchecked</span>
+                                )}
+                              </div>
+                              <div className="font-bold text-sm" dangerouslySetInnerHTML={{ __html: opt.text }} />
+                            </div>
+                          );
+                        })}
+                        {!q.studentSelectedOptionId && (
+                          <div className="mt-2 text-red-600 font-bold text-sm bg-red-100 p-2 border-2 border-red-600 inline-block">
+                            Tidak dijawab
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <h4 className="font-black uppercase text-sm">Jawaban Essay Kamu:</h4>
+                        {q.studentEssayAnswer ? (
+                          <div className="bg-gray-100 border-4 border-black p-4 font-bold text-sm whitespace-pre-wrap">
+                            {q.studentEssayAnswer}
+                          </div>
+                        ) : (
+                          <div className="mt-2 text-red-600 font-bold text-sm bg-red-100 p-2 border-2 border-red-600 inline-block">
+                            Tidak dijawab
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))
+              ) : (
+                <div className="text-center font-bold py-8 text-gray-500">Tidak ada jawaban.</div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
