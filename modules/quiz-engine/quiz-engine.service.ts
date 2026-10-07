@@ -25,7 +25,7 @@ export async function getQuizStatus(pageSlug: string, studentId: string) {
   }).first();
 
   const rawQuestions = await db.orm.public.Question.where({ quizVariantId: assignment.quizVariantId }).all();
-  const hasEssay = rawQuestions.some(q => q.questionType === 'ESSAY');
+  const hasEssay = rawQuestions.some(q => q.questionType === 'ESSAY' || q.questionType === 'CODE_CHALLENGE');
 
   const antiCheatRow = await db.orm.public.QuizAntiCheatConfig.where({ quizVariantId: assignment.quizVariantId }).first();
   const antiCheatConfig = antiCheatRow || {
@@ -108,7 +108,10 @@ export async function getQuizEngineData(attemptId: string, studentId: string) {
       text: q.questionText,
       type: q.questionType,
       options,
-      points: q.points
+      points: q.points,
+      codeLanguage: q.codeLanguage,
+      initialCode: q.initialCode,
+      testCases: q.testCases
     });
   }
 
@@ -146,17 +149,24 @@ export async function submitQuiz(
     const variant = await tx.orm.public.QuizVariant.where({ id: attempt.quizVariantId }).first();
     const pkg = await tx.orm.public.QuizPackage.where({ id: variant!.quizPackageId }).first();
     
-    // Fetch slugs for revalidation
-    const page = await tx.orm.public.Page.where({ id: pkg!.pageId }).first();
-    const category = await tx.orm.public.MaterialCategory.where({ id: page!.categoryId }).first();
-    const pageSlug = page?.slug;
-    const categorySlug = category?.slug;
+    // Fetch slugs for revalidation (only if tied to a page)
+    let pageSlug: string | undefined = undefined;
+    let categorySlug: string | undefined = undefined;
+    
+    if (pkg!.pageId) {
+      const page = await tx.orm.public.Page.where({ id: pkg!.pageId }).first();
+      if (page) {
+        const category = await tx.orm.public.MaterialCategory.where({ id: page.categoryId }).first();
+        pageSlug = page.slug;
+        categorySlug = category?.slug;
+      }
+    }
 
     let totalScore = 0;
     let maxPossibleScore = 0;
 
     const rawQuestions = await tx.orm.public.Question.where({ quizVariantId: variant!.id }).all();
-    const hasEssay = rawQuestions.some(q => q.questionType === 'ESSAY');
+    const hasEssay = rawQuestions.some(q => q.questionType === 'ESSAY' || q.questionType === 'CODE_CHALLENGE');
 
     for (const q of rawQuestions) {
       maxPossibleScore += q.points;
@@ -183,7 +193,7 @@ export async function submitQuiz(
           isCorrect,
           pointsEarned
         });
-      } else if (q.questionType === 'ESSAY') {
+      } else if (q.questionType === 'ESSAY' || q.questionType === 'CODE_CHALLENGE') {
         await tx.orm.public.StudentAnswer.create({
           id: randomUUID(),
           quizAttemptId: attemptId,
@@ -201,12 +211,12 @@ export async function submitQuiz(
 
     await tx.orm.public.QuizAttempt.where({ id: attemptId }).update({
       score: roundedScore,
-      status: 'COMPLETED',
+      status: hasEssay ? 'COMPLETED' : 'GRADED',
       finishedAt: new Date().toISOString()
     });
 
     const passed = roundedScore >= pkg!.passingScore;
-    if (passed) {
+    if (passed && pkg!.pageId) {
       // 1. Mark CURRENT page as COMPLETED
       const currentPageAccess = await tx.orm.public.PageAccess.where({
         pageId: pkg!.pageId,

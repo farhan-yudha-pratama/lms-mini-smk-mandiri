@@ -46,6 +46,9 @@ export async function getStudentAttemptDetails(attemptId: string) {
       options: qOptions,
       studentSelectedOptionId: studentAnswer?.selectedOptionId || null,
       studentEssayAnswer: studentAnswer?.essayAnswer || null,
+      essayFeedback: studentAnswer?.essayFeedback || null,
+      pointsEarned: studentAnswer?.pointsEarned || 0,
+      maxPoints: q.points || 0,
     };
   });
 

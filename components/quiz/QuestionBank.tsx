@@ -25,10 +25,13 @@ export default function QuestionBank({ quizVariantId, initialQuestions }: Questi
   
   const [showForm, setShowForm] = useState(false);
   const [editingQuestionId, setEditingQuestionId] = useState<string | null>(null);
-  const [formType, setFormType] = useState<'PILIHAN_GANDA' | 'ESSAY'>('PILIHAN_GANDA');
+  const [formType, setFormType] = useState<'PILIHAN_GANDA' | 'ESSAY' | 'CODE_CHALLENGE'>('PILIHAN_GANDA');
   const [questionText, setQuestionText] = useState('');
   const [points, setPoints] = useState<number>(1);
   const [options, setOptions] = useState([{ text: '', isCorrect: true }, { text: '', isCorrect: false }]);
+  const [codeLanguage, setCodeLanguage] = useState('html');
+  const [initialCode, setInitialCode] = useState('');
+  const [testCases, setTestCases] = useState('');
   const [loading, setLoading] = useState(false);
   
   const [modalState, setModalState] = useState<{
@@ -78,12 +81,15 @@ export default function QuestionBank({ quizVariantId, initialQuestions }: Questi
   const pgCount = questions.filter(q => q.questionType === 'PILIHAN_GANDA').length;
   const essayCount = questions.filter(q => q.questionType === 'ESSAY').length;
 
-  const handleOpenAdd = (type: 'PILIHAN_GANDA' | 'ESSAY') => {
+  const handleOpenAdd = (type: 'PILIHAN_GANDA' | 'ESSAY' | 'CODE_CHALLENGE') => {
     setEditingQuestionId(null);
     setFormType(type);
     setQuestionText('');
-    setPoints(type === 'ESSAY' ? 10 : 1);
+    setPoints(type === 'ESSAY' ? 10 : (type === 'CODE_CHALLENGE' ? 20 : 1));
     setOptions([{ text: '', isCorrect: true }, { text: '', isCorrect: false }]);
+    setCodeLanguage('html');
+    setInitialCode('');
+    setTestCases('');
     setShowForm(true);
   };
 
@@ -92,6 +98,7 @@ export default function QuestionBank({ quizVariantId, initialQuestions }: Questi
     setFormType(q.questionType);
     setQuestionText(q.questionText);
     setPoints(Number(q.points) || 1);
+    
     if (q.questionType === 'PILIHAN_GANDA' && q.options && q.options.length > 0) {
       setOptions(q.options.map((o: any) => ({
         text: o.optionText,
@@ -100,6 +107,11 @@ export default function QuestionBank({ quizVariantId, initialQuestions }: Questi
     } else {
       setOptions([{ text: '', isCorrect: true }, { text: '', isCorrect: false }]);
     }
+
+    setCodeLanguage(q.codeLanguage || 'html');
+    setInitialCode(q.initialCode || '');
+    setTestCases(q.testCases || '');
+
     setShowForm(true);
   };
 
@@ -164,7 +176,10 @@ export default function QuestionBank({ quizVariantId, initialQuestions }: Questi
       options: formType === 'PILIHAN_GANDA' ? options.map((opt) => ({
         optionText: opt.text.trim(),
         isCorrect: opt.isCorrect
-      })) : undefined
+      })) : undefined,
+      codeLanguage: formType === 'CODE_CHALLENGE' ? codeLanguage : null,
+      initialCode: formType === 'CODE_CHALLENGE' ? initialCode : null,
+      testCases: formType === 'CODE_CHALLENGE' ? testCases : null
     };
 
     let res;
@@ -519,7 +534,7 @@ export default function QuestionBank({ quizVariantId, initialQuestions }: Questi
               type="submit" 
               disabled={loading} 
               className={`px-5 py-2 text-sm font-bold text-white rounded-lg transition-colors disabled:opacity-50 ${
-                formType === 'ESSAY' ? 'bg-purple-600 hover:bg-purple-700' : 'bg-blue-600 hover:bg-blue-700'
+                formType === 'CODE_CHALLENGE' ? 'bg-green-600 hover:bg-green-700' : formType === 'ESSAY' ? 'bg-purple-600 hover:bg-purple-700' : 'bg-blue-600 hover:bg-blue-700'
               }`}
             >
               {loading ? 'Menyimpan...' : editingQuestionId ? 'Perbarui Soal' : 'Simpan Soal'}

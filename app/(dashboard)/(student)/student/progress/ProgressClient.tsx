@@ -11,6 +11,7 @@ interface PageProgress {
   status: string; // 'LOCKED' | 'UNLOCKED' | 'COMPLETED'
   hasQuiz: boolean;
   quizStatus: string | null; // 'LOCKED' | 'UNATTEMPTED' | 'IN_PROGRESS' | 'COMPLETED' | 'GRADED' | null
+  quizTitle: string | null;
 }
 
 interface CategoryProgress {
@@ -20,11 +21,20 @@ interface CategoryProgress {
   pages: PageProgress[];
 }
 
+interface StandaloneQuiz {
+  id: string;
+  title: string;
+  status: string;
+  openAt: string | null;
+  closeAt: string | null;
+}
+
 interface CourseProgress {
   id: string;
   name: string;
   slug: string;
   categories: CategoryProgress[];
+  standaloneQuizzes?: StandaloneQuiz[];
 }
 
 export default function ProgressClient({ data }: { data: CourseProgress[] }) {
@@ -63,6 +73,82 @@ export default function ProgressClient({ data }: { data: CourseProgress[] }) {
             {/* Course Content */}
             {isExpanded && (
               <div className="p-4 md:p-6 bg-gray-50 flex flex-col gap-6">
+                
+                {/* Standalone Quizzes / Tugas Mandiri */}
+                {course.standaloneQuizzes && course.standaloneQuizzes.length > 0 && (
+                  <div className="border-4 border-black bg-white shadow-[4px_4px_0px_0px_#000]">
+                    <div className="bg-[#FFEBAF] border-b-4 border-black p-3 md:p-4 flex items-center gap-2">
+                      <span className="material-symbols-outlined font-black">assignment</span>
+                      <h3 className="font-black text-lg uppercase">Tugas Mandiri / Kuis Terjadwal</h3>
+                    </div>
+                    <div className="flex flex-col">
+                      {course.standaloneQuizzes.map((quiz, idx) => {
+                        const isLocked = quiz.status === 'LOCKED';
+                        
+                        let quizText = 'Tugas Mandiri';
+                        let quizColor = 'text-gray-500 bg-gray-100 border-gray-300';
+                        
+                        if (isLocked) {
+                          quizText = 'Tugas Terkunci';
+                          quizColor = 'text-red-800 bg-red-100 border-red-800';
+                        } else if (quiz.status === 'UNATTEMPTED') {
+                          quizText = 'Belum Dikerjakan';
+                          quizColor = 'text-orange-800 bg-orange-100 border-orange-800';
+                        } else if (quiz.status === 'IN_PROGRESS') {
+                          quizText = 'Sedang Dikerjakan';
+                          quizColor = 'text-yellow-800 bg-yellow-100 border-yellow-800';
+                        } else if (quiz.status === 'COMPLETED' || quiz.status === 'GRADED') {
+                          quizText = 'Selesai';
+                          quizColor = 'text-green-800 bg-green-100 border-green-800';
+                        }
+                        
+                        let formattedOpen = quiz.openAt ? new Date(quiz.openAt).toLocaleString('id-ID') : null;
+
+                        return (
+                          <div key={quiz.id} className="border-b-4 border-black last:border-b-0 p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                            <div className="flex items-start gap-3">
+                              <div className="w-8 h-8 shrink-0 bg-black text-white font-black flex items-center justify-center text-sm border-2 border-black mt-1 md:mt-0">
+                                <span className="material-symbols-outlined text-[16px]">quiz</span>
+                              </div>
+                              <div>
+                                <h4 className="font-black text-base md:text-lg text-black">{quiz.title}</h4>
+                                <div className="flex flex-wrap gap-2 mt-2">
+                                  <span className={`inline-flex items-center gap-1 text-[10px] font-black uppercase px-2 py-0.5 border-2 ${quizColor}`}>
+                                    <span className="material-symbols-outlined text-[14px]">{isLocked ? 'lock' : 'check'}</span> {quizText}
+                                  </span>
+                                  {formattedOpen && isLocked && (
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase px-2 py-0.5 border-2 border-black bg-white text-gray-800">
+                                      Buka pada: {formattedOpen}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="shrink-0 flex justify-end">
+                              {isLocked ? (
+                                <button disabled className="bg-gray-200 text-gray-500 border-4 border-gray-400 px-4 py-2 font-black uppercase text-xs cursor-not-allowed flex items-center gap-2">
+                                  <span className="material-symbols-outlined text-sm">lock</span>
+                                  Terkunci
+                                </button>
+                              ) : (
+                                <Link 
+                                  href={`/course/${course.slug}/quiz/${quiz.id}`}
+                                  className="bg-[#FFEBAF] text-black border-4 border-black px-4 py-2 font-black uppercase text-xs shadow-[4px_4px_0px_0px_#000] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_#000] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none transition-all flex items-center gap-2"
+                                >
+                                  Mulai Tugas
+                                  <span className="material-symbols-outlined text-sm">arrow_forward</span>
+                                </Link>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Materi Normal */}
                 {course.categories.length === 0 ? (
                   <p className="text-center font-bold text-gray-500 py-4 border-2 border-dashed border-gray-300">Belum ada materi di mapel ini.</p>
                 ) : (

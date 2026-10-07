@@ -38,11 +38,19 @@ export async function getPackageLabel(packageId: string) {
   const pkg = await db.orm.public.QuizPackage.where({ id: packageId }).first();
   if (!pkg) return { title: `(Kuis tidak ditemukan)`, pageTitle: '', categoryName: '', passingScore: 0, id: packageId };
   
-  const page = await getPageLabel(pkg.pageId);
+  let pageTitle = 'Tugas Mandiri';
+  let categoryName = '-';
+  
+  if (pkg.pageId) {
+    const page = await getPageLabel(pkg.pageId);
+    pageTitle = page.title;
+    categoryName = page.categoryName;
+  }
+  
   return { 
     title: pkg.title, 
-    pageTitle: page.title, 
-    categoryName: page.categoryName, 
+    pageTitle, 
+    categoryName, 
     passingScore: pkg.passingScore, 
     id: packageId 
   };

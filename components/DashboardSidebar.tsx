@@ -36,7 +36,8 @@ export default function DashboardSidebar({
     { label: 'Akses Siswa', icon: 'lock_open', href: '/dashboard/student-access', roles: ['SUPERADMIN', 'GURU'] },
     { label: 'Manajemen Kuis', icon: 'quiz', href: '/dashboard/quizzes', roles: ['SUPERADMIN'] },
     { label: 'Evaluasi & Kuis', icon: 'quiz', href: '/dashboard/quizzes', roles: ['GURU'] },
-    { label: 'Laporan Nilai', icon: 'analytics', href: '/dashboard/reports', roles: ['SUPERADMIN', 'GURU'] },
+    { label: 'Buku Nilai (Matrix)', icon: 'grading', href: '/dashboard/gradebook', roles: ['SUPERADMIN', 'GURU'] },
+    { label: 'Laporan Belajar', icon: 'analytics', href: '/dashboard/reports', roles: ['SUPERADMIN', 'GURU'] },
     { label: 'Audit Logs', icon: 'history', href: '/dashboard/audit-logs', roles: ['SUPERADMIN'] },
   ];
 

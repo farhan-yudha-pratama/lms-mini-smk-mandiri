@@ -155,10 +155,11 @@ export async function getQuizReports(params: {
   // CASE 1: Both classId and packageId are specified -> show all students in that class for that package
   if (classId && packageId) {
     const pkg = packageMap.get(packageId);
-    const pageObj = pkg ? pageMap.get(pkg.pageId) : null;
+    const pageObj = pkg?.pageId ? pageMap.get(pkg.pageId) : null;
     const cat = pageObj ? categoryMap.get(pageObj.categoryId) : null;
     const catName = cat ? cat.name : 'Umum';
-    const courseId = cat?.courseId || null;
+    const cId = cat?.courseId || pkg?.courseId || null;
+    const courseId = cId;
     const courseName = courseId ? (courseMap.get(courseId) || 'Tanpa Mata Pelajaran') : 'Tanpa Mata Pelajaran';
     const pkgTitle = pkg ? pkg.title : 'Kuis';
     const pageTitle = pageObj ? pageObj.title : pkgTitle;
@@ -222,10 +223,11 @@ export async function getQuizReports(params: {
       const student = studentMap.get(attempt.studentId);
       const variant = variantMap.get(attempt.quizVariantId);
       const pkg = variant ? packageMap.get(variant.quizPackageId) : null;
-      const pageObj = pkg ? pageMap.get(pkg.pageId) : null;
+      const pageObj = pkg?.pageId ? pageMap.get(pkg.pageId) : null;
       const cat = pageObj ? categoryMap.get(pageObj.categoryId) : null;
       const catName = cat ? cat.name : 'Umum';
-      const courseName = cat?.courseId ? (courseMap.get(cat.courseId) || 'Tanpa Mata Pelajaran') : 'Tanpa Mata Pelajaran';
+      const cId = cat?.courseId || pkg?.courseId || null;
+      const courseName = cId ? (courseMap.get(cId) || 'Tanpa Mata Pelajaran') : 'Tanpa Mata Pelajaran';
       const className = (student?.classId && classMap.get(student.classId)) || 'Tanpa Kelas';
       const passingScore = pkg?.passingScore || 70;
       const score = attempt.score ?? null;
@@ -373,9 +375,9 @@ export async function getQuizReports(params: {
 
 export async function getLeaderboardByPackageAndClass(packageId: string, classId: string) {
   const pkg = await db.orm.public.QuizPackage.where({ id: packageId }).first();
-  const page = pkg ? await db.orm.public.Page.where({ id: pkg.pageId }).first() : null;
+  const page = (pkg && pkg.pageId) ? await db.orm.public.Page.where({ id: pkg.pageId }).first() : null;
   const category = page ? await db.orm.public.MaterialCategory.where({ id: page.categoryId }).first() : null;
-  const courseId = category?.courseId || null;
+  const courseId = category?.courseId || pkg?.courseId || null;
 
   const students = await db.orm.public.User.where({ classId, role: 'MURID' }).all();
   const studentCourses = courseId ? await db.orm.public.CourseStudent.where({ courseId }).all() : [];
@@ -848,7 +850,9 @@ export async function getUnfinishedStudentsReport(params: {
 
   const pageQuizPackageMap = new Map<string, typeof allPackages[0]>();
   for (const pkg of allPackages) {
-    pageQuizPackageMap.set(pkg.pageId, pkg);
+    if (pkg.pageId) {
+      pageQuizPackageMap.set(pkg.pageId, pkg);
+    }
   }
 
   // Compute for each student
@@ -922,7 +926,7 @@ export async function getUnfinishedStudentsReport(params: {
       if (isDone) {
         completedQuizCount++;
       } else {
-        const pageObj = pageMap.get(pkg.pageId);
+        const pageObj = pkg.pageId ? pageMap.get(pkg.pageId) : null;
         uncompletedQuizzesSummary.push({
           packageId: pkg.id,
           title: pkg.title,
@@ -1105,11 +1109,12 @@ export async function getTaskRecapList(params: {
   const items: TaskRecapItem[] = [];
 
   for (const pkg of activePackages) {
-    const page = pageMap.get(pkg.pageId);
-    if (!page) continue;
-    const category = catMap.get(page.categoryId);
+    const page = pkg.pageId ? pageMap.get(pkg.pageId) : null;
+    if (pkg.pageId && !page) continue; // Skip if it has pageId but page not found
+    const category = page ? catMap.get(page.categoryId) : null;
     const catName = category?.name || 'Umum';
-    const courseName = category?.courseId ? (courseMap.get(category.courseId) || 'Tanpa Mata Pelajaran') : 'Tanpa Mata Pelajaran';
+    const cId = category?.courseId || pkg.courseId || null;
+    const courseName = cId ? (courseMap.get(cId) || 'Tanpa Mata Pelajaran') : 'Tanpa Mata Pelajaran';
 
     const attempts = attemptsByPackage.get(pkg.id) || [];
     
@@ -1126,10 +1131,10 @@ export async function getTaskRecapList(params: {
     items.push({
       packageId: pkg.id,
       packageTitle: pkg.title,
-      pageTitle: page.title,
+      pageTitle: page?.title || pkg.title,
       categoryName: catName,
       courseName,
-      orderIndex: (category?.orderIndex || 0) * 1000 + page.orderIndex,
+      orderIndex: (category?.orderIndex || 0) * 1000 + (page?.orderIndex || 999),
       passingScore: pkg.passingScore,
       stats: {
         totalStudents: attempts.length,

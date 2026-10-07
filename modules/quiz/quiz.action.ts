@@ -26,13 +26,17 @@ import { z } from 'zod';
 export async function createQuizPackageAction(formData: FormData) {
   try {
     const rawData = {
-      pageId: formData.get('pageId'),
+      courseId: formData.get('courseId'),
+      pageId: formData.get('pageId') || null,
       title: formData.get('title'),
       description: formData.get('description'),
       passingScore: formData.get('passingScore'),
       timeLimit: formData.get('timeLimit') ? Number(formData.get('timeLimit')) : null,
       shuffleQuestions: formData.get('shuffleQuestions') === 'true',
       isActive: formData.get('isActive') === 'true',
+      isHidden: formData.get('isHidden') === 'true',
+      openAt: formData.get('openAt') || null,
+      closeAt: formData.get('closeAt') || null,
     };
 
     const validatedData = quizFormSchema.parse(rawData);
@@ -51,13 +55,17 @@ export async function createQuizPackageAction(formData: FormData) {
 export async function updateQuizPackageAction(id: string, formData: FormData) {
   try {
     const rawData = {
-      pageId: formData.get('pageId'),
+      courseId: formData.get('courseId'),
+      pageId: formData.get('pageId') || null,
       title: formData.get('title'),
       description: formData.get('description'),
       passingScore: formData.get('passingScore'),
       timeLimit: formData.get('timeLimit') ? Number(formData.get('timeLimit')) : null,
       shuffleQuestions: formData.get('shuffleQuestions') === 'true',
       isActive: formData.get('isActive') === 'true',
+      isHidden: formData.get('isHidden') === 'true',
+      openAt: formData.get('openAt') || null,
+      closeAt: formData.get('closeAt') || null,
     };
 
     const validatedData = quizFormSchema.parse(rawData);
@@ -188,3 +196,4 @@ export async function updateAntiCheatAction(
     return { success: false, message: error instanceof Error ? error.message : 'Gagal menyimpan Anti-Cheat' };
   }
 }
+

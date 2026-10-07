@@ -5,6 +5,7 @@ import VariantList from '@/components/quiz/VariantList';
 import QuizAssignmentView from '@/components/quiz/QuizAssignmentView';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { db } from '@/prisma/db';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,6 +18,9 @@ export default async function EditQuizPage({ params }: { params: Promise<{ id: s
   // Include pages without quiz PLUS the current page for this quiz
   const availablePages = allPages.filter(p => !p.hasQuizPackage || p.id === pkg.pageId);
   const classes = await getAllClasses();
+  
+  // Get all courses
+  const courses = await db.orm.public.Course.all();
 
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-8">
@@ -35,6 +39,7 @@ export default async function EditQuizPage({ params }: { params: Promise<{ id: s
             quizId={pkg.id}
             initialData={pkg}
             pages={availablePages} 
+            courses={courses}
           />
         </div>
 

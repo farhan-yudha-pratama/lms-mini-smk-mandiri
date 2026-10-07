@@ -34,6 +34,9 @@ export async function createQuestion(data: QuestionFormValues) {
     questionType: data.questionType,
     points: data.points,
     orderIndex: nextOrderIndex,
+    codeLanguage: data.codeLanguage || null,
+    initialCode: data.initialCode || null,
+    testCases: data.testCases || null,
   });
 
   if (data.questionType === 'PILIHAN_GANDA' && data.options) {
@@ -57,6 +60,9 @@ export async function updateQuestion(id: string, data: QuestionFormValues) {
     questionText: data.questionText,
     questionType: data.questionType,
     points: data.points,
+    codeLanguage: data.codeLanguage || null,
+    initialCode: data.initialCode || null,
+    testCases: data.testCases || null,
   });
 
   if (data.questionType === 'PILIHAN_GANDA' && data.options) {

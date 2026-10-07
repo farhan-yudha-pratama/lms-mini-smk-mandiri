@@ -7,15 +7,28 @@ import { createQuizPackageAction, updateQuizPackageAction } from '@/modules/quiz
 type QuizPackageFormProps = {
   initialData?: any;
   pages: any[];
+  courses?: any[]; // optional for backward compatibility if missed
   defaultPageId?: string;
   isEdit?: boolean;
   quizId?: string;
 };
 
-export default function QuizPackageForm({ initialData, pages, defaultPageId, isEdit, quizId }: QuizPackageFormProps) {
+export default function QuizPackageForm({ initialData, pages, courses = [], defaultPageId, isEdit, quizId }: QuizPackageFormProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Format dates for input type datetime-local
+  const formatForInput = (dateString: string) => {
+    if (!dateString) return '';
+    try {
+      const date = new Date(dateString);
+      const pad = (n: number) => n.toString().padStart(2, '0');
+      return date.getFullYear() + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate()) + 'T' + pad(date.getHours()) + ':' + pad(date.getMinutes());
+    } catch (e) {
+      return '';
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -27,6 +40,14 @@ export default function QuizPackageForm({ initialData, pages, defaultPageId, isE
     // Convert checkbox values manually since unchecked boxes aren't submitted
     if (!formData.has('shuffleQuestions')) formData.append('shuffleQuestions', 'false');
     if (!formData.has('isActive')) formData.append('isActive', 'false');
+    if (!formData.has('isHidden')) formData.append('isHidden', 'false');
+
+    // Make sure we pass correct ISO strings or empty strings for dates
+    const openAt = formData.get('openAt') as string;
+    const closeAt = formData.get('closeAt') as string;
+    
+    if (openAt) formData.set('openAt', new Date(openAt).toISOString());
+    if (closeAt) formData.set('closeAt', new Date(closeAt).toISOString());
 
     let res;
     if (isEdit && quizId) {
@@ -58,7 +79,26 @@ export default function QuizPackageForm({ initialData, pages, defaultPageId, isE
         
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Halaman Materi
+            Mata Pelajaran <span className="text-red-500">*</span>
+          </label>
+          <select 
+            name="courseId" 
+            defaultValue={initialData?.courseId || ''}
+            required
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-sm bg-white"
+          >
+            <option value="" disabled>Pilih mata pelajaran</option>
+            {courses.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Halaman Materi (Opsional)
           </label>
           
           {defaultPageId && !isEdit ? (
@@ -74,10 +114,9 @@ export default function QuizPackageForm({ initialData, pages, defaultPageId, isE
               <select 
                 name="pageId" 
                 defaultValue={initialData?.pageId || defaultPageId || ''}
-                required
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-sm bg-white"
               >
-                <option value="" disabled>Pilih halaman materi</option>
+                <option value="">-- Tugas Mandiri (Tidak Terikat Materi) --</option>
                 {Array.from(new Set(pages.map(p => p.categoryName || 'Tanpa Kategori'))).map((categoryName) => (
                   <optgroup key={categoryName} label={`Kategori: ${categoryName}`}>
                     {pages
@@ -90,14 +129,14 @@ export default function QuizPackageForm({ initialData, pages, defaultPageId, isE
                   </optgroup>
                 ))}
               </select>
-              <p className="text-xs text-gray-500 mt-1">Satu halaman hanya bisa memiliki satu kuis.</p>
+              <p className="text-xs text-gray-500 mt-1">Kosongkan jika ini adalah Tugas Mandiri/UTS untuk mapel tersebut.</p>
             </>
           )}
         </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Judul Kuis
+            Judul Kuis / Tugas <span className="text-red-500">*</span>
           </label>
           <input 
             type="text" 
@@ -151,6 +190,33 @@ export default function QuizPackageForm({ initialData, pages, defaultPageId, isE
           </div>
         </div>
 
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-blue-50 p-4 rounded-lg border border-blue-100">
+          <div>
+            <label className="block text-sm font-medium text-blue-900 mb-1">
+              Waktu Buka Kuis (Opsional)
+            </label>
+            <input 
+              type="datetime-local" 
+              name="openAt" 
+              defaultValue={formatForInput(initialData?.openAt)}
+              className="w-full px-4 py-2 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-sm"
+            />
+            <p className="text-xs text-blue-700 mt-1">Kuis akan terkunci dengan logo ?? sebelum waktu ini.</p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-blue-900 mb-1">
+              Tenggat Waktu / Deadline (Opsional)
+            </label>
+            <input 
+              type="datetime-local" 
+              name="closeAt" 
+              defaultValue={formatForInput(initialData?.closeAt)}
+              className="w-full px-4 py-2 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-sm"
+            />
+            <p className="text-xs text-blue-700 mt-1">Murid tidak bisa mengakses kuis setelah waktu ini terlewat.</p>
+          </div>
+        </div>
+
         <div className="flex flex-col gap-3 pt-2">
           <label className="flex items-center gap-2 cursor-pointer">
             <input 
@@ -171,7 +237,18 @@ export default function QuizPackageForm({ initialData, pages, defaultPageId, isE
               defaultChecked={initialData?.isActive ?? true}
               className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
             />
-            <span className="text-sm text-gray-700">Aktifkan kuis ini (syarat lulus halaman materi)</span>
+            <span className="text-sm text-gray-700">Aktifkan kuis ini (murid dapat mengerjakannya)</span>
+          </label>
+          
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input 
+              type="checkbox" 
+              name="isHidden" 
+              value="true"
+              defaultChecked={initialData?.isHidden ?? false}
+              className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+            />
+            <span className="text-sm text-gray-700">Sembunyikan dari murid (Draft Mode / Tidak Tampil di Dashboard)</span>
           </label>
         </div>
       </div>
@@ -195,5 +272,3 @@ export default function QuizPackageForm({ initialData, pages, defaultPageId, isE
     </form>
   );
 }
-
-

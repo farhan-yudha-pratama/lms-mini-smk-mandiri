@@ -141,7 +141,11 @@ model QuizAssignment {
 
 model QuizPackage {
   id           String   @id @default(uuid())
-  pageId       String   @unique
+  courseId         String?
+  pageId           String?   @unique
+  isHidden         Boolean  @default(false)
+  openAt           TimestamptzString?
+  closeAt          TimestamptzString?
   title        String
   description  String?
   passingScore     Float    @default(70.0)
@@ -151,7 +155,8 @@ model QuizPackage {
   createdAt    TimestamptzString @default(now())
   updatedAt    temporal.updatedAtString()
 
-  page         Page     @relation(fields: [pageId], references: [id])
+  course           Course?  @relation(fields: [courseId], references: [id])
+  page             Page?    @relation(fields: [pageId], references: [id])
   variants        QuizVariant[]
   assignments     QuizAssignment[]
 }
@@ -190,6 +195,10 @@ model Question {
   orderIndex   Int
   createdAt    TimestamptzString @default(now())
   updatedAt    temporal.updatedAtString()
+
+  codeLanguage String?
+  initialCode  String?
+  testCases    String?
 
   variant      QuizVariant        @relation(fields: [quizVariantId], references: [id])
   options      QuestionOption[]

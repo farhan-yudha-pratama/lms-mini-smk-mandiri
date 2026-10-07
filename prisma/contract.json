@@ -1338,6 +1338,13 @@
           },
           "Question": {
             "fields": {
+              "codeLanguage": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
               "createdAt": {
                 "nullable": false,
                 "type": {
@@ -1347,6 +1354,13 @@
               },
               "id": {
                 "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "initialCode": {
+                "nullable": true,
                 "type": {
                   "codecId": "pg/text@1",
                   "kind": "scalar"
@@ -1388,6 +1402,13 @@
               },
               "quizVariantId": {
                 "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "testCases": {
+                "nullable": true,
                 "type": {
                   "codecId": "pg/text@1",
                   "kind": "scalar"
@@ -1451,11 +1472,17 @@
             },
             "storage": {
               "fields": {
+                "codeLanguage": {
+                  "column": "codeLanguage"
+                },
                 "createdAt": {
                   "column": "createdAt"
                 },
                 "id": {
                   "column": "id"
+                },
+                "initialCode": {
+                  "column": "initialCode"
                 },
                 "orderIndex": {
                   "column": "orderIndex"
@@ -1471,6 +1498,9 @@
                 },
                 "quizVariantId": {
                   "column": "quizVariantId"
+                },
+                "testCases": {
+                  "column": "testCases"
                 },
                 "updatedAt": {
                   "column": "updatedAt"
@@ -2158,6 +2188,20 @@
           },
           "QuizPackage": {
             "fields": {
+              "closeAt": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "courseId": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
               "createdAt": {
                 "nullable": false,
                 "type": {
@@ -2186,8 +2230,22 @@
                   "kind": "scalar"
                 }
               },
-              "pageId": {
+              "isHidden": {
                 "nullable": false,
+                "type": {
+                  "codecId": "pg/bool@1",
+                  "kind": "scalar"
+                }
+              },
+              "openAt": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "pageId": {
+                "nullable": true,
                 "type": {
                   "codecId": "pg/text@1",
                   "kind": "scalar"
@@ -2245,9 +2303,25 @@
                   "namespace": "public"
                 }
               },
+              "course": {
+                "cardinality": "N:1",
+                "nullable": true,
+                "on": {
+                  "localFields": [
+                    "courseId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "Course",
+                  "namespace": "public"
+                }
+              },
               "page": {
                 "cardinality": "N:1",
-                "nullable": false,
+                "nullable": true,
                 "on": {
                   "localFields": [
                     "pageId"
@@ -2279,6 +2353,12 @@
             },
             "storage": {
               "fields": {
+                "closeAt": {
+                  "column": "closeAt"
+                },
+                "courseId": {
+                  "column": "courseId"
+                },
                 "createdAt": {
                   "column": "createdAt"
                 },
@@ -2290,6 +2370,12 @@
                 },
                 "isActive": {
                   "column": "isActive"
+                },
+                "isHidden": {
+                  "column": "isHidden"
+                },
+                "openAt": {
+                  "column": "openAt"
                 },
                 "pageId": {
                   "column": "pageId"
@@ -4035,6 +4121,11 @@
                 }
               ],
               "columns": {
+                "codeLanguage": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
                 "createdAt": {
                   "codecId": "pg/timestamptz-string@1",
                   "default": {
@@ -4048,6 +4139,11 @@
                   "codecId": "pg/text@1",
                   "nativeType": "text",
                   "nullable": false
+                },
+                "initialCode": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
                 },
                 "orderIndex": {
                   "codecId": "pg/int4@1",
@@ -4087,6 +4183,11 @@
                   "codecId": "pg/text@1",
                   "nativeType": "text",
                   "nullable": false
+                },
+                "testCases": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
                 },
                 "updatedAt": {
                   "codecId": "pg/timestamptz-string@1",
@@ -4699,6 +4800,16 @@
             },
             "quizPackage": {
               "columns": {
+                "closeAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "nativeType": "timestamptz",
+                  "nullable": true
+                },
+                "courseId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
                 "createdAt": {
                   "codecId": "pg/timestamptz-string@1",
                   "default": {
@@ -4727,10 +4838,24 @@
                   "nativeType": "bool",
                   "nullable": false
                 },
+                "isHidden": {
+                  "codecId": "pg/bool@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": false
+                  },
+                  "nativeType": "bool",
+                  "nullable": false
+                },
+                "openAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "nativeType": "timestamptz",
+                  "nullable": true
+                },
                 "pageId": {
                   "codecId": "pg/text@1",
                   "nativeType": "text",
-                  "nullable": false
+                  "nullable": true
                 },
                 "passingScore": {
                   "codecId": "pg/float8@1",
@@ -4770,6 +4895,22 @@
                 {
                   "source": {
                     "columns": [
+                      "courseId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "quizPackage"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "course"
+                  }
+                },
+                {
+                  "source": {
+                    "columns": [
                       "pageId"
                     ],
                     "namespaceId": "public",
@@ -4784,7 +4925,16 @@
                   }
                 }
               ],
-              "indexes": [],
+              "indexes": [
+                {
+                  "columns": [
+                    "courseId"
+                  ],
+                  "name": "quizPackage_courseId_idx_12f72d2a",
+                  "prefix": "quizPackage_courseId_idx",
+                  "unique": false
+                }
+              ],
               "primaryKey": {
                 "columns": [
                   "id"
@@ -5411,7 +5561,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "72fb11b56b0ced769e10b387309d743149d85e4a407d14e4df752fb92d58cfa5"
+    "storageHash": "bba5731285df24685107d9c3ddfe6e6e52016c1ed0b2091372fbbc748b5978b4"
   },
   "execution": {
     "executionHash": "80b9d2ad69a0d749249fdab19815222739bf9f96f05e9d3ac0278ddb7e9be7c9",

@@ -34,9 +34,11 @@ export async function getStudentDetailedProgress() {
   const accesses = await db.orm.public.PageAccess.where({ studentId }).all();
   const sequences = await db.orm.public.PageSequence.all();
 
-  // 5. Get QuizPackages for these pages
+  // 5. Get QuizPackages for these courses, filtering out hidden
   const allQuizPackages = await db.orm.public.QuizPackage.all();
-  const quizPackages = allQuizPackages.filter(qp => pages.some(p => p.id === qp.pageId));
+  const quizPackages = allQuizPackages.filter(qp => 
+    qp.courseId && enrolledCourseIds.includes(qp.courseId) && !qp.isHidden
+  );
   
   const allQuizVariants = await db.orm.public.QuizVariant.all();
   const quizVariants = allQuizVariants.filter(qv => quizPackages.some(qp => qp.id === qv.quizPackageId));
@@ -45,6 +47,29 @@ export async function getStudentDetailedProgress() {
   // 6. Get QuizAttempts for the student
   const allAttempts = await db.orm.public.QuizAttempt.where({ studentId }).all();
   const attempts = allAttempts.filter(a => variantIds.includes(a.quizVariantId));
+
+  const now = new Date().getTime();
+
+  // Helper to determine quiz status
+  const getQuizStatus = (quizPackage: any, baseStatus: string) => {
+    const isTimeLocked = quizPackage.openAt && new Date(quizPackage.openAt).getTime() > now;
+    if (baseStatus === 'LOCKED' || isTimeLocked) {
+      return 'LOCKED'; // Because page is locked or time locked
+    }
+    
+    const pageVariants = quizVariants.filter(qv => qv.quizPackageId === quizPackage.id);
+    const variantIdsForPage = pageVariants.map(v => v.id);
+    const pageAttempts = attempts.filter(a => variantIdsForPage.includes(a.quizVariantId));
+    
+    if (pageAttempts.length > 0) {
+      const hasGraded = pageAttempts.some(a => a.status === 'GRADED');
+      const hasCompleted = pageAttempts.some(a => a.status === 'COMPLETED');
+      if (hasGraded) return 'GRADED';
+      if (hasCompleted) return 'COMPLETED';
+      return 'IN_PROGRESS';
+    }
+    return 'UNATTEMPTED';
+  };
 
   // Build the hierarchical data
   const result = courses.map(course => {
@@ -74,22 +99,7 @@ export async function getStudentDetailedProgress() {
             let quizStatus = null;
             
             if (hasQuiz) {
-              const pageVariants = quizVariants.filter(qv => qv.quizPackageId === quizPackage!.id);
-              const variantIdsForPage = pageVariants.map(v => v.id);
-              const pageAttempts = attempts.filter(a => variantIdsForPage.includes(a.quizVariantId));
-              
-              if (pageStatus === 'LOCKED') {
-                quizStatus = 'LOCKED'; // Because the page is locked
-              } else if (pageAttempts.length > 0) {
-                // If they have attempts, we take the most progressed status
-                const hasGraded = pageAttempts.some(a => a.status === 'GRADED');
-                const hasCompleted = pageAttempts.some(a => a.status === 'COMPLETED');
-                if (hasGraded) quizStatus = 'GRADED';
-                else if (hasCompleted) quizStatus = 'COMPLETED';
-                else quizStatus = 'IN_PROGRESS';
-              } else {
-                quizStatus = 'UNATTEMPTED'; // Unlocked but not tried
-              }
+              quizStatus = getQuizStatus(quizPackage, pageStatus);
             }
 
             return {
@@ -99,7 +109,8 @@ export async function getStudentDetailedProgress() {
               orderIndex: page.orderIndex,
               status: pageStatus,
               hasQuiz,
-              quizStatus
+              quizStatus,
+              quizTitle: quizPackage ? quizPackage.title : null
             };
           });
 
@@ -111,11 +122,23 @@ export async function getStudentDetailedProgress() {
         };
       });
 
+    // Standalone assignments for the course (no pageId)
+    const standaloneQuizzes = quizPackages
+      .filter(qp => qp.courseId === course.id && !qp.pageId)
+      .map(qp => ({
+        id: qp.id,
+        title: qp.title,
+        status: getQuizStatus(qp, 'UNLOCKED'), // standalone quizzes don't have page prerequisites, only time locks
+        openAt: qp.openAt,
+        closeAt: qp.closeAt,
+      }));
+
     return {
       id: course.id,
       name: course.name,
       slug: course.slug,
-      categories: courseCategories
+      categories: courseCategories,
+      standaloneQuizzes
     };
   });
 

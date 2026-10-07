@@ -1,13 +1,17 @@
 import { z } from "zod";
 
 export const quizFormSchema = z.object({
-  pageId: z.string().min(1, "Halaman materi wajib dipilih"),
+  courseId: z.string().min(1, "Mata Pelajaran wajib dipilih"),
+  pageId: z.string().nullable().optional(),
   title: z.string().min(1, "Judul kuis wajib diisi"),
   description: z.string().optional(),
   passingScore: z.coerce.number().min(0).max(100, "Nilai maksimal 100").default(70),
   timeLimit: z.number().min(1, "Waktu minimal 1 menit").nullable().optional(),
   shuffleQuestions: z.boolean().default(false),
   isActive: z.boolean().default(true),
+  isHidden: z.boolean().default(false),
+  openAt: z.string().nullable().optional(),
+  closeAt: z.string().nullable().optional(),
 });
 
 export type QuizFormValues = z.infer<typeof quizFormSchema>;
@@ -28,9 +32,12 @@ export const questionOptionSchema = z.object({
 export const questionFormSchema = z.object({
   quizVariantId: z.string().min(1, "Quiz Variant ID wajib diisi"),
   questionText: z.string().min(1, "Teks soal wajib diisi"),
-  questionType: z.enum(["PILIHAN_GANDA", "ESSAY"]),
+  questionType: z.enum(["PILIHAN_GANDA", "ESSAY", "CODE_CHALLENGE"]),
   points: z.coerce.number().min(0, "Poin tidak boleh negatif").default(1),
   options: z.array(questionOptionSchema).optional(),
+  codeLanguage: z.string().nullable().optional(),
+  initialCode: z.string().nullable().optional(),
+  testCases: z.string().nullable().optional(),
 }).refine((data) => {
   if (data.questionType === "PILIHAN_GANDA") {
     if (!data.options || data.options.length < 2) {

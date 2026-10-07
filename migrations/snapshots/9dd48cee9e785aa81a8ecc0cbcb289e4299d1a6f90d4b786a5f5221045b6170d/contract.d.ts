@@ -34,7 +34,7 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'bba5731285df24685107d9c3ddfe6e6e52016c1ed0b2091372fbbc748b5978b4'>;
+  StorageHashBase<'9dd48cee9e785aa81a8ecc0cbcb289e4299d1a6f90d4b786a5f5221045b6170d'>;
 export type ExecutionHash =
   ExecutionHashBase<'80b9d2ad69a0d749249fdab19815222739bf9f96f05e9d3ac0278ddb7e9be7c9'>;
 export type ProfileHash =
@@ -337,9 +337,6 @@ export type FieldOutputTypes = {
       readonly orderIndex: CodecTypes['pg/int4@1']['output'];
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
       readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
-      readonly codeLanguage: CodecTypes['pg/text@1']['output'] | null;
-      readonly initialCode: CodecTypes['pg/text@1']['output'] | null;
-      readonly testCases: CodecTypes['pg/text@1']['output'] | null;
     };
     readonly QuestionOption: {
       readonly id: CodecTypes['pg/text@1']['output'];
@@ -565,9 +562,6 @@ export type FieldInputTypes = {
       readonly orderIndex: CodecTypes['pg/int4@1']['input'];
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
       readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['input'];
-      readonly codeLanguage: CodecTypes['pg/text@1']['input'] | null;
-      readonly initialCode: CodecTypes['pg/text@1']['input'] | null;
-      readonly testCases: CodecTypes['pg/text@1']['input'] | null;
     };
     readonly QuestionOption: {
       readonly id: CodecTypes['pg/text@1']['input'];
@@ -785,16 +779,13 @@ export type StorageColumnTypes = {
       readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
     };
     readonly question: {
-      readonly codeLanguage: CodecTypes['pg/text@1']['output'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
       readonly id: CodecTypes['pg/text@1']['output'];
-      readonly initialCode: CodecTypes['pg/text@1']['output'] | null;
       readonly orderIndex: CodecTypes['pg/int4@1']['output'];
       readonly points: CodecTypes['pg/float8@1']['output'];
       readonly questionText: CodecTypes['pg/text@1']['output'];
       readonly questionType: 'PILIHAN_GANDA' | 'ESSAY';
       readonly quizVariantId: CodecTypes['pg/text@1']['output'];
-      readonly testCases: CodecTypes['pg/text@1']['output'] | null;
       readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
     };
     readonly questionOption: {
@@ -1013,16 +1004,13 @@ export type StorageColumnInputTypes = {
       readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['input'];
     };
     readonly question: {
-      readonly codeLanguage: CodecTypes['pg/text@1']['input'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
       readonly id: CodecTypes['pg/text@1']['input'];
-      readonly initialCode: CodecTypes['pg/text@1']['input'] | null;
       readonly orderIndex: CodecTypes['pg/int4@1']['input'];
       readonly points: CodecTypes['pg/float8@1']['input'];
       readonly questionText: CodecTypes['pg/text@1']['input'];
       readonly questionType: 'PILIHAN_GANDA' | 'ESSAY';
       readonly quizVariantId: CodecTypes['pg/text@1']['input'];
-      readonly testCases: CodecTypes['pg/text@1']['input'] | null;
       readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['input'];
     };
     readonly questionOption: {
@@ -1318,9 +1306,6 @@ export namespace Models {
     orderIndex: CodecTypes['pg/int4@1']['output'];
     createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
     updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
-    codeLanguage: CodecTypes['pg/text@1']['output'] | null;
-    initialCode: CodecTypes['pg/text@1']['output'] | null;
-    testCases: CodecTypes['pg/text@1']['output'] | null;
     answers: public_StudentAnswer[];
     options: public_QuestionOption[];
     variant: public_QuizVariant;
@@ -2248,21 +2233,6 @@ type ContractBase = Omit<
                   readonly nativeType: 'timestamptz';
                   readonly codecId: 'pg/timestamptz-string@1';
                   readonly nullable: false;
-                };
-                readonly codeLanguage: {
-                  readonly nativeType: 'text';
-                  readonly codecId: 'pg/text@1';
-                  readonly nullable: true;
-                };
-                readonly initialCode: {
-                  readonly nativeType: 'text';
-                  readonly codecId: 'pg/text@1';
-                  readonly nullable: true;
-                };
-                readonly testCases: {
-                  readonly nativeType: 'text';
-                  readonly codecId: 'pg/text@1';
-                  readonly nullable: true;
                 };
               };
               primaryKey: { readonly columns: readonly ['id'] };
@@ -4213,18 +4183,6 @@ type ContractBase = Omit<
                   readonly codecId: 'pg/timestamptz-string@1';
                 };
               };
-              readonly codeLanguage: {
-                readonly nullable: true;
-                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
-              };
-              readonly initialCode: {
-                readonly nullable: true;
-                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
-              };
-              readonly testCases: {
-                readonly nullable: true;
-                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
-              };
             };
             readonly relations: {
               readonly answers: {
@@ -4274,9 +4232,6 @@ type ContractBase = Omit<
                 readonly orderIndex: { readonly column: 'orderIndex' };
                 readonly createdAt: { readonly column: 'createdAt' };
                 readonly updatedAt: { readonly column: 'updatedAt' };
-                readonly codeLanguage: { readonly column: 'codeLanguage' };
-                readonly initialCode: { readonly column: 'initialCode' };
-                readonly testCases: { readonly column: 'testCases' };
               };
             };
           };
