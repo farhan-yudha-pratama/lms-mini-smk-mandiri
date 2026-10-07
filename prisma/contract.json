@@ -137,6 +137,10 @@
               {
                 "name": "ESSAY",
                 "value": "ESSAY"
+              },
+              {
+                "name": "CODE_CHALLENGE",
+                "value": "CODE_CHALLENGE"
               }
             ]
           },
@@ -2646,6 +2650,13 @@
                   "kind": "scalar"
                 }
               },
+              "essayFeedback": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
               "id": {
                 "nullable": false,
                 "type": {
@@ -2743,6 +2754,9 @@
               "fields": {
                 "essayAnswer": {
                   "column": "essayAnswer"
+                },
+                "essayFeedback": {
+                  "column": "essayFeedback"
                 },
                 "id": {
                   "column": "id"
@@ -4115,8 +4129,8 @@
             "question": {
               "checks": [
                 {
-                  "expression": "\"questionType\" IN ('PILIHAN_GANDA', 'ESSAY')",
-                  "name": "question_questionType_check_f3e2dfbc",
+                  "expression": "\"questionType\" IN ('PILIHAN_GANDA', 'ESSAY', 'CODE_CHALLENGE')",
+                  "name": "question_questionType_check_0f8a5e2f",
                   "prefix": "question_questionType_check"
                 }
               ],
@@ -5105,6 +5119,11 @@
                   "nativeType": "text",
                   "nullable": true
                 },
+                "essayFeedback": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
                 "id": {
                   "codecId": "pg/text@1",
                   "nativeType": "text",
@@ -5536,7 +5555,8 @@
               "kind": "valueSet",
               "values": [
                 "PILIHAN_GANDA",
-                "ESSAY"
+                "ESSAY",
+                "CODE_CHALLENGE"
               ]
             },
             "QuizAttemptStatus": {
@@ -5561,7 +5581,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "bba5731285df24685107d9c3ddfe6e6e52016c1ed0b2091372fbbc748b5978b4"
+    "storageHash": "dc097beb17ef532aeac355b1e078bae77d3998f482ea42f6360ce92f6389c40f"
   },
   "execution": {
     "executionHash": "80b9d2ad69a0d749249fdab19815222739bf9f96f05e9d3ac0278ddb7e9be7c9",

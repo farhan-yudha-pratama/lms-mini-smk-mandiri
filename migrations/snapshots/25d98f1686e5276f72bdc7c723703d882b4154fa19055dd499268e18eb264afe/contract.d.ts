@@ -34,7 +34,7 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'dc097beb17ef532aeac355b1e078bae77d3998f482ea42f6360ce92f6389c40f'>;
+  StorageHashBase<'25d98f1686e5276f72bdc7c723703d882b4154fa19055dd499268e18eb264afe'>;
 export type ExecutionHash =
   ExecutionHashBase<'80b9d2ad69a0d749249fdab19815222739bf9f96f05e9d3ac0278ddb7e9be7c9'>;
 export type ProfileHash =
@@ -434,7 +434,6 @@ export type FieldOutputTypes = {
       readonly essayAnswer: CodecTypes['pg/text@1']['output'] | null;
       readonly isCorrect: CodecTypes['pg/bool@1']['output'] | null;
       readonly pointsEarned: CodecTypes['pg/float8@1']['output'];
-      readonly essayFeedback: CodecTypes['pg/text@1']['output'] | null;
     };
     readonly StudentScoreSummary: {
       readonly id: CodecTypes['pg/text@1']['output'];
@@ -663,7 +662,6 @@ export type FieldInputTypes = {
       readonly essayAnswer: CodecTypes['pg/text@1']['input'] | null;
       readonly isCorrect: CodecTypes['pg/bool@1']['input'] | null;
       readonly pointsEarned: CodecTypes['pg/float8@1']['input'];
-      readonly essayFeedback: CodecTypes['pg/text@1']['input'] | null;
     };
     readonly StudentScoreSummary: {
       readonly id: CodecTypes['pg/text@1']['input'];
@@ -886,7 +884,6 @@ export type StorageColumnTypes = {
     };
     readonly studentAnswer: {
       readonly essayAnswer: CodecTypes['pg/text@1']['output'] | null;
-      readonly essayFeedback: CodecTypes['pg/text@1']['output'] | null;
       readonly id: CodecTypes['pg/text@1']['output'];
       readonly isCorrect: CodecTypes['pg/bool@1']['output'] | null;
       readonly pointsEarned: CodecTypes['pg/float8@1']['output'];
@@ -1115,7 +1112,6 @@ export type StorageColumnInputTypes = {
     };
     readonly studentAnswer: {
       readonly essayAnswer: CodecTypes['pg/text@1']['input'] | null;
-      readonly essayFeedback: CodecTypes['pg/text@1']['input'] | null;
       readonly id: CodecTypes['pg/text@1']['input'];
       readonly isCorrect: CodecTypes['pg/bool@1']['input'] | null;
       readonly pointsEarned: CodecTypes['pg/float8@1']['input'];
@@ -1361,7 +1357,6 @@ export namespace Models {
     essayAnswer: CodecTypes['pg/text@1']['output'] | null;
     isCorrect: CodecTypes['pg/bool@1']['output'] | null;
     pointsEarned: CodecTypes['pg/float8@1']['output'];
-    essayFeedback: CodecTypes['pg/text@1']['output'] | null;
     attempt: public_QuizAttempt;
     question: public_Question;
     selectedOption: public_QuestionOption | null;
@@ -3027,11 +3022,6 @@ type ContractBase = Omit<
                     readonly kind: 'literal';
                     readonly value: DefaultLiteralValue<'pg/float8@1', 0>;
                   };
-                };
-                readonly essayFeedback: {
-                  readonly nativeType: 'text';
-                  readonly codecId: 'pg/text@1';
-                  readonly nullable: true;
                 };
               };
               primaryKey: { readonly columns: readonly ['id'] };
@@ -5030,10 +5020,6 @@ type ContractBase = Omit<
                 readonly nullable: false;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/float8@1' };
               };
-              readonly essayFeedback: {
-                readonly nullable: true;
-                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
-              };
             };
             readonly relations: {
               readonly attempt: {
@@ -5084,7 +5070,6 @@ type ContractBase = Omit<
                 readonly essayAnswer: { readonly column: 'essayAnswer' };
                 readonly isCorrect: { readonly column: 'isCorrect' };
                 readonly pointsEarned: { readonly column: 'pointsEarned' };
-                readonly essayFeedback: { readonly column: 'essayFeedback' };
               };
             };
           };

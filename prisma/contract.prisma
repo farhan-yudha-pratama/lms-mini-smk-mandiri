@@ -9,6 +9,7 @@ enum Role {
 enum QuestionType {
   PILIHAN_GANDA
   ESSAY
+  CODE_CHALLENGE
 }
 
 enum QuizAttemptStatus {
@@ -238,6 +239,7 @@ model StudentAnswer {
   essayAnswer      String?
   isCorrect        Boolean?
   pointsEarned     Float    @default(0)
+  essayFeedback    String?
 
   attempt          QuizAttempt     @relation(fields: [quizAttemptId], references: [id])
   question         Question        @relation(fields: [questionId], references: [id])

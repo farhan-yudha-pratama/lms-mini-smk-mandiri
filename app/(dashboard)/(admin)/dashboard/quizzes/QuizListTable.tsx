@@ -6,7 +6,7 @@ import { deleteQuizPackageAction } from '@/modules/quiz/quiz.action';
 
 export type MappedPackage = {
   id: string;
-  courseId: string;
+  courseId: string | null;
   pageId: string | null;
   title: string;
   passingScore: number;
