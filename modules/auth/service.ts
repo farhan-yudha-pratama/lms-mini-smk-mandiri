@@ -26,6 +26,17 @@ export async function loginService(data: LoginInput) {
     return { success: false, message: 'Email atau password salah' };
   }
 
+  // 1. Hapus semua sesi lama (Kunci Single Device)
+  await db.orm.public.Session.where({ userId: user.id }).delete();
+
+  // 2. Buat sesi baru
+  const sessionId = crypto.randomUUID();
+  await db.orm.public.Session.create({
+    id: sessionId,
+    userId: user.id,
+    expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+  });
+
   // Generate JWT and set cookie
   await setToken({
     userId: user.id,
@@ -33,6 +44,7 @@ export async function loginService(data: LoginInput) {
     role: user.role,
     name: user.name,
     classId: user.classId,
+    sessionId: sessionId,
   });
 
   return { 
@@ -69,7 +81,7 @@ export async function registerService(data: RegisterInput) {
   const refreshToken = crypto.randomUUID();
   const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
 
-  await db.orm.public.Session.create({
+  const newSession = await db.orm.public.Session.create({
     userId: newUser.id,
     refreshToken,
     expiresAt,
@@ -82,6 +94,7 @@ export async function registerService(data: RegisterInput) {
     role: newUser.role,
     name: newUser.name,
     classId: newUser.classId || null,
+    sessionId: newSession.id,
   });
   
   const { setRefreshToken } = await import('@/lib/session');

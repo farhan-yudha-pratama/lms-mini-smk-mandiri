@@ -37,6 +37,7 @@ export default function DashboardSidebar({
     { label: 'Manajemen Kuis', icon: 'quiz', href: '/dashboard/quizzes', roles: ['SUPERADMIN'] },
     { label: 'Evaluasi & Kuis', icon: 'quiz', href: '/dashboard/quizzes', roles: ['GURU'] },
     { label: 'Laporan Nilai', icon: 'analytics', href: '/dashboard/reports', roles: ['SUPERADMIN', 'GURU'] },
+    { label: 'Audit Logs', icon: 'history', href: '/dashboard/audit-logs', roles: ['SUPERADMIN'] },
   ];
 
   const userRole = user?.role || 'GURU'; // Fallback to GURU if undefined

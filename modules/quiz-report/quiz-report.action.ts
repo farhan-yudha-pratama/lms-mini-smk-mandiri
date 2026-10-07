@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { getSession } from '@/lib/session';
 import { 
   getLeaderboardByPackageAndClass, 
   resetQuizAttempt, 
@@ -11,17 +12,23 @@ import {
   QuizReportsResponse,
   UnfinishedStudentsResponse
 } from './quiz-report.service';
+import { logAudit } from '@/lib/audit';
+import { getStudentLabel, getPackageLabel } from '@/lib/audit-context';
+import { msg } from '@/lib/audit-messages';
 
 export async function getQuizReportsAction(params: {
   classId?: string;
   packageId?: string;
+  courseId?: string;
   search?: string;
   page?: number;
   limit?: number;
   reviewFilter?: 'ALL' | 'NEED_REVIEW' | 'HAS_ESSAY' | 'GRADED' | 'NO_ESSAY';
 }): Promise<{ success: boolean; data?: QuizReportsResponse; message?: string }> {
   try {
-    const data = await getQuizReports(params);
+    const session = await getSession();
+    const teacherId = session?.role === 'GURU' ? session.userId : undefined;
+    const data = await getQuizReports({ ...params, teacherId });
     return { success: true, data };
   } catch (error) {
     return { 
@@ -42,7 +49,15 @@ export async function getLeaderboardAction(packageId: string, classId: string) {
 
 export async function resetQuizAttemptAction(studentId: string, packageId: string, attemptId?: string) {
   try {
-    await resetQuizAttempt(studentId, packageId, attemptId);
+    const result = await resetQuizAttempt(studentId, packageId, attemptId);
+    const [student, pkg] = await Promise.all([getStudentLabel(studentId), getPackageLabel(packageId)]);
+    
+    await logAudit({
+      action: 'RESET_QUIZ',
+      message: msg.resetQuiz({ student, pkg, previousScore: result.previousScore, previousStatus: result.previousStatus }),
+      meta: { packageId, ...result }
+    });
+
     revalidatePath('/dashboard/reports');
     return { success: true };
   } catch (error) {
@@ -68,6 +83,34 @@ export async function gradeQuizAttemptAction(
 ) {
   try {
     const result = await gradeQuizAttempt(attemptId, essayGrades);
+    
+    // Fetch packageId
+    const { db } = await import('@/prisma/db');
+    const attempt = await db.orm.public.QuizAttempt.where({ id: attemptId }).first();
+    let packageId = '';
+    if (attempt) {
+      const variant = await db.orm.public.QuizVariant.where({ id: attempt.quizVariantId }).first();
+      if (variant) packageId = variant.quizPackageId;
+    }
+
+    const [student, pkgLabel] = await Promise.all([
+      getStudentLabel(result.studentId), 
+      getPackageLabel(packageId)
+    ]);
+
+    await logAudit({
+      action: 'GRADE_ESSAY',
+      message: msg.gradeEssay({ 
+        student, 
+        pkg: pkgLabel, 
+        gradedCount: result.gradedCount, 
+        beforeScore: result.beforeScore, 
+        afterScore: result.score, 
+        passed: result.isPassed 
+      }),
+      meta: { attemptId, essayGrades, ...result }
+    });
+
     revalidatePath('/dashboard/reports');
     revalidatePath('/', 'layout');
     return { success: true, data: result };
@@ -82,6 +125,7 @@ export async function gradeQuizAttemptAction(
 export async function getUnfinishedStudentsReportAction(params: {
   classId?: string;
   packageId?: string;
+  courseId?: string;
   filterMode?: 'ALL' | 'QUIZ_ONLY' | 'PAGE_ONLY';
   sortBy?: 'UNOPENED_DESC' | 'UNOPENED_ASC' | 'UNCOMPLETED_QUIZ_DESC' | 'NAME_ASC' | 'NAME_DESC';
   search?: string;
@@ -89,7 +133,9 @@ export async function getUnfinishedStudentsReportAction(params: {
   limit?: number;
 }): Promise<{ success: boolean; data?: UnfinishedStudentsResponse; message?: string }> {
   try {
-    const data = await getUnfinishedStudentsReport(params);
+    const session = await getSession();
+    const teacherId = session?.role === 'GURU' ? session.userId : undefined;
+    const data = await getUnfinishedStudentsReport({ ...params, teacherId });
     return { success: true, data };
   } catch (error) {
     return {
@@ -99,10 +145,12 @@ export async function getUnfinishedStudentsReportAction(params: {
   }
 }
 
-export async function getTaskRecapAction(params: { classId?: string }) {
+export async function getTaskRecapAction(params: { classId?: string; courseId?: string }) {
   try {
+    const session = await getSession();
+    const teacherId = session?.role === 'GURU' ? session.userId : undefined;
     const { getTaskRecapList } = await import('./quiz-report.service');
-    const data = await getTaskRecapList(params);
+    const data = await getTaskRecapList({ ...params, teacherId });
     return { success: true, data };
   } catch (error) {
     return {

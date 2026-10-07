@@ -10,14 +10,19 @@ type ClassType = { id: string; name: string; };
 export default function UnfinishedStudentsView({
   packages,
   classes,
+  courses = [],
+  role = 'MURID',
   initialData
 }: {
   packages: Package[];
   classes: ClassType[];
+  courses?: { id: string; name: string }[];
+  role?: string;
   initialData?: UnfinishedStudentsResponse;
 }) {
   const [selectedClassId, setSelectedClassId] = useState<string>('');
   const [selectedPackageId, setSelectedPackageId] = useState<string>('');
+  const [selectedCourseId, setSelectedCourseId] = useState<string>('');
   const [filterMode, setFilterMode] = useState<'ALL' | 'QUIZ_ONLY' | 'PAGE_ONLY'>('ALL');
   const [sortBy, setSortBy] = useState<'UNOPENED_DESC' | 'UNOPENED_ASC' | 'UNCOMPLETED_QUIZ_DESC' | 'NAME_ASC' | 'NAME_DESC'>('UNOPENED_DESC');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -38,6 +43,7 @@ export default function UnfinishedStudentsView({
   const loadData = (newParams?: {
     classId?: string;
     packageId?: string;
+    courseId?: string;
     filterMode?: 'ALL' | 'QUIZ_ONLY' | 'PAGE_ONLY';
     sortBy?: 'UNOPENED_DESC' | 'UNOPENED_ASC' | 'UNCOMPLETED_QUIZ_DESC' | 'NAME_ASC' | 'NAME_DESC';
     search?: string;
@@ -46,6 +52,7 @@ export default function UnfinishedStudentsView({
   }) => {
     const targetClassId = newParams?.classId !== undefined ? newParams.classId : selectedClassId;
     const targetPackageId = newParams?.packageId !== undefined ? newParams.packageId : selectedPackageId;
+    const targetCourseId = newParams?.courseId !== undefined ? newParams.courseId : selectedCourseId;
     const targetFilterMode = newParams?.filterMode !== undefined ? newParams.filterMode : filterMode;
     const targetSortBy = newParams?.sortBy !== undefined ? newParams.sortBy : sortBy;
     const targetSearch = newParams?.search !== undefined ? newParams.search : searchQuery;
@@ -56,6 +63,7 @@ export default function UnfinishedStudentsView({
       const res = await getUnfinishedStudentsReportAction({
         classId: targetClassId || undefined,
         packageId: targetPackageId || undefined,
+        courseId: targetCourseId || undefined,
         filterMode: targetFilterMode,
         sortBy: targetSortBy,
         search: targetSearch || undefined,
@@ -106,17 +114,24 @@ export default function UnfinishedStudentsView({
     loadData({ page: newPage });
   };
 
+  const handleCourseChange = (newCourseId: string) => {
+    setSelectedCourseId(newCourseId);
+    setPage(1);
+    loadData({ courseId: newCourseId, page: 1 });
+  };
+
   const handleResetFilters = () => {
     setSelectedClassId('');
     setSelectedPackageId('');
+    setSelectedCourseId('');
     setFilterMode('ALL');
     setSortBy('UNOPENED_DESC');
     setSearchQuery('');
     setPage(1);
-    loadData({ classId: '', packageId: '', filterMode: 'ALL', sortBy: 'UNOPENED_DESC', search: '', page: 1 });
+    loadData({ classId: '', packageId: '', courseId: '', filterMode: 'ALL', sortBy: 'UNOPENED_DESC', search: '', page: 1 });
   };
 
-  const hasActiveFilters = Boolean(selectedClassId || selectedPackageId || searchQuery || filterMode !== 'ALL' || sortBy !== 'UNOPENED_DESC');
+  const hasActiveFilters = Boolean(selectedClassId || selectedPackageId || selectedCourseId || searchQuery || filterMode !== 'ALL' || sortBy !== 'UNOPENED_DESC');
 
   const startItemIndex = data.pagination.totalItems === 0 ? 0 : (data.pagination.page - 1) * data.pagination.limit + 1;
   const endItemIndex = Math.min(data.pagination.page * data.pagination.limit, data.pagination.totalItems);
@@ -144,7 +159,26 @@ export default function UnfinishedStudentsView({
         </div>
 
         {/* Top Controls Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className={`grid grid-cols-1 md:grid-cols-${role === 'SUPERADMIN' ? '4' : '3'} gap-4`}>
+          {/* Filter Course (Mata Pelajaran) - Superadmin Only */}
+          {role === 'SUPERADMIN' && (
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1.5">
+                Mata Pelajaran
+              </label>
+              <select
+                value={selectedCourseId}
+                onChange={e => handleCourseChange(e.target.value)}
+                className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm transition-colors cursor-pointer"
+              >
+                <option value="">Semua Mata Pelajaran</option>
+                {courses.map(c => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {/* 1. Filter Kelas */}
           <div>
             <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1.5">

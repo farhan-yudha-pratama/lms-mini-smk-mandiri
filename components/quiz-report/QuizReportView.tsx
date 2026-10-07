@@ -44,18 +44,23 @@ function formatDate(dateString: string | null) {
 
 export default function QuizReportView({ 
   packages, 
-  classes, 
+  classes,
+  courses = [],
+  role = 'MURID',
   initialReports,
   initialUnfinishedReports,
 }: { 
   packages: Package[]; 
   classes: ClassType[]; 
+  courses?: { id: string; name: string }[];
+  role?: string;
   initialReports?: QuizReportsResponse;
   initialUnfinishedReports?: UnfinishedStudentsResponse;
 }) {
   const [activeTab, setActiveTab] = useState<'REPORTS' | 'UNFINISHED' | 'TASK_RECAP'>('REPORTS');
   const [selectedClassId, setSelectedClassId] = useState<string>('');
   const [selectedPackageId, setSelectedPackageId] = useState<string>('');
+  const [selectedCourseId, setSelectedCourseId] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [reviewFilter, setReviewFilter] = useState<'ALL' | 'NEED_REVIEW' | 'HAS_ESSAY' | 'GRADED' | 'NO_ESSAY'>('ALL');
   const [page, setPage] = useState<number>(1);
@@ -94,6 +99,7 @@ export default function QuizReportView({
   const loadReports = (newParams?: {
     classId?: string;
     packageId?: string;
+    courseId?: string;
     search?: string;
     page?: number;
     limit?: number;
@@ -101,6 +107,7 @@ export default function QuizReportView({
   }) => {
     const targetClassId = newParams?.classId !== undefined ? newParams.classId : selectedClassId;
     const targetPackageId = newParams?.packageId !== undefined ? newParams.packageId : selectedPackageId;
+    const targetCourseId = newParams?.courseId !== undefined ? newParams.courseId : selectedCourseId;
     const targetSearch = newParams?.search !== undefined ? newParams.search : searchQuery;
     const targetPage = newParams?.page !== undefined ? newParams.page : page;
     const targetLimit = newParams?.limit !== undefined ? newParams.limit : limit;
@@ -110,6 +117,7 @@ export default function QuizReportView({
       const res = await getQuizReportsAction({
         classId: targetClassId || undefined,
         packageId: targetPackageId || undefined,
+        courseId: targetCourseId || undefined,
         search: targetSearch || undefined,
         page: targetPage,
         limit: targetLimit,
@@ -132,6 +140,12 @@ export default function QuizReportView({
   };
 
   // Filter Handlers
+  const handleCourseChange = (newCourseId: string) => {
+    setSelectedCourseId(newCourseId);
+    setPage(1);
+    loadReports({ courseId: newCourseId, page: 1 });
+  };
+
   const handleClassChange = (newClassId: string) => {
     setSelectedClassId(newClassId);
     setPage(1);
@@ -172,11 +186,12 @@ export default function QuizReportView({
   const handleResetFilters = () => {
     setSelectedClassId('');
     setSelectedPackageId('');
+    setSelectedCourseId('');
     setSearchQuery('');
     setReviewFilter('ALL');
     setPage(1);
     setLimit(50);
-    loadReports({ classId: '', packageId: '', search: '', page: 1, limit: 50, reviewFilter: 'ALL' });
+    loadReports({ classId: '', packageId: '', courseId: '', search: '', page: 1, limit: 50, reviewFilter: 'ALL' });
   };
 
   // Open Detail / Review Modal
@@ -348,7 +363,7 @@ export default function QuizReportView({
     });
   };
 
-  const hasActiveFilters = Boolean(selectedClassId || selectedPackageId || searchQuery || reviewFilter !== 'ALL' || limit !== 50);
+  const hasActiveFilters = Boolean(selectedClassId || selectedPackageId || selectedCourseId || searchQuery || reviewFilter !== 'ALL' || limit !== 50);
 
   // Pagination bounds calculation
   const startItemIndex = data.pagination.totalItems === 0 ? 0 : (data.pagination.page - 1) * data.pagination.limit + 1;
@@ -431,12 +446,16 @@ export default function QuizReportView({
       {activeTab === 'TASK_RECAP' ? (
         <TaskRecapView
           classes={classes}
+          courses={courses}
+          role={role}
           onOpenDetail={handleOpenDetail}
         />
       ) : activeTab === 'UNFINISHED' ? (
         <UnfinishedStudentsView
           packages={packages}
           classes={classes}
+          courses={courses}
+          role={role}
           initialData={initialUnfinishedReports}
         />
       ) : (
@@ -461,7 +480,31 @@ export default function QuizReportView({
           )}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className={`grid grid-cols-1 md:grid-cols-${role === 'SUPERADMIN' ? '4' : '3'} gap-4`}>
+          {/* Filter Course (Mata Pelajaran) - Superadmin Only */}
+          {role === 'SUPERADMIN' && (
+            <div>
+              <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                Filter Mapel
+              </label>
+              <div className="relative">
+                <select 
+                  value={selectedCourseId} 
+                  onChange={e => handleCourseChange(e.target.value)}
+                  className="w-full px-3 py-2.5 bg-gray-50 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none text-sm font-medium transition-colors cursor-pointer appearance-none pr-8"
+                >
+                  <option value="">Semua Mata Pelajaran</option>
+                  {courses.map(c => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+                <span className="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400 text-lg">
+                  expand_more
+                </span>
+              </div>
+            </div>
+          )}
+
           {/* 1. Filter Kelas */}
           <div>
             <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">

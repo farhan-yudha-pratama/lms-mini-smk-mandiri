@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react';
 import { UserRow, SortColumn, SortDirection, Role } from '../types';
 import { filterUsers, sortUsers } from '@/lib/user-helpers';
-import { bulkResetPassword, bulkChangeRole, bulkToggleActive, editUserNameAction, bulkDeleteUsersAction } from '../actions';
+import { bulkResetPassword, bulkChangeRole, bulkToggleActive, editUserNameAction, bulkDeleteUsersAction, bulkRevokeUserTokenAction } from '../actions';
 import UsersToolbar from './UsersToolbar';
 import UsersTable from './UsersTable';
 import UsersPagination from './UsersPagination';
@@ -227,6 +227,22 @@ export default function UsersView({ initialUsers }: UsersViewProps) {
     });
   };
 
+  const onBulkRevokeToken = () => {
+    setModalConfig({
+      isOpen: true,
+      title: 'Revoke Token',
+      message: `Yakin me-revoke token dari ${selectedIds.size} pengguna? Ini akan me-logout perangkat mereka secara paksa.`,
+      isDestructive: true,
+      onConfirm: () => {
+        setModalConfig(null);
+        runAction(async () => {
+          const res = await bulkRevokeUserTokenAction(Array.from(selectedIds));
+          return res;
+        });
+      }
+    });
+  };
+
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
       {/* Header */}
@@ -301,6 +317,7 @@ export default function UsersView({ initialUsers }: UsersViewProps) {
         onBulkChangeRole={onBulkChangeRole}
         onBulkToggleActive={onBulkToggleActive}
         onBulkDelete={onBulkDelete}
+        onBulkRevokeToken={onBulkRevokeToken}
       />
     </div>
   );

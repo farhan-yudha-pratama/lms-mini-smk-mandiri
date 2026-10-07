@@ -10,6 +10,7 @@ export interface SessionPayload {
   userId: string;
   email: string;
   role: string;
+  sessionId: string;
   [key: string]: any;
 }
 
@@ -54,10 +55,17 @@ export const getSession = cache(async () => {
   if (!session) return null;
   
   const payload = await decrypt(session);
-  if (!payload) return null;
+  if (!payload || !payload.sessionId) return null;
 
   try {
     const { db } = await import('@/prisma/db');
+    
+    // Cek apakah sesi ini masih ada di database (belum di-revoke atau ditimpa device lain)
+    const sessionRecord = await db.orm.public.Session.where({ id: payload.sessionId }).first();
+    if (!sessionRecord) {
+      return null;
+    }
+
     const user = await db.orm.public.User.where({ id: payload.userId }).first();
     
     // Jika user tidak ada atau tidak aktif, tolak sesi

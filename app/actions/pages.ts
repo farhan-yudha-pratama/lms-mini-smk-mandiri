@@ -3,6 +3,9 @@
 import { db } from '@/prisma/db';
 import { revalidatePath } from 'next/cache';
 import { randomUUID } from 'crypto';
+import { logAudit } from '@/lib/audit';
+import { getPageLabel, getCategoryLabel } from '@/lib/audit-context';
+import { msg, diffFields } from '@/lib/audit-messages';
 
 export async function getPagesByCategory(categoryId: string) {
   const pages = await db.orm.public.Page.where({ categoryId }).all();
@@ -74,6 +77,13 @@ export async function createPage(data: {
     minQuizScore: minQuizScore || 70,
   });
 
+  const pageLabel = await getPageLabel(newPage.id);
+  await logAudit({
+    action: 'CREATE_PAGE',
+    message: msg.createPage({ page: pageLabel }),
+    meta: { pageId: newPage.id, title: pageData.title, categoryId: data.categoryId }
+  });
+
   revalidatePath(`/dashboard/materi/${data.categoryId}/pages`);
   return newPage;
 }
@@ -89,24 +99,30 @@ export async function updatePage(id: string, categoryId: string, data: {
 }) {
   const { prerequisitePageId, minQuizScore, ...pageData } = data;
   
+  const oldPage = await db.orm.public.Page.where({ id }).first();
   await db.orm.public.Page.where({ id }).update(pageData);
 
   // Handle sequence update
+  let sequenceDiff = '';
   if (prerequisitePageId !== undefined) {
     const existingSeqs = await db.orm.public.PageSequence.where({ pageId: id }).all();
     const existingSeq = existingSeqs[0];
     
     if (prerequisitePageId === null || prerequisitePageId === '') {
       if (existingSeq) {
+        if (existingSeq.prerequisitePageId) sequenceDiff = 'menghapus prasyarat';
         await db.orm.public.PageSequence.where({ id: existingSeq.id }).update({ prerequisitePageId: null });
       }
     } else {
       if (existingSeq) {
+        if (existingSeq.prerequisitePageId !== prerequisitePageId) sequenceDiff = 'mengubah prasyarat';
+        if (existingSeq.minQuizScore !== minQuizScore) sequenceDiff += (sequenceDiff ? ', ' : '') + 'mengubah KKM';
         await db.orm.public.PageSequence.where({ id: existingSeq.id }).update({
           prerequisitePageId,
           minQuizScore: minQuizScore || existingSeq.minQuizScore,
         });
       } else {
+        sequenceDiff = 'menambah prasyarat';
         await db.orm.public.PageSequence.create({
           pageId: id,
           prerequisitePageId,
@@ -116,11 +132,22 @@ export async function updatePage(id: string, categoryId: string, data: {
     }
   }
 
+  const diffs = oldPage ? diffFields(oldPage, pageData, { title: 'judul', isPublished: 'status Publish' }) : [];
+  if (sequenceDiff) diffs.push(sequenceDiff);
+
+  await logAudit({
+    action: 'UPDATE_PAGE',
+    message: msg.updatePage({ page: { title: data.title }, diffs }),
+    meta: { pageId: id, updates: data }
+  });
+
   revalidatePath(`/dashboard/materi/${categoryId}/pages`);
   return { id, ...pageData };
 }
 
 export async function deletePage(id: string, categoryId: string) {
+  const pageLabel = await getPageLabel(id);
+
   // Need to delete dependencies first
   const existingSeqs = await db.orm.public.PageSequence.where({ pageId: id }).all();
   const existingSeq = existingSeqs[0];
@@ -135,6 +162,13 @@ export async function deletePage(id: string, categoryId: string) {
   }
 
   await db.orm.public.Page.where({ id }).delete();
+  
+  await logAudit({
+    action: 'DELETE_PAGE',
+    message: msg.deletePage({ page: pageLabel, affectedSequences: dependentSeqs.length }),
+    meta: { pageId: id }
+  });
+
   revalidatePath(`/dashboard/materi/${categoryId}/pages`);
   return { id };
 }
@@ -149,6 +183,13 @@ export async function reorderPages(categoryId: string, updates: { id: string; or
   for (const update of updates) {
     await db.orm.public.Page.where({ id: update.id }).update({ orderIndex: update.orderIndex });
   }
+
+  const categoryLabel = await getCategoryLabel(categoryId);
+  await logAudit({
+    action: 'REORDER_PAGE',
+    message: msg.reorderPage({ category: categoryLabel, updates }),
+    meta: { categoryId, updates }
+  });
 
   revalidatePath(`/dashboard/materi/${categoryId}/pages`);
   return true;

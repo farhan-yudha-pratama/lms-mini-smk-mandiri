@@ -2,12 +2,21 @@ import { db } from '@/prisma/db';
 import { QuizFormValues, QuizVariantFormValues } from './quiz.schema';
 import { randomUUID } from 'crypto';
 
-export async function getQuizzesWithPageStatus() {
-  const pages = await db.orm.public.Page.all();
+export async function getQuizzesWithPageStatus(teacherId?: string) {
+  let pages = await db.orm.public.Page.all();
   const quizPackages = await db.orm.public.QuizPackage.all();
   const categories = await db.orm.public.MaterialCategory.all();
   const variants = await db.orm.public.QuizVariant.all();
   const sequences = await db.orm.public.PageSequence.all();
+
+  if (teacherId) {
+    const teacherCourses = await db.orm.public.CourseTeacher.where({ teacherId }).all();
+    const validCourseIds = new Set(teacherCourses.map(c => c.courseId));
+    const validCategoryIds = new Set(
+      categories.filter(c => c.courseId && validCourseIds.has(c.courseId)).map(c => c.id)
+    );
+    pages = pages.filter(p => validCategoryIds.has(p.categoryId));
+  }
 
   return pages.map(page => {
     const quizPackage = quizPackages.find(q => q.pageId === page.id);

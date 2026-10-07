@@ -9,6 +9,7 @@ export default function FloatingActionBar({
   onBulkChangeRole,
   onBulkToggleActive,
   onBulkDelete,
+  onBulkRevokeToken,
 }: FloatingActionBarProps) {
   if (selectedCount === 0) return null;
 
@@ -83,6 +84,19 @@ export default function FloatingActionBar({
                 className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-xl disabled:opacity-50 text-sm font-medium transition-colors shadow-sm whitespace-nowrap"
               >
                 Hapus
+              </button>
+            </>
+          )}
+
+          {onBulkRevokeToken && (
+            <>
+              <div className="h-6 w-px bg-gray-700 mx-1 hidden sm:block"></div>
+              <button
+                disabled={isProcessing}
+                onClick={onBulkRevokeToken}
+                className="px-4 py-2 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 rounded-xl disabled:opacity-50 text-sm font-medium transition-colors whitespace-nowrap"
+              >
+                Revoke Token
               </button>
             </>
           )}
