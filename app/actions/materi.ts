@@ -5,6 +5,9 @@ import { revalidatePath } from 'next/cache';
 import { randomUUID } from 'crypto';
 
 import { getSession } from '@/lib/session';
+import { logAudit } from '@/lib/audit';
+import { getCategoryLabel } from '@/lib/audit-context';
+import { msg, diffFields } from '@/lib/audit-messages';
 
 export async function getCategories(courseId?: string) {
   const session = await getSession();
@@ -38,12 +41,29 @@ export async function createCategory(data: { name: string; slug: string; descrip
     courseId: data.courseId || null,
     isActive: true,
   });
+  
+  await logAudit({
+    action: 'CREATE_CATEGORY',
+    message: msg.createCategory({ category: data }),
+    meta: { categoryId: id, name: data.name }
+  });
+
   revalidatePath('/dashboard/materi');
   return { ...newCat, description: newCat.description || null } as any;
 }
 
 export async function updateCategory(id: string, data: { name: string; slug: string; description?: string | null; orderIndex: number; isActive: boolean }) {
+  const oldCat = await db.orm.public.MaterialCategory.where({ id }).first();
   await db.orm.public.MaterialCategory.where({ id }).update(data);
+  
+  const diffs = oldCat ? diffFields(oldCat, data, { isActive: 'status Aktif', name: 'nama' }) : [];
+  
+  await logAudit({
+    action: 'UPDATE_CATEGORY',
+    message: msg.updateCategory({ category: data, diffs }),
+    meta: { categoryId: id, updates: data }
+  });
+
   revalidatePath('/dashboard/materi');
   return { id, ...data, description: data.description || null } as any;
 }
@@ -55,7 +75,15 @@ export async function deleteCategory(id: string) {
     throw new Error('Tidak dapat menghapus kategori karena masih memiliki halaman materi.');
   }
 
+  const catLabel = await getCategoryLabel(id);
   await db.orm.public.MaterialCategory.where({ id }).delete();
+  
+  await logAudit({
+    action: 'DELETE_CATEGORY',
+    message: msg.deleteCategory({ category: catLabel }),
+    meta: { categoryId: id }
+  });
+
   revalidatePath('/dashboard/materi');
   return { id };
 }
@@ -70,6 +98,12 @@ export async function reorderCategories(updates: { id: string; orderIndex: numbe
   for (const update of updates) {
     await db.orm.public.MaterialCategory.where({ id: update.id }).update({ orderIndex: update.orderIndex });
   }
+  
+  await logAudit({
+    action: 'REORDER_CATEGORY',
+    message: msg.reorderCategory({ updates }),
+    meta: { updates }
+  });
   
   revalidatePath('/dashboard/materi');
   return true;

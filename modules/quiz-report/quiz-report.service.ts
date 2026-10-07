@@ -462,13 +462,17 @@ export async function resetQuizAttempt(studentId: string, packageId: string, att
   }
 
   const answers = await db.orm.public.StudentAnswer.where({ quizAttemptId: targetAttempt.id }).all();
+  const previousScore = targetAttempt.score;
+  const previousStatus = targetAttempt.status;
+  const answerCount = answers.length;
+
   for (const ans of answers) {
     await db.orm.public.StudentAnswer.where({ id: ans.id }).delete();
   }
 
   await db.orm.public.QuizAttempt.where({ id: targetAttempt.id }).delete();
   
-  return true;
+  return { attemptId: targetAttempt.id, studentId, previousScore, previousStatus, answerCount };
 }
 
 export async function getQuizAttemptDetail(attemptId: string) {
@@ -636,6 +640,10 @@ export async function gradeQuizAttempt(
 
   // Prerequisite Unlocking Logic
   const passed = roundedScore >= (pkg?.passingScore || 70);
+  
+  // Previous score
+  const beforeScore = attempt.score;
+
   if (passed && pkg?.pageId) {
     // 1. Mark CURRENT page as COMPLETED
     const currentPageAccess = await db.orm.public.PageAccess.where({
@@ -692,7 +700,10 @@ export async function gradeQuizAttempt(
     success: true,
     score: roundedScore,
     isPassed: passed,
-    status: 'GRADED' as const
+    status: 'GRADED' as const,
+    beforeScore,
+    gradedCount: essayGrades.length,
+    studentId: attempt.studentId
   };
 }
 

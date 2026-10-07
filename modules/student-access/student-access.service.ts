@@ -128,6 +128,7 @@ export async function updatePageAccess(studentId: string, pageId: string, status
     }
 
     await db.orm.public.PageAccess.where({ id: existingAccess.id }).update(updateData);
+    return { previousStatus: existingAccess.status, newStatus: status };
   } else {
     // Create new access record
     await db.orm.public.PageAccess.create({
@@ -137,6 +138,7 @@ export async function updatePageAccess(studentId: string, pageId: string, status
       unlockedAt: status === 'UNLOCKED' || status === 'COMPLETED' ? now : null,
       completedAt: status === 'COMPLETED' ? now : null
     });
+    return { previousStatus: null, newStatus: status };
   }
 }
 
@@ -194,6 +196,10 @@ export async function bypassCategoryAccessService(studentId: string, categoryId:
       }
     }
   }
+  return { 
+    pages: pages.map(p => ({ id: p.id, title: p.title })), 
+    quizzes: targetPackages.map(p => ({ packageId: p.id, title: p.title })) 
+  };
 }
 
 export async function bypassPageAccessService(studentId: string, pageId: string) {
@@ -243,4 +249,7 @@ export async function bypassPageAccessService(studentId: string, pageId: string)
       }
     }
   }
+  return { 
+    quizzes: packages.map(p => ({ packageId: p.id, title: p.title })) 
+  };
 }

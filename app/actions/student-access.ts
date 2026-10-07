@@ -5,6 +5,9 @@ import { ZodError } from 'zod';
 import { UpdateAccessSchema } from '@/modules/student-access/student-access.schema';
 import * as studentAccessService from '@/modules/student-access/student-access.service';
 import { ActionResponse, PageAccessStatus } from '@/app/(dashboard)/(admin)/dashboard/student-access/types';
+import { logAudit } from '@/lib/audit';
+import { getStudentLabel, getPageLabel, getCategoryLabel } from '@/lib/audit-context';
+import { msg } from '@/lib/audit-messages';
 
 function handleActionError(error: unknown): ActionResponse {
   if (error instanceof ZodError) {
@@ -40,7 +43,14 @@ export async function updatePageAccess(studentId: string, pageId: string, status
   try {
     const parsed = UpdateAccessSchema.parse({ studentId, pageId, status });
 
-    await studentAccessService.updatePageAccess(parsed.studentId, parsed.pageId, parsed.status as PageAccessStatus);
+    const result = await studentAccessService.updatePageAccess(parsed.studentId, parsed.pageId, parsed.status as PageAccessStatus);
+    
+    const [student, page] = await Promise.all([getStudentLabel(studentId), getPageLabel(pageId)]);
+    await logAudit({
+      action: 'UPDATE_ACCESS_STATUS',
+      message: msg.updateAccess({ student, page, from: result.previousStatus, to: result.newStatus }),
+      meta: { studentId: parsed.studentId, pageId: parsed.pageId, status: parsed.status, ...result }
+    });
 
     revalidatePath(`/dashboard/student-access/${parsed.studentId}`);
     return { success: true, message: 'Hak akses siswa berhasil diperbarui.' };
@@ -54,6 +64,16 @@ export async function bulkUpdatePageAccessAction(studentId: string, pageIds: str
     for (const pageId of pageIds) {
       await studentAccessService.updatePageAccess(studentId, pageId, status);
     }
+    
+    const student = await getStudentLabel(studentId);
+    const pages = await Promise.all(pageIds.map(getPageLabel));
+
+    await logAudit({
+      action: 'BULK_UPDATE_ACCESS',
+      message: msg.bulkAccess({ student, pages, to: status }),
+      meta: { studentId, pageIds, status }
+    });
+
     revalidatePath(`/dashboard/student-access/${studentId}`);
     return { success: true, message: `Berhasil memperbarui ${pageIds.length} materi.` };
   } catch (error) {
@@ -63,7 +83,16 @@ export async function bulkUpdatePageAccessAction(studentId: string, pageIds: str
 
 export async function bypassCategoryAccessAction(studentId: string, categoryId: string): Promise<ActionResponse> {
   try {
-    await studentAccessService.bypassCategoryAccessService(studentId, categoryId);
+    const result = await studentAccessService.bypassCategoryAccessService(studentId, categoryId);
+    
+    const [student, category] = await Promise.all([getStudentLabel(studentId), getCategoryLabel(categoryId)]);
+
+    await logAudit({
+      action: 'BYPASS_CATEGORY_ACCESS',
+      message: msg.bypassCategory({ student, category, pages: result.pages, quizzes: result.quizzes }),
+      meta: { studentId, categoryId, ...result }
+    });
+
     revalidatePath(`/dashboard/student-access/${studentId}`);
     return { success: true, message: 'Berhasil membypass kategori dan memberikan nilai kuis 100.' };
   } catch (error) {
@@ -73,7 +102,16 @@ export async function bypassCategoryAccessAction(studentId: string, categoryId: 
 
 export async function bypassPageAccessAction(studentId: string, pageId: string): Promise<ActionResponse> {
   try {
-    await studentAccessService.bypassPageAccessService(studentId, pageId);
+    const result = await studentAccessService.bypassPageAccessService(studentId, pageId);
+    
+    const [student, page] = await Promise.all([getStudentLabel(studentId), getPageLabel(pageId)]);
+
+    await logAudit({
+      action: 'BYPASS_PAGE_ACCESS',
+      message: msg.bypassPage({ student, page, quizzes: result.quizzes }),
+      meta: { studentId, pageId, ...result }
+    });
+
     revalidatePath(`/dashboard/student-access/${studentId}`);
     return { success: true, message: 'Berhasil membypass materi dan memberikan nilai kuis 100.' };
   } catch (error) {
