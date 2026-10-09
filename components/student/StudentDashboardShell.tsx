@@ -99,7 +99,6 @@ export default function StudentDashboardShell({
           onClose={() => setIsSidebarOpen(false)}
           userName={userName}
           userClass={userClass}
-          onLogout={handleLogout}
         />
 
         <div className="flex-1 min-w-0 overflow-y-auto flex flex-col">

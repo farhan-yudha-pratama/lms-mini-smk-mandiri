@@ -168,7 +168,7 @@ export async function bypassCategoryAccessService(studentId: string, categoryId:
 
   // Find quizzes and set to 100
   const packages = await db.orm.public.QuizPackage.all();
-  const targetPackages = packages.filter(p => pageIds.includes(p.pageId));
+  const targetPackages = packages.filter(p => p.pageId && pageIds.includes(p.pageId));
 
   const variants = await db.orm.public.QuizVariant.all();
 

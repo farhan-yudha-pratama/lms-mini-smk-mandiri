@@ -1085,14 +1085,15 @@ export default function QuizReportView({
                     </div>
 
                     {attemptDetail.questions.map((q: any, qIdx: number) => {
-                      const isEssay = q.questionType === 'ESSAY';
+                      const isEssay = q.questionType === 'ESSAY' || q.questionType === 'CODE_CHALLENGE';
+                      const isCode = q.questionType === 'CODE_CHALLENGE';
                       const studentAns = q.studentAnswer;
 
                       return (
                         <div 
                           key={q.id} 
                           className={`bg-white border border-gray-200 p-4 md:p-5 shadow-sm space-y-3 ${
-                            isEssay ? 'border-l-8 border-l-purple-500' : 'border-l-8 border-l-blue-500'
+                            isCode ? 'border-l-8 border-l-green-500' : isEssay ? 'border-l-8 border-l-purple-500' : 'border-l-8 border-l-blue-500'
                           }`}
                         >
                           {/* Question Header */}
@@ -1102,11 +1103,13 @@ export default function QuizReportView({
                                 {qIdx + 1}
                               </span>
                               <span className={`px-2 py-0.5 text-xs font-bold uppercase rounded border ${
-                                isEssay 
+                                isCode 
+                                  ? 'bg-green-100 text-green-800 border-green-300'
+                                  : isEssay 
                                   ? 'bg-purple-100 text-purple-800 border-purple-300' 
                                   : 'bg-blue-100 text-blue-800 border-blue-300'
                               }`}>
-                                {isEssay ? 'Soal Essay' : 'Pilihan Ganda'}
+                                {isCode ? 'Soal Coding' : isEssay ? 'Soal Essay' : 'Pilihan Ganda'}
                               </span>
                               <span className="text-xs font-bold text-gray-600 bg-gray-100 px-2 py-0.5 border border-gray-300">
                                 Bobot: {q.points} Poin
@@ -1115,8 +1118,8 @@ export default function QuizReportView({
 
                             <div className="text-xs font-bold">
                               {isEssay ? (
-                                <span className="text-purple-700 bg-purple-50 px-2.5 py-1 rounded border border-purple-200">
-                                  Nilai Essay: <strong>{essayGrades[q.id] ?? 0}</strong> / {q.points} Poin
+                                <span className={isCode ? 'text-green-700 bg-green-50 px-2.5 py-1 rounded border border-green-200' : 'text-purple-700 bg-purple-50 px-2.5 py-1 rounded border border-purple-200'}>
+                                  Nilai Manual: <strong>{essayGrades[q.id] ?? 0}</strong> / {q.points} Poin
                                 </span>
                               ) : (
                                 <span className={studentAns?.isCorrect ? 'text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded border border-emerald-200' : 'text-red-700 bg-red-50 px-2.5 py-1 rounded border border-red-200'}>
@@ -1185,7 +1188,7 @@ export default function QuizReportView({
                                 <div className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-1 flex items-center justify-between gap-1">
                                   <div className="flex items-center gap-1">
                                     <span className="material-symbols-outlined text-sm text-purple-700">chat</span>
-                                    Jawaban Essay Siswa:
+                                    Jawaban Murid:
                                   </div>
                                   {studentAns?.essayAnswer?.trim() && (
                                     <button
@@ -1210,19 +1213,35 @@ export default function QuizReportView({
                                 </div>
                                 <div className="p-4 bg-[#FFFDF9] border border-gray-200/40 text-sm md:text-base text-gray-900 font-mono leading-relaxed whitespace-pre-wrap min-h-[80px]">
                                   {studentAns?.essayAnswer?.trim() ? (
-                                    studentAns.essayAnswer
+                                    <>
+                                      {isCode && q.codeLanguage === 'html' ? (
+                                        <div className="mb-4">
+                                          <div className="text-xs font-bold text-gray-500 mb-1">Live Preview (HTML/CSS):</div>
+                                          <div className="border-4 border-black bg-white rounded overflow-hidden">
+                                            <iframe
+                                              srcDoc={studentAns.essayAnswer}
+                                              className="w-full h-[300px] border-none bg-white"
+                                              sandbox="allow-scripts"
+                                              title="Code Challenge Preview"
+                                            />
+                                          </div>
+                                          <div className="text-xs font-bold text-gray-500 mt-3 mb-1">Source Code:</div>
+                                        </div>
+                                      ) : null}
+                                      {studentAns.essayAnswer}
+                                    </>
                                   ) : (
                                     <span className="text-gray-400 italic font-sans text-xs">
-                                      (Murid tidak mengisi teks jawaban essay)
+                                      (Murid tidak mengisi teks jawaban)
                                     </span>
                                   )}
                                 </div>
                               </div>
 
                               {/* Manual Scoring Controls for Teacher */}
-                              <div className="p-3.5 bg-purple-50/80 border-2 border-purple-300 rounded-lg space-y-2">
+                              <div className={`p-3.5 border-2 rounded-lg space-y-2 ${isCode ? 'bg-green-50/80 border-green-300' : 'bg-purple-50/80 border-purple-300'}`}>
                                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                                  <label className="text-xs font-bold text-purple-900 uppercase tracking-wider">
+                                  <label className={`text-xs font-bold uppercase tracking-wider ${isCode ? 'text-green-900' : 'text-purple-900'}`}>
                                     Beri Nilai Guru (Maksimal: {q.points} Poin):
                                   </label>
 
@@ -1260,7 +1279,7 @@ export default function QuizReportView({
                                     step="1"
                                     value={essayGrades[q.id] ?? 0}
                                     onChange={(e) => handleEssayGradeChange(q.id, Number(e.target.value), q.points)}
-                                    className="w-28 px-3 py-2 bg-white border border-gray-200 rounded font-bold text-base text-gray-900 focus:ring-2 focus:ring-purple-500 outline-none"
+                                    className={`w-28 px-3 py-2 bg-white border border-gray-200 rounded font-bold text-base text-gray-900 outline-none focus:ring-2 ${isCode ? 'focus:ring-green-500' : 'focus:ring-purple-500'}`}
                                   />
                                   <span className="text-xs font-bold text-gray-600">
                                     / {q.points} Poin Maksimal

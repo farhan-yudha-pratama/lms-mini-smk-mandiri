@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { getQuizQuestionsAction, submitQuizAction } from '@/modules/quiz-engine/quiz-engine.action';
 import QuizModal from './QuizModal';
+import CodeSandbox from './CodeSandbox';
 
 interface QuizEngineModalProps {
   attemptId: string;
@@ -161,7 +162,7 @@ export default function QuizEngineModal({
     const answersArray = (data?.questions || []).map((q: any) => ({ 
       questionId: q.id, 
       optionId: q.type === 'PILIHAN_GANDA' ? answersRef.current[q.id] || undefined : undefined,
-      essayAnswer: q.type === 'ESSAY' ? answersRef.current[q.id] || undefined : undefined
+      essayAnswer: q.type === 'ESSAY' || q.type === 'CODE_CHALLENGE' ? answersRef.current[q.id] || undefined : undefined
     }));
 
     try {
@@ -396,7 +397,7 @@ export default function QuizEngineModal({
     const totalQuestions = data?.questions?.length || 0;
     const answeredCount = (data?.questions || []).filter((q: any) => {
       const val = answers[q.id];
-      return q.type === 'ESSAY' ? Boolean(val && val.trim().length > 0) : Boolean(val);
+      return q.type === 'ESSAY' || q.type === 'CODE_CHALLENGE' ? Boolean(val && val.trim().length > 0) : Boolean(val);
     }).length;
     const unansweredCount = totalQuestions - answeredCount;
 
@@ -454,7 +455,7 @@ export default function QuizEngineModal({
     const answersArray = (data?.questions || []).map((q: any) => ({ 
       questionId: q.id, 
       optionId: q.type === 'PILIHAN_GANDA' ? answers[q.id] || undefined : undefined,
-      essayAnswer: q.type === 'ESSAY' ? answers[q.id] || undefined : undefined
+      essayAnswer: q.type === 'ESSAY' || q.type === 'CODE_CHALLENGE' ? answers[q.id] || undefined : undefined
     }));
 
     const res = await submitQuizAction(attemptId, answersArray, false);
@@ -645,7 +646,7 @@ export default function QuizEngineModal({
   const currentQ = data.questions[currentIdx];
   const answeredCount = (data?.questions || []).filter((q: any) => {
     const val = answers[q.id];
-    return q.type === 'ESSAY' ? Boolean(val && val.trim().length > 0) : Boolean(val);
+    return q.type === 'ESSAY' || q.type === 'CODE_CHALLENGE' ? Boolean(val && val.trim().length > 0) : Boolean(val);
   }).length;
   const isLast = currentIdx === data.questions.length - 1;
 
@@ -678,7 +679,7 @@ export default function QuizEngineModal({
               <div className="mb-6 flex gap-2 overflow-x-auto pb-2">
                 {data.questions.map((qItem: any, i: number) => {
                   const val = answers[qItem.id];
-                  const hasAnswered = qItem.type === 'ESSAY' ? Boolean(val && val.trim().length > 0) : Boolean(val);
+                  const hasAnswered = qItem.type === 'ESSAY' || qItem.type === 'CODE_CHALLENGE' ? Boolean(val && val.trim().length > 0) : Boolean(val);
                   return (
                     <button
                       key={i}
@@ -702,9 +703,9 @@ export default function QuizEngineModal({
               <div className="bg-white border-4 border-black p-6 shadow-neo-sm">
                 <div className="flex items-center gap-2 mb-3">
                   <span className={`px-2.5 py-1 text-xs font-black uppercase border border-black ${
-                    currentQ.type === 'ESSAY' ? 'bg-[#FFDE59] text-black' : 'bg-[#4ECDC4] text-black'
+                    currentQ.type === 'CODE_CHALLENGE' ? 'bg-[#4CAF50] text-white' : currentQ.type === 'ESSAY' ? 'bg-[#FFDE59] text-black' : 'bg-[#4ECDC4] text-black'
                   }`}>
-                    {currentQ.type === 'ESSAY' ? 'Soal Essay' : 'Pilihan Ganda'}
+                    {currentQ.type === 'CODE_CHALLENGE' ? 'Code Challenge' : currentQ.type === 'ESSAY' ? 'Soal Essay' : 'Pilihan Ganda'}
                   </span>
                   <span className="text-xs font-bold text-gray-700 bg-gray-100 px-2 py-0.5 border border-black/30">
                     {currentQ.points} Poin
@@ -715,7 +716,24 @@ export default function QuizEngineModal({
                   {currentIdx + 1}. {currentQ.text}
                 </h3>
 
-                {currentQ.type === 'ESSAY' ? (
+                {currentQ.type === 'CODE_CHALLENGE' ? (
+                  <div className="space-y-3 mt-4 border-t-2 border-black pt-4">
+                    <div className="bg-green-50 border border-green-200 p-3 mb-2 rounded flex gap-2">
+                      <span className="material-symbols-outlined text-green-700">code</span>
+                      <p className="text-sm font-semibold text-green-900">
+                        Soal Coding ({currentQ.codeLanguage?.toUpperCase() || 'HTML'})
+                      </p>
+                    </div>
+                    <CodeSandbox
+                      language={currentQ.codeLanguage || 'html'}
+                      initialCode={currentQ.initialCode || ''}
+                      testCases={currentQ.testCases || ''}
+                      value={answers[currentQ.id] || ''}
+                      onChange={(val) => setAnswers(prev => ({ ...prev, [currentQ.id]: val }))}
+                      disabled={submitting || cheatingWarning}
+                    />
+                  </div>
+                ) : currentQ.type === 'ESSAY' ? (
                   <div className="space-y-3">
                     <div className="flex justify-between items-center text-xs font-bold text-gray-600">
                       <span>Ketikkan Jawaban Uraian / Essay Anda:</span>

@@ -1,0 +1,546 @@
+[
+  {
+    "id": "dropCheckConstraint.question.question_questionType_check_f3e2dfbc",
+    "label": "Drop check constraint \"question_questionType_check_f3e2dfbc\" on \"question\"",
+    "operationClass": "destructive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "checkConstraint",
+        "name": "question_questionType_check_f3e2dfbc",
+        "table": "question"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"question_questionType_check_f3e2dfbc\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "question_questionType_check_f3e2dfbc",
+          "public",
+          "\"public\".\"question\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "drop check constraint \"question_questionType_check_f3e2dfbc\"",
+        "sql": "ALTER TABLE \"public\".\"question\" DROP CONSTRAINT \"question_questionType_check_f3e2dfbc\""
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"question_questionType_check_f3e2dfbc\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "question_questionType_check_f3e2dfbc",
+          "public",
+          "\"public\".\"question\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.question.codeLanguage",
+    "label": "Add column \"codeLanguage\" to \"question\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "codeLanguage",
+        "table": "question"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"codeLanguage\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "question",
+          "codeLanguage"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"codeLanguage\"",
+        "sql": "ALTER TABLE \"public\".\"question\" ADD COLUMN \"codeLanguage\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"codeLanguage\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "question",
+          "codeLanguage"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.question.initialCode",
+    "label": "Add column \"initialCode\" to \"question\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "initialCode",
+        "table": "question"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"initialCode\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "question",
+          "initialCode"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"initialCode\"",
+        "sql": "ALTER TABLE \"public\".\"question\" ADD COLUMN \"initialCode\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"initialCode\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "question",
+          "initialCode"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.question.testCases",
+    "label": "Add column \"testCases\" to \"question\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "testCases",
+        "table": "question"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"testCases\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "question",
+          "testCases"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"testCases\"",
+        "sql": "ALTER TABLE \"public\".\"question\" ADD COLUMN \"testCases\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"testCases\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "question",
+          "testCases"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.quizPackage.closeAt",
+    "label": "Add column \"closeAt\" to \"quizPackage\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "closeAt",
+        "table": "quizPackage"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"closeAt\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "quizPackage",
+          "closeAt"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"closeAt\"",
+        "sql": "ALTER TABLE \"public\".\"quizPackage\" ADD COLUMN \"closeAt\" timestamptz"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"closeAt\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "quizPackage",
+          "closeAt"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.quizPackage.courseId",
+    "label": "Add column \"courseId\" to \"quizPackage\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "courseId",
+        "table": "quizPackage"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"courseId\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "quizPackage",
+          "courseId"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"courseId\"",
+        "sql": "ALTER TABLE \"public\".\"quizPackage\" ADD COLUMN \"courseId\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"courseId\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "quizPackage",
+          "courseId"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.quizPackage.isHidden",
+    "label": "Add column \"isHidden\" to \"quizPackage\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "isHidden",
+        "table": "quizPackage"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"isHidden\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "quizPackage",
+          "isHidden"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"isHidden\"",
+        "sql": "ALTER TABLE \"public\".\"quizPackage\" ADD COLUMN \"isHidden\" bool DEFAULT false NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"isHidden\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "quizPackage",
+          "isHidden"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.quizPackage.openAt",
+    "label": "Add column \"openAt\" to \"quizPackage\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "openAt",
+        "table": "quizPackage"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"openAt\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "quizPackage",
+          "openAt"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"openAt\"",
+        "sql": "ALTER TABLE \"public\".\"quizPackage\" ADD COLUMN \"openAt\" timestamptz"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"openAt\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "quizPackage",
+          "openAt"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.studentAnswer.essayFeedback",
+    "label": "Add column \"essayFeedback\" to \"studentAnswer\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "essayFeedback",
+        "table": "studentAnswer"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"essayFeedback\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "studentAnswer",
+          "essayFeedback"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"essayFeedback\"",
+        "sql": "ALTER TABLE \"public\".\"studentAnswer\" ADD COLUMN \"essayFeedback\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"essayFeedback\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "studentAnswer",
+          "essayFeedback"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "alterNullability.dropNotNull.quizPackage.pageId",
+    "label": "Drop NOT NULL on \"quizPackage\".\"pageId\"",
+    "operationClass": "widening",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "pageId",
+        "table": "quizPackage"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"pageId\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "quizPackage",
+          "pageId"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "drop NOT NULL on \"pageId\"",
+        "sql": "ALTER TABLE \"public\".\"quizPackage\" ALTER COLUMN \"pageId\" DROP NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"pageId\" is nullable",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3 AND \"is_nullable\" = $4)) AS \"result\"",
+        "params": [
+          "public",
+          "quizPackage",
+          "pageId",
+          "YES"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "checkConstraint.question.question_questionType_check_0f8a5e2f",
+    "label": "Add check constraint \"question_questionType_check_0f8a5e2f\" on \"question\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "checkConstraint",
+        "name": "question_questionType_check_0f8a5e2f",
+        "table": "question"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"question_questionType_check_0f8a5e2f\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "question_questionType_check_0f8a5e2f",
+          "public",
+          "\"public\".\"question\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add check constraint \"question_questionType_check_0f8a5e2f\"",
+        "sql": "ALTER TABLE \"public\".\"question\" ADD CONSTRAINT \"question_questionType_check_0f8a5e2f\" CHECK (\"questionType\" IN ('PILIHAN_GANDA', 'ESSAY', 'CODE_CHALLENGE'))"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"question_questionType_check_0f8a5e2f\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "question_questionType_check_0f8a5e2f",
+          "public",
+          "\"public\".\"question\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.quizPackage.quizPackage_courseId_idx_12f72d2a",
+    "label": "Create index \"quizPackage_courseId_idx_12f72d2a\" on \"quizPackage\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "quizPackage_courseId_idx_12f72d2a",
+        "table": "quizPackage"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"quizPackage_courseId_idx_12f72d2a\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"quizPackage_courseId_idx_12f72d2a\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"quizPackage_courseId_idx_12f72d2a\"",
+        "sql": "CREATE INDEX \"quizPackage_courseId_idx_12f72d2a\" ON \"public\".\"quizPackage\" (\"courseId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"quizPackage_courseId_idx_12f72d2a\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"quizPackage_courseId_idx_12f72d2a\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.quizPackage.quizPackage_courseId_fkey",
+    "label": "Add foreign key \"quizPackage_courseId_fkey\" on \"quizPackage\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "quizPackage_courseId_fkey",
+        "table": "quizPackage"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"quizPackage_courseId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "quizPackage_courseId_fkey",
+          "public",
+          "\"public\".\"quizPackage\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"quizPackage_courseId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"quizPackage\"\nADD CONSTRAINT \"quizPackage_courseId_fkey\"\nFOREIGN KEY (\"courseId\")\nREFERENCES \"public\".\"course\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"quizPackage_courseId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "quizPackage_courseId_fkey",
+          "public",
+          "\"public\".\"quizPackage\""
+        ]
+      }
+    ]
+  }
+]

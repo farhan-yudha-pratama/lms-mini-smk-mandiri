@@ -9,7 +9,6 @@ interface StudentSidebarProps {
   onClose: () => void;
   userName?: string;
   userClass?: string;
-  onLogout?: () => void;
 }
 
 type MenuItem = {
@@ -21,6 +20,8 @@ type MenuItem = {
 const MAIN_MENU: MenuItem[] = [
   { label: 'Dashboard', icon: 'dashboard', href: '/' },
   { label: 'Mapel Saya', icon: 'book', href: '/student/materi' },
+  { label: 'Tugas & Kuis', icon: 'assignment', href: '/student/tugas' },
+  { label: 'Progress Belajar', icon: 'trending_up', href: '/student/progress' },
 ];
 
 const ACHIEVEMENT_MENU: MenuItem[] = [
@@ -73,7 +74,7 @@ function MenuLink({ item, index, onClose, pathname }: { item: MenuItem; index: n
   );
 }
 
-export default function StudentSidebar({ isOpen, onClose, userName, userClass, onLogout }: StudentSidebarProps) {
+export default function StudentSidebar({ isOpen, onClose, userName, userClass }: StudentSidebarProps) {
   const pathname = usePathname();
   return (
     <>
@@ -124,27 +125,6 @@ export default function StudentSidebar({ isOpen, onClose, userName, userClass, o
             ))}
           </nav>
         </section>
-
-        {/* Profile + logout */}
-        <div className="mt-auto pt-6 border-t-4 border-black border-dashed space-y-4">
-          <div className="flex md:hidden items-center gap-3 bg-[#EAF4ED] border-4 border-black p-3 shadow-[4px_4px_0px_0px_#000]">
-            <div className="w-10 h-10 bg-[#092328] border-2 border-black rounded-full flex items-center justify-center shrink-0">
-              <span className="material-symbols-outlined text-[#8BBB92] text-sm">person</span>
-            </div>
-            <div className="min-w-0">
-              <p className="font-black text-sm uppercase tracking-tight truncate">{userName || 'Siswa'}</p>
-              <p className="font-bold text-xs text-black/70 uppercase">{userClass || 'Tanpa Kelas'}</p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={onLogout}
-            className={`w-full flex items-center justify-center gap-2 border-4 border-black bg-[#092328] text-white p-3 font-black uppercase text-sm tracking-tight ${PUSH}`}
-          >
-            <span className="material-symbols-outlined">logout</span>
-            Keluar
-          </button>
-        </div>
       </aside>
     </>
   );

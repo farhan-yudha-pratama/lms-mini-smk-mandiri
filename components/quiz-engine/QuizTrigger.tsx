@@ -103,7 +103,11 @@ export default function QuizTrigger({ pageSlug }: { pageSlug: string }) {
       <h3 className="text-2xl font-black uppercase tracking-tight mb-2 text-center">Evaluasi Pembelajaran</h3>
       <p className="text-center font-bold text-gray-700 mb-8">{status.packageTitle}</p>
 
-      {status.status === 'NOT_ASSIGNED' ? (
+      {status.status === 'LOCKED' ? (
+        <div className="bg-gray-200 border-4 border-black p-4 text-center font-bold">
+          🔒 Kuis Terkunci (Buka pada {new Date(status.openAt).toLocaleString('id-ID')})
+        </div>
+      ) : status.status === 'NOT_ASSIGNED' ? (
         <div className="bg-yellow-100 border-4 border-black p-4 text-center font-bold">
           ⚠️ Kuis ini belum ditugaskan kepada Anda oleh Guru.
         </div>

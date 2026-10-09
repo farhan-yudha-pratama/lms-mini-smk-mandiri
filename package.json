@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@ai-sdk/openai": "^4.0.71",
+    "@monaco-editor/react": "^4.7.0",
     "@prisma/orm-postgres": "^8.0.0-rc.11",
     "ai": "^7.0.107",
     "bcryptjs": "^3.0.3",

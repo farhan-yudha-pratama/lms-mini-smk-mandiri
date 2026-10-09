@@ -81,20 +81,26 @@ export async function getPageById(id: string) {
 }
 
 export async function createQuizPackage(data: QuizFormValues) {
-  const existingPackage = await db.orm.public.QuizPackage.where({ pageId: data.pageId }).first();
-  if (existingPackage) {
-    throw new Error('Halaman ini sudah memiliki kuis (One-to-One)');
+  if (data.pageId) {
+    const existingPackage = await db.orm.public.QuizPackage.where({ pageId: data.pageId }).first();
+    if (existingPackage) {
+      throw new Error('Halaman ini sudah memiliki kuis (One-to-One)');
+    }
   }
 
   const newPackage = await db.orm.public.QuizPackage.create({
     id: randomUUID(),
-    pageId: data.pageId,
+    courseId: data.courseId,
+    pageId: data.pageId || null,
     title: data.title,
     description: data.description || null,
     passingScore: data.passingScore,
     timeLimit: data.timeLimit || null,
     shuffleQuestions: data.shuffleQuestions,
     isActive: data.isActive,
+    isHidden: data.isHidden,
+    openAt: data.openAt || null,
+    closeAt: data.closeAt || null,
   });
   return newPackage;
 }
@@ -105,7 +111,7 @@ export async function updateQuizPackage(id: string, data: QuizFormValues) {
     throw new Error('Kuis tidak ditemukan');
   }
 
-  if (currentPackage.pageId !== data.pageId) {
+  if (data.pageId && currentPackage.pageId !== data.pageId) {
     const existingPackage = await db.orm.public.QuizPackage.where({ pageId: data.pageId }).first();
     if (existingPackage) {
       throw new Error('Halaman tujuan sudah memiliki kuis');
@@ -113,13 +119,17 @@ export async function updateQuizPackage(id: string, data: QuizFormValues) {
   }
 
   await db.orm.public.QuizPackage.where({ id }).update({
-    pageId: data.pageId,
+    courseId: data.courseId,
+    pageId: data.pageId || null,
     title: data.title,
     description: data.description || null,
     passingScore: data.passingScore,
     timeLimit: data.timeLimit || null,
     shuffleQuestions: data.shuffleQuestions,
     isActive: data.isActive,
+    isHidden: data.isHidden,
+    openAt: data.openAt || null,
+    closeAt: data.closeAt || null,
   });
 
   return { id, ...data };
