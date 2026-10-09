@@ -31,7 +31,7 @@ export async function getStudentQuizHistory(studentId: string) {
     const quizPackage = packages.find(p => p.id === variant?.quizPackageId);
     const page = pages.find(p => p.id === quizPackage?.pageId);
     const category = categories.find(c => c.id === page?.categoryId);
-    const course = courses.find(c => c.id === category?.courseId);
+    const course = courses.find(c => c.id === (quizPackage?.courseId || category?.courseId));
 
     return {
       attemptId: attempt.id,
@@ -39,8 +39,9 @@ export async function getStudentQuizHistory(studentId: string) {
       status: attempt.status,
       startedAt: attempt.startedAt,
       finishedAt: attempt.finishedAt,
-      pageTitle: page?.title || 'Unknown Page',
-      categoryName: category?.name || 'Uncategorized',
+      quizTitle: quizPackage?.title || 'Unknown Quiz',
+      pageTitle: page?.title || null,
+      categoryName: category?.name || 'Kuis Mandiri',
       courseId: course?.id || '',
       courseName: course?.name || 'Unknown Course',
       courseSlug: course?.slug || '',

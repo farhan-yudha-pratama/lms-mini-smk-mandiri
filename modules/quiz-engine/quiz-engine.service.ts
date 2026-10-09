@@ -34,6 +34,16 @@ export async function getQuizStatus(pageSlug: string, studentId: string) {
     preventCopyPaste: true
   };
 
+  const now = new Date();
+  if (pkg.openAt && now < new Date(pkg.openAt)) {
+    return { status: 'LOCKED', openAt: pkg.openAt, packageTitle: pkg.title };
+  }
+  if (pkg.closeAt && now > new Date(pkg.closeAt)) {
+    if (!attempt || attempt.status === 'IN_PROGRESS') {
+      return { status: 'NO_QUIZ' };
+    }
+  }
+
   if (!attempt) {
     return { status: 'READY', assignmentId: assignment.id, packageTitle: pkg.title, hasEssay, antiCheatConfig };
   }

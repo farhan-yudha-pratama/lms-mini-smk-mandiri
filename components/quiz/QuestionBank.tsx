@@ -289,9 +289,13 @@ export default function QuestionBank({ quizVariantId, initialQuestions }: Questi
                       <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-bold rounded-full bg-blue-50 text-blue-700 border border-blue-200">
                         Pilihan Ganda
                       </span>
-                    ) : (
+                    ) : q.questionType === 'ESSAY' ? (
                       <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-bold rounded-full bg-purple-50 text-purple-700 border border-purple-200">
                         Essay (Review Manual)
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-bold rounded-full bg-green-50 text-green-700 border border-green-200">
+                        Code Challenge ({q.codeLanguage?.toUpperCase() || 'HTML'})
                       </span>
                     )}
                     <span className="text-xs font-bold text-gray-600 bg-gray-100 px-2.5 py-0.5 rounded-full border border-gray-200">
@@ -375,6 +379,13 @@ export default function QuestionBank({ quizVariantId, initialQuestions }: Questi
           </button>
           <button 
             type="button"
+            onClick={() => handleOpenAdd('CODE_CHALLENGE')} 
+            className="px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-semibold shadow-sm transition-colors flex items-center gap-1.5"
+          >
+            <span>+</span> Tambah Soal Code
+          </button>
+          <button 
+            type="button"
             onClick={() => handleOpenAdd('ESSAY')} 
             className="px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-semibold shadow-sm transition-colors flex items-center gap-1.5"
           >
@@ -401,6 +412,17 @@ export default function QuestionBank({ quizVariantId, initialQuestions }: Questi
                 }`}
               >
                 Pilihan Ganda
+              </button>
+              <button
+                type="button"
+                onClick={() => setFormType('CODE_CHALLENGE')}
+                className={`px-3 py-1.5 rounded-md transition-colors ${
+                  formType === 'CODE_CHALLENGE' 
+                    ? 'bg-white text-green-700 shadow-sm' 
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Code Challenge
               </button>
               <button
                 type="button"
@@ -466,6 +488,49 @@ export default function QuestionBank({ quizVariantId, initialQuestions }: Questi
             )}
 
             {/* PILIHAN GANDA OPTIONS */}
+            {formType === 'CODE_CHALLENGE' && (
+              <div className="space-y-4 border-t border-gray-100 pt-4 mt-4">
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">
+                    Bahasa Pemrograman <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={codeLanguage}
+                    onChange={(e) => setCodeLanguage(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none text-sm font-semibold"
+                  >
+                    <option value="html">HTML / CSS (Visual Preview)</option>
+                    <option value="javascript">JavaScript (Unit Testing)</option>
+                    <option value="sql">SQL (Regex Matching)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">
+                    Kode Awal (Initial Code)
+                  </label>
+                  <textarea
+                    value={initialCode}
+                    onChange={(e) => setInitialCode(e.target.value)}
+                    rows={4}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none text-sm font-mono"
+                    placeholder="Masukkan kode awal (kerangka) yang akan dilihat siswa saat pertama kali membuka soal..."
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">
+                    Test Cases (Format JSON) - Opsional untuk HTML
+                  </label>
+                  <textarea
+                    value={testCases}
+                    onChange={(e) => setTestCases(e.target.value)}
+                    rows={4}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none text-sm font-mono"
+                    placeholder={'Contoh: [{"input": "2,3", "expected": "5"}]'}
+                  />
+                </div>
+              </div>
+            )}
+
             {formType === 'PILIHAN_GANDA' && (
               <div className="pt-4 border-t border-gray-100">
                 <div className="flex justify-between items-center mb-3">

@@ -3,6 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { deleteQuizPackageAction } from '@/modules/quiz/quiz.action';
+import AdminModal, { AdminModalType } from '@/components/quiz/AdminModal';
 
 export type MappedPackage = {
   id: string;
@@ -24,6 +25,40 @@ export type MappedPackage = {
 export default function QuizListTable({ packages }: { packages: MappedPackage[] }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCourse, setSelectedCourse] = useState<string>('ALL');
+
+  const [modalState, setModalState] = useState<{
+    isOpen: boolean;
+    type: AdminModalType;
+    title: string;
+    message: React.ReactNode;
+    confirmText?: string;
+    onConfirm?: () => void;
+  }>({
+    isOpen: false,
+    type: 'info',
+    title: '',
+    message: '',
+  });
+
+  const showModal = (
+    title: string, 
+    message: React.ReactNode, 
+    type: AdminModalType = 'info', 
+    options?: { confirmText?: string; onConfirm?: () => void }
+  ) => {
+    setModalState({
+      isOpen: true,
+      title,
+      message,
+      type,
+      confirmText: options?.confirmText,
+      onConfirm: options?.onConfirm,
+    });
+  };
+
+  const closeModal = () => {
+    setModalState(prev => ({ ...prev, isOpen: false }));
+  };
 
   const courses = useMemo(() => {
     const list: string[] = [];
@@ -68,10 +103,19 @@ export default function QuizListTable({ packages }: { packages: MappedPackage[] 
     return groups;
   }, [filteredPackages]);
 
-  const handleDelete = async (id: string, title: string) => {
-    if (confirm("Apakah Anda yakin ingin menghapus kuis \"" + title + "\"? Semua soal dan jawaban siswa akan ikut terhapus.")) {
-      await deleteQuizPackageAction(id);
-    }
+  const handleDelete = (id: string, title: string) => {
+    showModal(
+      'Hapus Kuis',
+      <p>Apakah Anda yakin ingin menghapus kuis <strong>{title}</strong>? Semua soal dan jawaban siswa akan ikut terhapus.</p>,
+      'confirm',
+      {
+        confirmText: 'Hapus Kuis',
+        onConfirm: async () => {
+          closeModal();
+          await deleteQuizPackageAction(id);
+        }
+      }
+    );
   };
 
   return (
@@ -233,6 +277,17 @@ export default function QuizListTable({ packages }: { packages: MappedPackage[] 
           </div>
         )}
       </div>
+
+      <AdminModal
+        isOpen={modalState.isOpen}
+        onClose={closeModal}
+        title={modalState.title}
+        message={modalState.message}
+        type={modalState.type}
+        confirmText={modalState.confirmText}
+        onConfirm={modalState.onConfirm}
+        isDestructive={modalState.type === 'confirm'}
+      />
     </div>
   );
 }

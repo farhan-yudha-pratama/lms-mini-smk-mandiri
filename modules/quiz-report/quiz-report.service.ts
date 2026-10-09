@@ -86,7 +86,7 @@ export async function getQuizReports(params: {
   for (const q of allQuestions) {
     const cur = variantQuestionMap.get(q.quizVariantId) || { total: 0, essayCount: 0 };
     cur.total += 1;
-    if (q.questionType === 'ESSAY') {
+    if (q.questionType === 'ESSAY' || q.questionType === 'CODE_CHALLENGE') {
       cur.essayCount += 1;
     }
     variantQuestionMap.set(q.quizVariantId, cur);
@@ -538,7 +538,7 @@ export async function getQuizAttemptDetail(attemptId: string) {
 
   const totalMaxPoints = questions.reduce((sum, q) => sum + q.points, 0);
   const totalEarnedPoints = questions.reduce((sum, q) => sum + (q.studentAnswer?.pointsEarned || 0), 0);
-  const essayQuestions = questions.filter(q => q.questionType === 'ESSAY');
+  const essayQuestions = questions.filter(q => q.questionType === 'ESSAY' || q.questionType === 'CODE_CHALLENGE');
   const hasEssay = essayQuestions.length > 0;
   const needsReview = hasEssay && attempt.status === 'COMPLETED';
 
@@ -594,7 +594,7 @@ export async function gradeQuizAttempt(
 
   for (const grade of essayGrades) {
     const q = questionMap.get(grade.questionId);
-    if (!q || q.questionType !== 'ESSAY') continue;
+    if (!q || (q.questionType !== 'ESSAY' && q.questionType !== 'CODE_CHALLENGE')) continue;
 
     const clampedPoints = Math.max(0, Math.min(q.points, Number(grade.pointsEarned) || 0));
     const ans = existingAnswers.find(a => a.questionId === grade.questionId);

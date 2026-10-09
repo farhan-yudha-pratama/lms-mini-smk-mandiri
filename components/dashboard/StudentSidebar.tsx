@@ -20,6 +20,7 @@ type MenuItem = {
 const MAIN_MENU: MenuItem[] = [
   { label: 'Dashboard', icon: 'dashboard', href: '/' },
   { label: 'Mapel Saya', icon: 'book', href: '/student/materi' },
+  { label: 'Tugas & Kuis', icon: 'assignment', href: '/student/tugas' },
   { label: 'Progress Belajar', icon: 'trending_up', href: '/student/progress' },
 ];
 

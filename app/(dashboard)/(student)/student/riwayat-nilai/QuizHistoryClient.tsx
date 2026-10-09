@@ -11,7 +11,8 @@ interface QuizHistoryItem {
   status: string; // 'IN_PROGRESS' | 'FINISHED' | etc.
   startedAt: string;
   finishedAt: string | null;
-  pageTitle: string;
+  quizTitle: string;
+  pageTitle: string | null;
   categoryName: string;
   courseId: string;
   courseName: string;
@@ -93,7 +94,7 @@ export default function QuizHistoryClient({ history, courses, initialSearch, ini
   if (search) {
     const searchLower = search.toLowerCase();
     filteredHistory = filteredHistory.filter(h => 
-      h.pageTitle.toLowerCase().includes(searchLower) || 
+      h.quizTitle.toLowerCase().includes(searchLower) || 
       h.courseName.toLowerCase().includes(searchLower)
     );
   }
@@ -190,7 +191,7 @@ export default function QuizHistoryClient({ history, courses, initialSearch, ini
                 <tr key={h.attemptId} className="border-b-4 border-black last:border-b-0 hover:bg-[#EAF4ED] transition-colors">
                   <td className="px-6 py-4 border-r-4 border-black font-black text-center text-xl">{idx + 1}</td>
                   <td className="px-6 py-4 border-r-4 border-black">
-                    <p className="font-black text-lg text-black">{h.pageTitle}</p>
+                    <p className="font-black text-lg text-black">{h.quizTitle}</p>
                     <div className="flex flex-wrap gap-2 mt-1">
                       <span className="bg-white border-2 border-black px-2 py-0.5 shadow-[2px_2px_0px_0px_#000] text-[10px] font-black uppercase">{h.courseName}</span>
                       <span className="bg-[#EAF4ED] border-2 border-black px-2 py-0.5 shadow-[2px_2px_0px_0px_#000] text-[10px] font-black uppercase">{h.categoryName}</span>
@@ -236,7 +237,7 @@ export default function QuizHistoryClient({ history, courses, initialSearch, ini
         ) : filteredHistory.map((h, idx) => (
           <div key={h.attemptId} className="bg-white border-4 border-black p-4 shadow-[4px_4px_0px_0px_#000] flex flex-col gap-3">
             <div className="flex justify-between items-start gap-2">
-              <h3 className="font-black text-xl text-black leading-tight">{h.pageTitle}</h3>
+              <h3 className="font-black text-xl text-black leading-tight">{h.quizTitle}</h3>
               <div className="w-8 h-8 bg-black text-white font-black flex items-center justify-center shrink-0 border-2 border-black">
                 {idx + 1}
               </div>
