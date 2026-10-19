@@ -253,3 +253,66 @@ export async function bypassPageAccessService(studentId: string, pageId: string)
     quizzes: packages.map(p => ({ packageId: p.id, title: p.title })) 
   };
 }
+
+export async function getUnlockedPageIdsForStudent(studentId: string): Promise<Set<string>> {
+  const [accesses, sequences, packages, attempts, packageVariants, allPages] = await Promise.all([
+    db.orm.public.PageAccess.where({ studentId }).all(),
+    db.orm.public.PageSequence.all(),
+    db.orm.public.QuizPackage.all(),
+    db.orm.public.QuizAttempt.where({ studentId }).all(),
+    db.orm.public.QuizVariant.all(),
+    db.orm.public.Page.all(),
+  ]);
+
+  const pageQuizMap = new Map(packages.filter(p => p.pageId).map(p => [p.pageId!, p]));
+  const variantMap = new Map<string, string[]>();
+  for (const v of packageVariants) {
+    if (!variantMap.has(v.quizPackageId)) variantMap.set(v.quizPackageId, []);
+    variantMap.get(v.quizPackageId)!.push(v.id);
+  }
+
+  const accessMap = new Map(accesses.map(a => [a.pageId, a.status]));
+  const sequenceMap = new Map(sequences.map(s => [s.pageId, s]));
+
+  const unlockedPageIds = new Set<string>();
+
+  for (const page of allPages) {
+    if (!page.isPublished) continue;
+
+    const explicitStatus = accessMap.get(page.id);
+    if (explicitStatus === 'UNLOCKED' || explicitStatus === 'COMPLETED') {
+      unlockedPageIds.add(page.id);
+      continue;
+    }
+    if (explicitStatus === 'LOCKED') {
+      continue;
+    }
+
+    const seq = sequenceMap.get(page.id);
+    if (!seq || !seq.prerequisitePageId) {
+      unlockedPageIds.add(page.id);
+      continue;
+    }
+
+    const prereqPkg = pageQuizMap.get(seq.prerequisitePageId);
+    if (prereqPkg) {
+      const vIds = variantMap.get(prereqPkg.id) || [];
+      const passed = attempts.some(
+        a => vIds.includes(a.quizVariantId) &&
+             (a.status === 'COMPLETED' || a.status === 'GRADED') &&
+             (a.score ?? 0) >= seq.minQuizScore
+      );
+      if (passed) {
+        unlockedPageIds.add(page.id);
+      }
+    } else {
+      const prereqStatus = accessMap.get(seq.prerequisitePageId);
+      if (prereqStatus === 'COMPLETED') {
+        unlockedPageIds.add(page.id);
+      }
+    }
+  }
+
+  return unlockedPageIds;
+}
+

@@ -58,6 +58,12 @@ export default function TaskListClient({ tasks }: { tasks: any[] }) {
                 <h3 className="font-black text-lg">{t.pkg.title}</h3>
                 <div className="text-sm font-bold text-gray-600 flex flex-wrap gap-2 mt-1">
                   <span className="bg-gray-200 px-2 border border-black">{t.courseName}</span>
+                  {t.page && (
+                    <span className="bg-[#EAF4ED] text-black px-2 border border-black flex items-center gap-1">
+                      <span className="material-symbols-outlined text-sm">menu_book</span>
+                      {t.page.title}
+                    </span>
+                  )}
                   {t.status === 'LOCKED' && <span className="text-amber-700">🔒 Buka: {new Date(t.pkg.openAt).toLocaleString('id-ID')}</span>}
                   {t.pkg.closeAt && <span className="text-red-700">Tutup: {new Date(t.pkg.closeAt).toLocaleString('id-ID')}</span>}
                 </div>

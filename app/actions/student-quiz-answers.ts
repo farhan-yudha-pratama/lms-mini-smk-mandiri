@@ -28,8 +28,12 @@ export async function getStudentAttemptDetails(attemptId: string) {
   // Get options for all questions
   const options = await db.orm.public.QuestionOption.all();
 
-  // We map the questions to include student answers but NOT the correct flag (or maybe we do, since the user said "bukan jawaban aslinya atau jawaban yang benar, hanya jawaban dari murid")
-  // So we strip out `isCorrect` from options and we only provide the text and the student's selected option.
+  // Get feedback authors
+  const authorIds = Array.from(new Set(answers.map(a => a.feedbackAuthorId).filter(Boolean))) as string[];
+  const authors = (
+    await Promise.all(authorIds.map(id => db.orm.public.User.where({ id }).first()))
+  ).filter((u): u is NonNullable<typeof u> => Boolean(u));
+  const authorMap = new Map(authors.map(u => [u.id, u]));
 
   const mappedQuestions = questions.map(q => {
     const qOptions = options.filter(o => o.questionId === q.id).map(o => ({
@@ -38,15 +42,20 @@ export async function getStudentAttemptDetails(attemptId: string) {
     }));
 
     const studentAnswer = answers.find(a => a.questionId === q.id);
+    const author = studentAnswer?.feedbackAuthorId ? authorMap.get(studentAnswer.feedbackAuthorId) : null;
 
     return {
       id: q.id,
       text: q.questionText,
       type: q.questionType,
+      codeLanguage: q.codeLanguage || null,
       options: qOptions,
       studentSelectedOptionId: studentAnswer?.selectedOptionId || null,
       studentEssayAnswer: studentAnswer?.essayAnswer || null,
       essayFeedback: studentAnswer?.essayFeedback || null,
+      feedbackAuthorName: author?.name || (studentAnswer?.essayFeedback ? 'Guru / Pengajar' : null),
+      feedbackAuthorRole: author?.role || (studentAnswer?.essayFeedback ? 'GURU' : null),
+      feedbackAt: studentAnswer?.feedbackAt || null,
       pointsEarned: studentAnswer?.pointsEarned || 0,
       maxPoints: q.points || 0,
     };

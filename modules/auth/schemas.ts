@@ -13,3 +13,16 @@ export const registerSchema = z.object({
 
 export type LoginInput = z.infer<typeof loginSchema>;
 export type RegisterInput = z.infer<typeof registerSchema>;
+
+export const changePasswordSchema = z
+  .object({
+    currentPassword: z.string().min(1, { message: 'Password saat ini wajib diisi' }),
+    newPassword: z.string().min(6, { message: 'Password baru minimal 6 karakter' }),
+    confirmPassword: z.string().min(1, { message: 'Konfirmasi password baru wajib diisi' }),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: 'Konfirmasi password baru tidak cocok',
+    path: ['confirmPassword'],
+  });
+
+export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;

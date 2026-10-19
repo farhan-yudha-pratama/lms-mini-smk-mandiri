@@ -60,6 +60,7 @@ model User {
   quizAssignments QuizAssignment[]
   scoreSummary    StudentScoreSummary?
   completionRecords QuizCompletionRecord[]
+  givenFeedbacks  StudentAnswer[]   @relation("AnswerFeedbackAuthor")
 }
 
 model MaterialCategory {
@@ -240,10 +241,13 @@ model StudentAnswer {
   isCorrect        Boolean?
   pointsEarned     Float    @default(0)
   essayFeedback    String?
+  feedbackAuthorId String?
+  feedbackAt       TimestamptzString?
 
   attempt          QuizAttempt     @relation(fields: [quizAttemptId], references: [id])
   question         Question        @relation(fields: [questionId], references: [id])
   selectedOption   QuestionOption? @relation(fields: [selectedOptionId], references: [id])
+  feedbackAuthor   User?           @relation("AnswerFeedbackAuthor", fields: [feedbackAuthorId], references: [id])
 }
 
 model PageAccess {

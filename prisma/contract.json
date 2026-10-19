@@ -2657,6 +2657,20 @@
                   "kind": "scalar"
                 }
               },
+              "feedbackAt": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "feedbackAuthorId": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
               "id": {
                 "nullable": false,
                 "type": {
@@ -2717,6 +2731,22 @@
                   "namespace": "public"
                 }
               },
+              "feedbackAuthor": {
+                "cardinality": "N:1",
+                "nullable": true,
+                "on": {
+                  "localFields": [
+                    "feedbackAuthorId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "User",
+                  "namespace": "public"
+                }
+              },
               "question": {
                 "cardinality": "N:1",
                 "nullable": false,
@@ -2757,6 +2787,12 @@
                 },
                 "essayFeedback": {
                   "column": "essayFeedback"
+                },
+                "feedbackAt": {
+                  "column": "feedbackAt"
+                },
+                "feedbackAuthorId": {
+                  "column": "feedbackAuthorId"
                 },
                 "id": {
                   "column": "id"
@@ -3112,6 +3148,21 @@
                 },
                 "to": {
                   "model": "QuizCompletionRecord",
+                  "namespace": "public"
+                }
+              },
+              "givenFeedbacks": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "feedbackAuthorId"
+                  ]
+                },
+                "to": {
+                  "model": "StudentAnswer",
                   "namespace": "public"
                 }
               },
@@ -5124,6 +5175,16 @@
                   "nativeType": "text",
                   "nullable": true
                 },
+                "feedbackAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "nativeType": "timestamptz",
+                  "nullable": true
+                },
+                "feedbackAuthorId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
                 "id": {
                   "codecId": "pg/text@1",
                   "nativeType": "text",
@@ -5207,9 +5268,33 @@
                     "namespaceId": "public",
                     "tableName": "questionOption"
                   }
+                },
+                {
+                  "source": {
+                    "columns": [
+                      "feedbackAuthorId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "studentAnswer"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "user"
+                  }
                 }
               ],
               "indexes": [
+                {
+                  "columns": [
+                    "feedbackAuthorId"
+                  ],
+                  "name": "studentAnswer_feedbackAuthorId_idx_ab432da2",
+                  "prefix": "studentAnswer_feedbackAuthorId_idx",
+                  "unique": false
+                },
                 {
                   "columns": [
                     "questionId"
@@ -5581,7 +5666,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "dc097beb17ef532aeac355b1e078bae77d3998f482ea42f6360ce92f6389c40f"
+    "storageHash": "3e0c2ace945ecc5f34c64f9b33406390b6c468052e04e102b46cff23e7f25060"
   },
   "execution": {
     "executionHash": "80b9d2ad69a0d749249fdab19815222739bf9f96f05e9d3ac0278ddb7e9be7c9",

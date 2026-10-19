@@ -334,15 +334,84 @@ export default function QuizHistoryClient({ history, courses, initialSearch, ini
                         )}
                       </div>
                     ) : (
-                      <div className="space-y-2">
-                        <h4 className="font-black uppercase text-sm">Jawaban Essay Kamu:</h4>
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between flex-wrap gap-2">
+                          <h4 className="font-black uppercase text-sm">
+                            {q.type === 'CODE_CHALLENGE' ? 'Jawaban Koding Kamu:' : 'Jawaban Essay Kamu:'}
+                          </h4>
+                          <span className="text-xs font-black px-2.5 py-1 bg-[#EAF4ED] border-2 border-black shadow-[2px_2px_0px_0px_#000]">
+                            Poin: {q.pointsEarned ?? 0} / {q.maxPoints}
+                          </span>
+                        </div>
+
                         {q.studentEssayAnswer ? (
-                          <div className="bg-gray-100 border-4 border-black p-4 font-bold text-sm whitespace-pre-wrap">
-                            {q.studentEssayAnswer}
+                          q.type === 'CODE_CHALLENGE' ? (
+                            <div className="space-y-2">
+                              {q.codeLanguage === 'html' && (
+                                <div className="border-4 border-black bg-white overflow-hidden mb-2">
+                                  <div className="bg-black text-white px-3 py-1 text-xs font-black uppercase">
+                                    Live Preview:
+                                  </div>
+                                  <iframe
+                                    srcDoc={q.studentEssayAnswer}
+                                    className="w-full h-48 border-none bg-white"
+                                    sandbox="allow-scripts"
+                                    title="Student Code Preview"
+                                  />
+                                </div>
+                              )}
+                              <div className="bg-[#092328] text-[#8BBB92] font-mono border-4 border-black p-4 text-xs md:text-sm overflow-x-auto whitespace-pre">
+                                {q.studentEssayAnswer}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="bg-gray-100 border-4 border-black p-4 font-bold text-sm whitespace-pre-wrap leading-relaxed">
+                              {q.studentEssayAnswer}
+                            </div>
+                          )
+                        ) : (
+                          <div className="text-red-600 font-black text-xs uppercase bg-red-100 p-2 border-2 border-black shadow-[2px_2px_0px_0px_#000] inline-block">
+                            Tidak dijawab
+                          </div>
+                        )}
+
+                        {/* Kotak Komentar / Balasan Guru */}
+                        {q.essayFeedback ? (
+                          <div className="mt-4 p-4 bg-[#FFF8E7] border-4 border-black shadow-[4px_4px_0px_0px_#000] space-y-2">
+                            <div className="flex items-center justify-between flex-wrap gap-2 border-b-2 border-black pb-2">
+                              <div className="flex items-center gap-2">
+                                <div className="w-7 h-7 bg-[#092328] text-[#8BBB92] flex items-center justify-center font-black text-xs border border-black">
+                                  <span className="material-symbols-outlined text-[16px]">rate_review</span>
+                                </div>
+                                <div>
+                                  <span className="font-black text-xs uppercase tracking-wider text-black block">
+                                    Catatan Koreksi & Komentar
+                                  </span>
+                                  <span className="text-[11px] font-bold text-gray-700 block">
+                                    Oleh: {q.feedbackAuthorName || 'Guru / Pengajar'} ({q.feedbackAuthorRole || 'Pemeriksa'})
+                                  </span>
+                                </div>
+                              </div>
+                              {q.feedbackAt && (
+                                <span className="text-[10px] font-black uppercase bg-white px-2 py-0.5 border-2 border-black shadow-[1px_1px_0px_0px_#000]">
+                                  {new Date(q.feedbackAt).toLocaleDateString('id-ID', {
+                                    day: 'numeric',
+                                    month: 'short',
+                                    year: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  })}
+                                </span>
+                              )}
+                            </div>
+                            <div className="font-bold text-sm text-gray-900 whitespace-pre-wrap leading-relaxed pt-1">
+                              {q.essayFeedback}
+                            </div>
                           </div>
                         ) : (
-                          <div className="mt-2 text-red-600 font-bold text-sm bg-red-100 p-2 border-2 border-red-600 inline-block">
-                            Tidak dijawab
+                          <div className="mt-3 p-3 bg-[#EAF4ED] border-2 border-dashed border-black text-xs font-black text-gray-700 flex items-center gap-2">
+                            <span className="material-symbols-outlined text-base">hourglass_top</span>
+                            Belum ada komentar evaluasi dari guru.
                           </div>
                         )}
                       </div>

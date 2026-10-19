@@ -16,6 +16,7 @@ Enum Role {
 Enum QuestionType {
   PILIHAN_GANDA
   ESSAY
+  CODE_CHALLENGE
 }
 
 Enum QuizAttemptStatus {
@@ -80,6 +81,7 @@ Table AuditLog {
 
 Table MaterialCategory {
   id            String    [pk, note: 'UUID']
+  courseId      String    [null, note: 'FK → Course']
   name          String    [note: 'Contoh: HTML, CSS, JavaScript, PHP, Bootstrap']
   slug          String    [unique, note: 'URL-friendly, contoh: html, css, js']
   description   String    [null]
@@ -129,7 +131,11 @@ Table PageSequence {
 
 Table QuizPackage {
   id               String    [pk, note: 'UUID']
-  pageId           String    [unique, note: 'FK → Page (1 halaman = 1 quiz)']
+  courseId         String    [null, note: 'FK → Course']
+  pageId           String    [null, unique, note: 'FK → Page (1 halaman = 1 quiz, null jika kuis tingkat course)']
+  isHidden         Boolean   [default: false, note: 'Sembunyikan kuis dari murid']
+  openAt           DateTime  [null, note: 'Jadwal kuis dibuka']
+  closeAt          DateTime  [null, note: 'Batas waktu kuis ditutup']
   title            String
   description      String    [null]
   passingScore     Float     [default: 70.0, note: 'Skor minimum untuk lulus']
@@ -148,6 +154,14 @@ Table QuizVariant {
   updatedAt       DateTime
 }
 
+Table QuizAntiCheatConfig {
+  id               String    [pk, note: 'UUID']
+  quizVariantId    String    [unique, note: 'FK → QuizVariant']
+  enableFullscreen Boolean   [default: true, note: 'Mengharuskan mode layar penuh']
+  preventTabSwitch Boolean   [default: true, note: 'Memaksa skor 0 jika pindah tab/minimize']
+  preventCopyPaste Boolean   [default: true, note: 'Memblokir klik kanan, copy, paste, & inspect']
+}
+
 Table Question {
   id              String        [pk, note: 'UUID']
   quizVariantId   String        [note: 'FK -> QuizVariant']
@@ -155,6 +169,9 @@ Table Question {
   questionType    QuestionType  [default: 'PILIHAN_GANDA']
   points          Float         [default: 1.0, note: 'Bobot nilai soal']
   orderIndex      Int           [note: 'Urutan soal dalam quiz']
+  codeLanguage    String        [null, note: 'Bahasa pemrograman untuk CODE_CHALLENGE (misal: javascript, php)']
+  initialCode     String        [null, note: 'Template kode awal']
+  testCases       String        [null, note: 'Test cases JSON untuk validasi kode']
   createdAt       DateTime      [default: `now()`]
   updatedAt       DateTime
 }
@@ -195,6 +212,9 @@ Table StudentAnswer {
   essayAnswer        String    [null, note: 'Jawaban essay']
   isCorrect          Boolean   [null, note: 'null = belum dinilai']
   pointsEarned       Float     [default: 0]
+  essayFeedback      String    [null, note: 'Catatan feedback atau evaluasi jawaban essay / code']
+  feedbackAuthorId   String    [null, note: 'FK → User (Guru/Superadmin pengirim feedback)']
+  feedbackAt         DateTime  [null, note: 'Waktu feedback/komentar diberikan']
 }
 
 Table PageAccess {
@@ -223,6 +243,7 @@ Ref: PageSequence.prerequisitePageId > Page.id
 
 Ref: QuizPackage.pageId - Page.id
 Ref: QuizVariant.quizPackageId > QuizPackage.id
+Ref: QuizAntiCheatConfig.quizVariantId - QuizVariant.id
 Ref: Question.quizVariantId > QuizVariant.id
 Ref: QuestionOption.questionId > Question.id
 
@@ -236,6 +257,7 @@ Ref: QuizAttempt.studentId > User.id
 Ref: StudentAnswer.quizAttemptId > QuizAttempt.id
 Ref: StudentAnswer.questionId > Question.id
 Ref: StudentAnswer.selectedOptionId > QuestionOption.id
+Ref: StudentAnswer.feedbackAuthorId > User.id
 
 Ref: PageAccess.pageId > Page.id
 Ref: PageAccess.studentId > User.id
@@ -316,4 +338,45 @@ Ref: StudentScoreSummary.studentId - User.id
 Ref: StudentScoreSummary.classroomId > Classroom.id
 Ref: QuizCompletionRecord.studentId > User.id
 Ref: QuizCompletionRecord.classroomId > Classroom.id
+
+// ================================
+// TABEL TAMBAHAN v1.1.0
+// Course (Mata Pelajaran)
+// ================================
+
+Table Course {
+  id          String    [pk, note: 'UUID']
+  name        String    [note: 'Nama mata pelajaran, contoh: Pemrograman Web Dasar']
+  slug        String    [unique, note: 'URL slug unik']
+  joinCode    String    [unique, note: 'Kode bergabung unik mata pelajaran']
+  description String    [null, note: 'Deskripsi mata pelajaran']
+  coverImage  String    [null, note: 'URL poster/gambar cover']
+  isActive    Boolean   [default: true]
+  createdAt   DateTime  [default: `now()`]
+  updatedAt   DateTime
+}
+
+Table CourseTeacher {
+  id        String    [pk, note: 'UUID']
+  courseId  String    [note: 'FK → Course']
+  teacherId String    [note: 'FK → User (GURU)']
+
+  Note: 'Unique constraint pada [courseId, teacherId]'
+}
+
+Table CourseStudent {
+  id        String    [pk, note: 'UUID']
+  courseId  String    [note: 'FK → Course']
+  studentId String    [note: 'FK → User (MURID)']
+
+  Note: 'Unique constraint pada [courseId, studentId]'
+}
+
+// Relasi tabel Course v1.1.0
+Ref: CourseTeacher.courseId > Course.id
+Ref: CourseTeacher.teacherId > User.id
+Ref: CourseStudent.courseId > Course.id
+Ref: CourseStudent.studentId > User.id
+Ref: MaterialCategory.courseId > Course.id
+Ref: QuizPackage.courseId > Course.id
 ```
