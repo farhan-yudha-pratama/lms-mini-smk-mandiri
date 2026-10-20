@@ -3778,6 +3778,7 @@
                 },
                 {
                   "columns": [
+                    "courseId",
                     "orderIndex"
                   ]
                 }
@@ -5666,7 +5667,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "3e0c2ace945ecc5f34c64f9b33406390b6c468052e04e102b46cff23e7f25060"
+    "storageHash": "ec4fbe85767f6a0b92da44c3c330f15dd7fb2d6c8ce37f024e8060950348fdc6"
   },
   "execution": {
     "executionHash": "80b9d2ad69a0d749249fdab19815222739bf9f96f05e9d3ac0278ddb7e9be7c9",

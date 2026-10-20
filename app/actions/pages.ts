@@ -28,11 +28,17 @@ export async function getPagesByCategory(categoryId: string) {
   return joinedPages.sort((a: any, b: any) => a.orderIndex - b.orderIndex);
 }
 
-export async function getAllPages() {
+export async function getAllPages(courseId?: string) {
   const pages = await db.orm.public.Page.all();
   const categories = await db.orm.public.MaterialCategory.all();
     
-  return pages.map((p: any) => {
+  let filteredPages = pages;
+  if (courseId) {
+    const courseCatIds = categories.filter((c: any) => c.courseId === courseId).map((c: any) => c.id);
+    filteredPages = pages.filter((p: any) => courseCatIds.includes(p.categoryId));
+  }
+
+  return filteredPages.map((p: any) => {
     const category = categories.find((c: any) => c.id === p.categoryId);
     return {
       id: p.id,
@@ -148,14 +154,31 @@ export async function updatePage(id: string, categoryId: string, data: {
 export async function deletePage(id: string, categoryId: string) {
   const pageLabel = await getPageLabel(id);
 
-  // Need to delete dependencies first
-  const existingSeqs = await db.orm.public.PageSequence.where({ pageId: id }).all();
-  const existingSeq = existingSeqs[0];
-  if (existingSeq) {
-    await db.orm.public.PageSequence.where({ id: existingSeq.id }).delete();
+  // 1. Delete associated PageSummary records first to prevent foreign key violations
+  const summaries = await db.orm.public.PageSummary.where({ pageId: id }).all();
+  for (const s of summaries) {
+    await db.orm.public.PageSummary.where({ id: s.id }).delete();
   }
 
-  // Find if this page is a prerequisite for others
+  // 2. Delete associated PageAccess records
+  const accesses = await db.orm.public.PageAccess.where({ pageId: id }).all();
+  for (const a of accesses) {
+    await db.orm.public.PageAccess.where({ id: a.id }).delete();
+  }
+
+  // 3. Detach QuizPackage referencing this page
+  const quizPackages = await db.orm.public.QuizPackage.where({ pageId: id }).all();
+  for (const q of quizPackages) {
+    await db.orm.public.QuizPackage.where({ id: q.id }).update({ pageId: null });
+  }
+
+  // 4. Delete sequence where this page is the one to unlock
+  const existingSeqs = await db.orm.public.PageSequence.where({ pageId: id }).all();
+  for (const seq of existingSeqs) {
+    await db.orm.public.PageSequence.where({ id: seq.id }).delete();
+  }
+
+  // 5. Unlink if this page is a prerequisite for others
   const dependentSeqs = await db.orm.public.PageSequence.where({ prerequisitePageId: id }).all();
   for (const seq of dependentSeqs) {
     await db.orm.public.PageSequence.where({ id: seq.id }).update({ prerequisitePageId: null });

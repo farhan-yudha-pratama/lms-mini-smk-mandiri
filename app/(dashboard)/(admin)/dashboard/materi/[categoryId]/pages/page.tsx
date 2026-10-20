@@ -19,7 +19,7 @@ export default async function MateriPagesPage({ params }: { params: Promise<{ ca
   }
 
   const pages = await getPagesByCategory(categoryId);
-  const allPages = await getAllPages();
+  const allPages = await getAllPages(category.courseId || undefined);
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">

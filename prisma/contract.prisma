@@ -70,13 +70,15 @@ model MaterialCategory {
   slug        String    @unique
   description String?
   icon        String?
-  orderIndex  Int       @unique
+  orderIndex  Int
   isActive    Boolean   @default(true)
   createdAt   TimestamptzString @default(now())
   updatedAt   temporal.updatedAtString()
 
   course      Course?   @relation(fields: [courseId], references: [id])
   pages       Page[]
+
+  @@unique([courseId, orderIndex])
 }
 
 model Page {

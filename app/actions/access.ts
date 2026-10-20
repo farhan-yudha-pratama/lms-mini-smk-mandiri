@@ -3,8 +3,13 @@
 import { db } from '@/prisma/db';
 import { getUserSession } from '@/app/actions';
 
-export async function getMaterialNav() {
-  const session = await getUserSession();
+export async function getMaterialNav(courseSlug?: string) {
+  let session: any = null;
+  try {
+    session = await getUserSession();
+  } catch {
+    session = null;
+  }
   
   // Fake userId mapping
   let userId = 'unknown';
@@ -20,10 +25,34 @@ export async function getMaterialNav() {
 
   const bypass = role === 'SUPERADMIN' || role === 'GURU';
 
+  let targetCourseId: string | null = null;
+  let targetCourse: any = null;
+
+  if (courseSlug) {
+    const courses = await db.orm.public.Course.where({ slug: courseSlug }).all();
+    if (courses.length > 0) {
+      targetCourse = courses[0];
+      targetCourseId = courses[0].id;
+    }
+  }
+
   let categories = await db.orm.public.MaterialCategory.where({ isActive: true }).all();
 
-  if (!bypass) {
-    // Only show categories that have no courseId, or where the student is enrolled in that course
+  if (targetCourseId) {
+    // If MURID, check if enrolled in this course
+    if (!bypass) {
+      const enrollment = await db.orm.public.CourseStudent.where({
+        courseId: targetCourseId,
+        studentId: userId,
+      }).first();
+      if (!enrollment) {
+        return []; // Student is not enrolled in this course!
+      }
+    }
+    // Strictly isolate to the requested course
+    categories = categories.filter(c => c.courseId === targetCourseId);
+  } else if (!bypass) {
+    // Fallback if no courseSlug is provided: only categories from enrolled courses
     const enrollments = await db.orm.public.CourseStudent.where({ studentId: userId }).all();
     const enrolledCourseIds = enrollments.map(e => e.courseId);
     categories = categories.filter(c => !c.courseId || enrolledCourseIds.includes(c.courseId));
@@ -102,6 +131,8 @@ export async function getMaterialNav() {
       name: cat.name,
       slug: cat.slug,
       icon: cat.icon || 'folder',
+      orderIndex: cat.orderIndex,
+      courseSlug: targetCourse?.slug || courseSlug || '',
       progress,
       pages: finalPages
     });
@@ -160,8 +191,13 @@ export async function verifyPageAccess(userId: string, role: string, pageSlug: s
   return { isUnlocked: false, reason: 'PREREQUISITE_NOT_MET' };
 }
 
-export async function checkRouteAccess(pageSlug: string) {
-  const session = await getUserSession();
+export async function checkRouteAccess(courseSlugOrPageSlug: string, pageSlug?: string) {
+  let session: any = null;
+  try {
+    session = await getUserSession();
+  } catch {
+    session = null;
+  }
   if (!session) return { isUnlocked: false, reason: 'NOT_LOGGED_IN' };
   
   let userId = 'unknown';
@@ -178,6 +214,38 @@ export async function checkRouteAccess(pageSlug: string) {
       role = users[0].role;
     }
   }
-  
-  return verifyPageAccess(userId, role, pageSlug);
+
+  // If pageSlug is provided, courseSlugOrPageSlug is courseSlug
+  if (pageSlug) {
+    const courses = await db.orm.public.Course.where({ slug: courseSlugOrPageSlug }).all();
+    const course = courses[0];
+    if (course) {
+      const enrollment = await db.orm.public.CourseStudent.where({
+        courseId: course.id,
+        studentId: userId,
+      }).first();
+      if (!enrollment) {
+        return { isUnlocked: false, reason: 'NOT_ENROLLED_IN_COURSE' };
+      }
+    }
+    return verifyPageAccess(userId, role, pageSlug);
+  }
+
+  // Only one argument was provided. Check if it matches a Course or a Page:
+  const courses = await db.orm.public.Course.where({ slug: courseSlugOrPageSlug }).all();
+  const course = courses[0];
+  if (course) {
+    // Visiting course landing: /course/[courseSlug]
+    const enrollment = await db.orm.public.CourseStudent.where({
+      courseId: course.id,
+      studentId: userId,
+    }).first();
+    if (!enrollment) {
+      return { isUnlocked: false, reason: 'NOT_ENROLLED_IN_COURSE' };
+    }
+    return { isUnlocked: true, reason: 'COURSE_ENROLLED' };
+  }
+
+  // Otherwise, it's a page slug (legacy single-param call)
+  return verifyPageAccess(userId, role, courseSlugOrPageSlug);
 }

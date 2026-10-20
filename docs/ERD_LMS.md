@@ -86,10 +86,12 @@ Table MaterialCategory {
   slug          String    [unique, note: 'URL-friendly, contoh: html, css, js']
   description   String    [null]
   icon          String    [null, note: 'Nama icon atau path gambar']
-  orderIndex    Int       [unique, note: 'Urutan kategori di sidebar/menu']
+  orderIndex    Int       [note: 'Urutan kategori di dalam mata pelajaran']
   isActive      Boolean   [default: true]
   createdAt     DateTime  [default: `now()`]
   updatedAt     DateTime
+
+  Note: 'Unique constraint pada [courseId, orderIndex]'
 }
 
 Table Page {
