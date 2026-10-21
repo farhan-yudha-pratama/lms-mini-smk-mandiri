@@ -311,11 +311,11 @@ export default function UrgensiKikPage() {
               </Link>
 
               <Link
-                href="/course/kik"
+                href="/course/kik/apa-itu-iot"
                 className="w-full sm:w-auto bg-jade-vibrant text-white font-black uppercase text-sm md:text-base px-6 py-4 border-4 border-black shadow-neo-md hover:-translate-y-1 hover:-translate-x-1 hover:shadow-neo-lg active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all flex items-center justify-center gap-3 ml-auto"
               >
-                <span>Halaman Utama KIK</span>
-                <span className="material-symbols-outlined font-black">home</span>
+                <span>Materi Selanjutnya: Apa itu IoT?</span>
+                <span className="material-symbols-outlined font-black">arrow_forward</span>
               </Link>
             </nav>
 

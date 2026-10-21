@@ -23,7 +23,7 @@ const roadmapSteps = [
     badgeColor: "bg-jade-vibrant text-white",
     title: "Langkah 2: Praktek C++",
     desc: 'Kuasai bahasa pemrograman C++ dasar untuk memberikan "nyawa" dan logika ke perangkat elektronikmu.',
-    href: "https://kik11rpl.vercel.app/variabel",
+    href: "/course/kik/variabel",
     icon: "code_blocks",
   },
   {
