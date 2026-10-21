@@ -2,7 +2,7 @@ import { db } from '@/prisma/db';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { setToken } from '@/lib/session';
-import { LoginInput, RegisterInput } from './schemas';
+import { LoginInput, RegisterInput, ChangePasswordInput } from './schemas';
 
 export async function loginService(data: LoginInput) {
   // Find user
@@ -106,3 +106,27 @@ export async function registerService(data: RegisterInput) {
     data: { role: newUser.role }
   };
 }
+
+export async function changePasswordService(userId: string, data: ChangePasswordInput) {
+  const user = await db.orm.public.User.where({ id: userId }).first();
+  if (!user) {
+    return { success: false, message: 'Pengguna tidak ditemukan' };
+  }
+
+  const isValidPassword = await bcrypt.compare(data.currentPassword, user.password);
+  if (!isValidPassword) {
+    return { success: false, message: 'Password saat ini salah' };
+  }
+
+  if (data.currentPassword === data.newPassword) {
+    return { success: false, message: 'Password baru tidak boleh sama dengan password saat ini' };
+  }
+
+  const hashedPassword = await bcrypt.hash(data.newPassword, 10);
+  await db.orm.public.User.where({ id: userId }).update({
+    password: hashedPassword,
+  });
+
+  return { success: true, message: 'Password berhasil diperbarui' };
+}
+

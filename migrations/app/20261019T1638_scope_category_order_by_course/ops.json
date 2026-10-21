@@ -1,0 +1,251 @@
+[
+  {
+    "id": "dropConstraint.materialCategory.materialCategory_orderIndex_key",
+    "label": "Drop constraint \"materialCategory_orderIndex_key\" on \"materialCategory\"",
+    "operationClass": "destructive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "materialCategory_orderIndex_key",
+        "table": "materialCategory"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"materialCategory_orderIndex_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "materialCategory_orderIndex_key",
+          "public",
+          "\"public\".\"materialCategory\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "drop constraint \"materialCategory_orderIndex_key\"",
+        "sql": "ALTER TABLE \"public\".\"materialCategory\" DROP CONSTRAINT \"materialCategory_orderIndex_key\""
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"materialCategory_orderIndex_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "materialCategory_orderIndex_key",
+          "public",
+          "\"public\".\"materialCategory\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.studentAnswer.feedbackAt",
+    "label": "Add column \"feedbackAt\" to \"studentAnswer\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "feedbackAt",
+        "table": "studentAnswer"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"feedbackAt\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "studentAnswer",
+          "feedbackAt"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"feedbackAt\"",
+        "sql": "ALTER TABLE \"public\".\"studentAnswer\" ADD COLUMN \"feedbackAt\" timestamptz"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"feedbackAt\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "studentAnswer",
+          "feedbackAt"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.studentAnswer.feedbackAuthorId",
+    "label": "Add column \"feedbackAuthorId\" to \"studentAnswer\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "feedbackAuthorId",
+        "table": "studentAnswer"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"feedbackAuthorId\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "studentAnswer",
+          "feedbackAuthorId"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"feedbackAuthorId\"",
+        "sql": "ALTER TABLE \"public\".\"studentAnswer\" ADD COLUMN \"feedbackAuthorId\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"feedbackAuthorId\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "studentAnswer",
+          "feedbackAuthorId"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.materialCategory.materialCategory_courseId_orderIndex_key",
+    "label": "Add unique constraint on \"materialCategory\" (courseId, orderIndex)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "materialCategory_courseId_orderIndex_key",
+        "table": "materialCategory"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"materialCategory_courseId_orderIndex_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "materialCategory_courseId_orderIndex_key",
+          "public",
+          "\"public\".\"materialCategory\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"materialCategory_courseId_orderIndex_key\"",
+        "sql": "ALTER TABLE \"public\".\"materialCategory\" ADD CONSTRAINT \"materialCategory_courseId_orderIndex_key\" UNIQUE (\"courseId\", \"orderIndex\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"materialCategory_courseId_orderIndex_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "materialCategory_courseId_orderIndex_key",
+          "public",
+          "\"public\".\"materialCategory\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.studentAnswer.studentAnswer_feedbackAuthorId_idx_ab432da2",
+    "label": "Create index \"studentAnswer_feedbackAuthorId_idx_ab432da2\" on \"studentAnswer\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "studentAnswer_feedbackAuthorId_idx_ab432da2",
+        "table": "studentAnswer"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"studentAnswer_feedbackAuthorId_idx_ab432da2\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"studentAnswer_feedbackAuthorId_idx_ab432da2\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"studentAnswer_feedbackAuthorId_idx_ab432da2\"",
+        "sql": "CREATE INDEX \"studentAnswer_feedbackAuthorId_idx_ab432da2\" ON \"public\".\"studentAnswer\" (\"feedbackAuthorId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"studentAnswer_feedbackAuthorId_idx_ab432da2\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"studentAnswer_feedbackAuthorId_idx_ab432da2\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.studentAnswer.studentAnswer_feedbackAuthorId_fkey",
+    "label": "Add foreign key \"studentAnswer_feedbackAuthorId_fkey\" on \"studentAnswer\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "studentAnswer_feedbackAuthorId_fkey",
+        "table": "studentAnswer"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"studentAnswer_feedbackAuthorId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "studentAnswer_feedbackAuthorId_fkey",
+          "public",
+          "\"public\".\"studentAnswer\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"studentAnswer_feedbackAuthorId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"studentAnswer\"\nADD CONSTRAINT \"studentAnswer_feedbackAuthorId_fkey\"\nFOREIGN KEY (\"feedbackAuthorId\")\nREFERENCES \"public\".\"user\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"studentAnswer_feedbackAuthorId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "studentAnswer_feedbackAuthorId_fkey",
+          "public",
+          "\"public\".\"studentAnswer\""
+        ]
+      }
+    ]
+  }
+]

@@ -79,10 +79,12 @@ export async function getQuizAttemptDetailAction(attemptId: string) {
 
 export async function gradeQuizAttemptAction(
   attemptId: string, 
-  essayGrades: { questionId: string; pointsEarned: number }[]
+  essayGrades: { questionId: string; pointsEarned: number; feedback?: string }[]
 ) {
   try {
-    const result = await gradeQuizAttempt(attemptId, essayGrades);
+    const session = await getSession();
+    const graderId = session?.userId;
+    const result = await gradeQuizAttempt(attemptId, essayGrades, graderId);
     
     // Fetch packageId
     const { db } = await import('@/prisma/db');

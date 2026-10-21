@@ -39,6 +39,7 @@ export default function DashboardSidebar({
     { label: 'Buku Nilai (Matrix)', icon: 'grading', href: '/dashboard/gradebook', roles: ['SUPERADMIN', 'GURU'] },
     { label: 'Laporan Belajar', icon: 'analytics', href: '/dashboard/reports', roles: ['SUPERADMIN', 'GURU'] },
     { label: 'Audit Logs', icon: 'history', href: '/dashboard/audit-logs', roles: ['SUPERADMIN'] },
+    { label: 'Pengaturan', icon: 'settings', href: '/dashboard/settings', roles: ['SUPERADMIN', 'GURU'] },
   ];
 
   const userRole = user?.role || 'GURU'; // Fallback to GURU if undefined

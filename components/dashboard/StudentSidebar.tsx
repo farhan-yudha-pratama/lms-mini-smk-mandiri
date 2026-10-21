@@ -29,6 +29,10 @@ const ACHIEVEMENT_MENU: MenuItem[] = [
   { label: 'Peringkat', icon: 'leaderboard' },
 ];
 
+const SETTINGS_MENU: MenuItem[] = [
+  { label: 'Pengaturan Akun', icon: 'settings', href: '/student/settings' },
+];
+
 const PUSH =
   'shadow-[4px_4px_0px_0px_#000] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_#000] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none transition-all';
 
@@ -122,6 +126,17 @@ export default function StudentSidebar({ isOpen, onClose, userName, userClass }:
           <nav className="space-y-3">
             {ACHIEVEMENT_MENU.map((item, i) => (
               <MenuLink key={item.label} item={item} index={MAIN_MENU.length + i} onClose={onClose} pathname={pathname} />
+            ))}
+          </nav>
+        </section>
+
+        <section className="mb-8">
+          <p className="inline-block bg-black text-[#8BBB92] text-[11px] font-mono font-bold uppercase tracking-widest px-2 py-0.5 mb-4">
+            Pengaturan
+          </p>
+          <nav className="space-y-3">
+            {SETTINGS_MENU.map((item, i) => (
+              <MenuLink key={item.label} item={item} index={MAIN_MENU.length + ACHIEVEMENT_MENU.length + i} onClose={onClose} pathname={pathname} />
             ))}
           </nav>
         </section>

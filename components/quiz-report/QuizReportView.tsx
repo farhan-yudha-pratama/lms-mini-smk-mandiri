@@ -81,6 +81,7 @@ export default function QuizReportView({
   const [detailLoading, setDetailLoading] = useState(false);
   const [attemptDetail, setAttemptDetail] = useState<any | null>(null);
   const [essayGrades, setEssayGrades] = useState<Record<string, number>>({});
+  const [essayFeedbacks, setEssayFeedbacks] = useState<Record<string, string>>({});
   const [savingGrades, setSavingGrades] = useState(false);
   const [copiedQuestionId, setCopiedQuestionId] = useState<string | null>(null);
 
@@ -203,14 +204,17 @@ export default function QuizReportView({
     const res = await getQuizAttemptDetailAction(attemptId);
     if (res.success && res.data) {
       setAttemptDetail(res.data);
-      // Initialize essay grades
+      // Initialize essay grades and feedbacks
       const initialGrades: Record<string, number> = {};
+      const initialFeedbacks: Record<string, string> = {};
       res.data.questions
-        .filter((q: any) => q.questionType === 'ESSAY')
+        .filter((q: any) => q.questionType === 'ESSAY' || q.questionType === 'CODE_CHALLENGE')
         .forEach((q: any) => {
           initialGrades[q.id] = q.studentAnswer?.pointsEarned || 0;
+          initialFeedbacks[q.id] = q.studentAnswer?.essayFeedback || '';
         });
       setEssayGrades(initialGrades);
+      setEssayFeedbacks(initialFeedbacks);
     } else {
       setModalConfig({
         isOpen: true,
@@ -251,7 +255,8 @@ export default function QuizReportView({
 
     const payload = Object.keys(essayGrades).map(qId => ({
       questionId: qId,
-      pointsEarned: Number(essayGrades[qId]) || 0
+      pointsEarned: Number(essayGrades[qId]) || 0,
+      feedback: essayFeedbacks[qId] || ''
     }));
 
     const res = await gradeQuizAttemptAction(attemptDetail.attempt.id, payload);
@@ -377,7 +382,7 @@ export default function QuizReportView({
 
     for (const q of attemptDetail.questions) {
       totalMax += q.points;
-      if (q.questionType === 'ESSAY') {
+      if (q.questionType === 'ESSAY' || q.questionType === 'CODE_CHALLENGE') {
         totalEarned += (Number(essayGrades[q.id]) || 0);
       } else {
         totalEarned += (q.studentAnswer?.pointsEarned || 0);
@@ -1284,6 +1289,32 @@ export default function QuizReportView({
                                   <span className="text-xs font-bold text-gray-600">
                                     / {q.points} Poin Maksimal
                                   </span>
+                                </div>
+
+                                {/* Komentar / Catatan Guru untuk Siswa */}
+                                <div className="pt-3 mt-3 border-t border-gray-200/80">
+                                  <label className="flex items-center gap-1.5 text-xs font-bold text-gray-700 mb-1.5">
+                                    <span className="material-symbols-outlined text-[16px] text-blue-600">rate_review</span>
+                                    Komentar / Balasan Evaluasi untuk Murid:
+                                  </label>
+                                  <textarea
+                                    rows={3}
+                                    value={essayFeedbacks[q.id] || ''}
+                                    onChange={(e) => setEssayFeedbacks(prev => ({ ...prev, [q.id]: e.target.value }))}
+                                    placeholder={isCode
+                                      ? "Tuliskan catatan review kode (misal: logika algoritma sudah tepat, perhatikan efisiensi atau sintaks...)"
+                                      : "Tuliskan catatan koreksi, masukan, atau penjelasan evaluasi essay untuk murid di sini..."}
+                                    className="w-full p-2.5 bg-white border border-gray-200 rounded text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-sans"
+                                  />
+                                  {q.studentAnswer?.feedbackAuthorName && (
+                                    <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-gray-500">
+                                      <span className="material-symbols-outlined text-[13px] text-gray-400">history</span>
+                                      <span>
+                                        Terakhir dinilai oleh <span className="font-semibold text-gray-700">{q.studentAnswer.feedbackAuthorName}</span>
+                                        {q.studentAnswer.feedbackAt && ` • ${new Date(q.studentAnswer.feedbackAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`}
+                                      </span>
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             </div>

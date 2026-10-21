@@ -509,6 +509,13 @@ export async function getQuizAttemptDetail(attemptId: string) {
 
   const className = classrooms.find(c => c.id === student?.classId)?.name || 'Tanpa Kelas';
 
+  // Get feedback authors
+  const authorIds = Array.from(new Set(rawAnswers.map(a => a.feedbackAuthorId).filter(Boolean))) as string[];
+  const authors = (
+    await Promise.all(authorIds.map(id => db.orm.public.User.where({ id }).first()))
+  ).filter((u): u is NonNullable<typeof u> => Boolean(u));
+  const authorMap = new Map(authors.map(u => [u.id, u]));
+
   const questions = rawQuestions.sort((a, b) => a.orderIndex - b.orderIndex).map(q => {
     const studentAns = rawAnswers.find(a => a.questionId === q.id);
     const options = rawOptions
@@ -519,6 +526,8 @@ export async function getQuizAttemptDetail(attemptId: string) {
         optionText: o.optionText,
         isCorrect: Boolean(o.isCorrect)
       }));
+
+    const author = studentAns?.feedbackAuthorId ? authorMap.get(studentAns.feedbackAuthorId) : null;
 
     return {
       id: q.id,
@@ -531,7 +540,12 @@ export async function getQuizAttemptDetail(attemptId: string) {
         selectedOptionId: studentAns.selectedOptionId,
         essayAnswer: studentAns.essayAnswer,
         isCorrect: studentAns.isCorrect,
-        pointsEarned: Number(studentAns.pointsEarned) || 0
+        pointsEarned: Number(studentAns.pointsEarned) || 0,
+        essayFeedback: studentAns.essayFeedback || null,
+        feedbackAuthorId: studentAns.feedbackAuthorId || null,
+        feedbackAuthorName: author?.name || (studentAns.essayFeedback ? 'Guru / Pengajar' : null),
+        feedbackAuthorRole: author?.role || (studentAns.essayFeedback ? 'GURU' : null),
+        feedbackAt: studentAns.feedbackAt || null,
       } : null
     };
   });
@@ -577,7 +591,8 @@ export async function getQuizAttemptDetail(attemptId: string) {
 
 export async function gradeQuizAttempt(
   attemptId: string, 
-  essayGrades: { questionId: string; pointsEarned: number }[]
+  essayGrades: { questionId: string; pointsEarned: number; feedback?: string }[],
+  graderId?: string
 ) {
   const attempt = await db.orm.public.QuizAttempt.where({ id: attemptId }).first();
   if (!attempt) throw new Error('Attempt tidak ditemukan');
@@ -598,11 +613,19 @@ export async function gradeQuizAttempt(
 
     const clampedPoints = Math.max(0, Math.min(q.points, Number(grade.pointsEarned) || 0));
     const ans = existingAnswers.find(a => a.questionId === grade.questionId);
+    const feedbackText = grade.feedback !== undefined ? grade.feedback.trim() || null : (ans?.essayFeedback || null);
+    const feedbackAuthorId = feedbackText ? (graderId || ans?.feedbackAuthorId || null) : null;
+    const feedbackAt = feedbackText 
+      ? (feedbackText !== ans?.essayFeedback ? new Date().toISOString() : ans?.feedbackAt || new Date().toISOString()) 
+      : null;
 
     if (ans) {
       await db.orm.public.StudentAnswer.where({ id: ans.id }).update({
         pointsEarned: clampedPoints,
-        isCorrect: clampedPoints > 0
+        isCorrect: clampedPoints > 0,
+        essayFeedback: feedbackText,
+        feedbackAuthorId,
+        feedbackAt
       });
     } else {
       await db.orm.public.StudentAnswer.create({
@@ -612,7 +635,10 @@ export async function gradeQuizAttempt(
         selectedOptionId: null,
         essayAnswer: null,
         isCorrect: clampedPoints > 0,
-        pointsEarned: clampedPoints
+        pointsEarned: clampedPoints,
+        essayFeedback: feedbackText,
+        feedbackAuthorId,
+        feedbackAt
       });
     }
   }

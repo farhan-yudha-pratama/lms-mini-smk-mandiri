@@ -60,6 +60,7 @@ model User {
   quizAssignments QuizAssignment[]
   scoreSummary    StudentScoreSummary?
   completionRecords QuizCompletionRecord[]
+  givenFeedbacks  StudentAnswer[]   @relation("AnswerFeedbackAuthor")
 }
 
 model MaterialCategory {
@@ -69,13 +70,15 @@ model MaterialCategory {
   slug        String    @unique
   description String?
   icon        String?
-  orderIndex  Int       @unique
+  orderIndex  Int
   isActive    Boolean   @default(true)
   createdAt   TimestamptzString @default(now())
   updatedAt   temporal.updatedAtString()
 
   course      Course?   @relation(fields: [courseId], references: [id])
   pages       Page[]
+
+  @@unique([courseId, orderIndex])
 }
 
 model Page {
@@ -240,10 +243,13 @@ model StudentAnswer {
   isCorrect        Boolean?
   pointsEarned     Float    @default(0)
   essayFeedback    String?
+  feedbackAuthorId String?
+  feedbackAt       TimestamptzString?
 
   attempt          QuizAttempt     @relation(fields: [quizAttemptId], references: [id])
   question         Question        @relation(fields: [questionId], references: [id])
   selectedOption   QuestionOption? @relation(fields: [selectedOptionId], references: [id])
+  feedbackAuthor   User?           @relation("AnswerFeedbackAuthor", fields: [feedbackAuthorId], references: [id])
 }
 
 model PageAccess {

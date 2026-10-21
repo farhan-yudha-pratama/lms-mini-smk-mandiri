@@ -1,6 +1,7 @@
 import { getSession } from '@/lib/session';
 import { redirect } from 'next/navigation';
 import { db } from '@/prisma/db';
+import { getUnlockedPageIdsForStudent } from '@/modules/student-access/student-access.service';
 import TaskListClient from './TaskListClient';
 
 export const dynamic = 'force-dynamic';
@@ -31,6 +32,9 @@ export default async function TugasPage() {
     );
   }
 
+  // Dapatkan seluruh ID halaman materi yang sudah terbuka untuk murid ini
+  const unlockedPageIds = await getUnlockedPageIdsForStudent(session.userId);
+
   const packageIds = assignments.map(a => a.quizPackageId);
   const allPackages = await db.orm.public.QuizPackage.all();
   const packages = allPackages.filter(p => packageIds.includes(p.id));
@@ -59,6 +63,12 @@ export default async function TugasPage() {
   const tasks = assignments.map(a => {
     const pkg = pkgMap.get(a.quizPackageId);
     if (!pkg || !pkg.isActive || pkg.isHidden) return null;
+
+    // Filter halaman materi: jika kuis terikat pada halaman tertentu,
+    // sembunyikan jika halamannya belum terbuka untuk murid ini.
+    if (pkg.pageId && !unlockedPageIds.has(pkg.pageId)) {
+      return null;
+    }
 
     const attempt = attemptMap.get(a.quizVariantId);
     

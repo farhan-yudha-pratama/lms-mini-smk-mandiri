@@ -67,9 +67,21 @@ export async function getQuizStatus(pageSlug: string, studentId: string) {
   };
 }
 
+import { getUnlockedPageIdsForStudent } from '@/modules/student-access/student-access.service';
+
 export async function startQuiz(assignmentId: string, studentId: string) {
   const assignment = await db.orm.public.QuizAssignment.where({ id: assignmentId }).first();
   if (!assignment || assignment.studentId !== studentId) throw new Error('Penugasan tidak valid');
+
+  const pkg = await db.orm.public.QuizPackage.where({ id: assignment.quizPackageId }).first();
+  if (!pkg || !pkg.isActive) throw new Error('Kuis tidak aktif atau tidak ditemukan');
+
+  if (pkg.pageId) {
+    const unlockedPageIds = await getUnlockedPageIdsForStudent(studentId);
+    if (!unlockedPageIds.has(pkg.pageId)) {
+      throw new Error('Materi kuis ini masih terkunci.');
+    }
+  }
 
   const attempt = await db.orm.public.QuizAttempt.create({
     id: randomUUID(),

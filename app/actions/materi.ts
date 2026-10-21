@@ -13,9 +13,16 @@ export async function getCategories(courseId?: string) {
   const session = await getSession();
   if (!session) return [];
 
+  const courses = await db.orm.public.Course.all();
   let categories;
-  if (courseId) {
-    categories = await db.orm.public.MaterialCategory.where({ courseId }).all();
+
+  if (courseId && courseId !== 'all') {
+    if (courseId === 'unassigned') {
+      const allCats = await db.orm.public.MaterialCategory.all();
+      categories = allCats.filter(c => !c.courseId);
+    } else {
+      categories = await db.orm.public.MaterialCategory.where({ courseId }).all();
+    }
   } else {
     categories = await db.orm.public.MaterialCategory.all();
   }
@@ -27,36 +34,89 @@ export async function getCategories(courseId?: string) {
     categories = categories.filter(c => c.courseId && assignedCourseIds.includes(c.courseId));
   }
 
-  return categories.sort((a, b) => a.orderIndex - b.orderIndex);
+  const enriched = categories.map((cat: any) => {
+    const matchedCourse = courses.find((c: any) => c.id === cat.courseId);
+    return {
+      ...cat,
+      courseName: matchedCourse?.name || null,
+      courseSlug: matchedCourse?.slug || null,
+    };
+  });
+
+  return enriched.sort((a: any, b: any) => a.orderIndex - b.orderIndex);
 }
 
-export async function createCategory(data: { name: string; slug: string; description?: string | null; orderIndex: number; courseId?: string }) {
+export async function createCategory(data: { 
+  name: string; 
+  slug: string; 
+  description?: string | null; 
+  orderIndex: number; 
+  courseId?: string | null 
+}) {
+  const targetCourseId = data.courseId?.trim() ? data.courseId : null;
+
+  if (targetCourseId) {
+    const existing = await db.orm.public.MaterialCategory.where({
+      courseId: targetCourseId,
+      orderIndex: data.orderIndex,
+    }).first();
+    if (existing) {
+      throw new Error(`Urutan ${data.orderIndex} sudah digunakan pada mata pelajaran ini.`);
+    }
+  }
+
   const id = randomUUID();
   const newCat = await db.orm.public.MaterialCategory.create({
     id,
     name: data.name,
     slug: data.slug,
-    description: data.description,
+    description: data.description || null,
     orderIndex: data.orderIndex,
-    courseId: data.courseId || null,
+    courseId: targetCourseId,
     isActive: true,
   });
   
   await logAudit({
     action: 'CREATE_CATEGORY',
     message: msg.createCategory({ category: data }),
-    meta: { categoryId: id, name: data.name }
+    meta: { categoryId: id, name: data.name, courseId: targetCourseId }
   });
 
   revalidatePath('/dashboard/materi');
   return { ...newCat, description: newCat.description || null } as any;
 }
 
-export async function updateCategory(id: string, data: { name: string; slug: string; description?: string | null; orderIndex: number; isActive: boolean }) {
+export async function updateCategory(id: string, data: { 
+  name: string; 
+  slug: string; 
+  description?: string | null; 
+  orderIndex: number; 
+  courseId?: string | null; 
+  isActive: boolean 
+}) {
+  const targetCourseId = data.courseId?.trim() ? data.courseId : null;
+
+  if (targetCourseId) {
+    const existing = await db.orm.public.MaterialCategory.where({
+      courseId: targetCourseId,
+      orderIndex: data.orderIndex,
+    }).first();
+    if (existing && existing.id !== id) {
+      throw new Error(`Urutan ${data.orderIndex} sudah digunakan pada mata pelajaran ini.`);
+    }
+  }
+
   const oldCat = await db.orm.public.MaterialCategory.where({ id }).first();
-  await db.orm.public.MaterialCategory.where({ id }).update(data);
+  await db.orm.public.MaterialCategory.where({ id }).update({
+    name: data.name,
+    slug: data.slug,
+    description: data.description || null,
+    orderIndex: data.orderIndex,
+    courseId: targetCourseId,
+    isActive: data.isActive,
+  });
   
-  const diffs = oldCat ? diffFields(oldCat, data, { isActive: 'status Aktif', name: 'nama' }) : [];
+  const diffs = oldCat ? diffFields(oldCat, { ...data, courseId: targetCourseId }, { isActive: 'status Aktif', name: 'nama' }) : [];
   
   await logAudit({
     action: 'UPDATE_CATEGORY',
@@ -65,7 +125,7 @@ export async function updateCategory(id: string, data: { name: string; slug: str
   });
 
   revalidatePath('/dashboard/materi');
-  return { id, ...data, description: data.description || null } as any;
+  return { id, ...data, courseId: targetCourseId, description: data.description || null } as any;
 }
 
 export async function deleteCategory(id: string) {
@@ -91,7 +151,7 @@ export async function deleteCategory(id: string) {
 export async function reorderCategories(updates: { id: string; orderIndex: number }[]) {
   // Pass 1: Set orderIndex to negative temporary values to avoid unique constraint collisions
   for (const update of updates) {
-    await db.orm.public.MaterialCategory.where({ id: update.id }).update({ orderIndex: -update.orderIndex });
+    await db.orm.public.MaterialCategory.where({ id: update.id }).update({ orderIndex: -(update.orderIndex + 1000) });
   }
   
   // Pass 2: Set them to the correct positive values
