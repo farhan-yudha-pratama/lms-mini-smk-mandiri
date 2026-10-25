@@ -25,6 +25,7 @@ export default function TaskRecapView({
   const [isPending, startTransition] = useTransition();
   const [expandedPackages, setExpandedPackages] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
+  const [packageStatusFilter, setPackageStatusFilter] = useState<Record<string, 'ALL' | 'UNFINISHED' | 'COMPLETED'>>({});
 
   const loadData = (params?: { classId?: string; courseId?: string }) => {
     const targetClassId = params?.classId !== undefined ? params.classId : selectedClassId;
@@ -330,43 +331,101 @@ export default function TaskRecapView({
                     </button>
 
                     {/* Task Content (Expanded) */}
-                    {isExpanded && (
-                      <div className="border-t border-gray-100 bg-gray-50/30">
-                        <div className="p-4 flex items-center justify-between border-b border-gray-100">
-                          <h5 className="text-xs font-bold text-gray-600 uppercase tracking-wider">
-                            Daftar Siswa ({pkg.studentAttempts.length})
-                          </h5>
-                          <button
-                            onClick={() => handleExportExcel(pkg)}
-                            className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 text-xs font-bold rounded-lg transition-colors shadow-sm active:translate-y-px"
-                          >
-                            <span className="material-symbols-outlined text-[16px]">sim_card_download</span>
-                            Download Excel
-                          </button>
-                        </div>
+                    {isExpanded && (() => {
+                      const currentFilter = packageStatusFilter[pkg.packageId] || 'ALL';
+                      const unfinishedCount = pkg.studentAttempts.filter(
+                        s => s.status !== 'COMPLETED' && s.status !== 'GRADED'
+                      ).length;
+                      const completedCount = pkg.studentAttempts.filter(
+                        s => s.status === 'COMPLETED' || s.status === 'GRADED'
+                      ).length;
 
-                        <div className="overflow-x-auto">
-                          <table className="w-full text-left text-sm whitespace-nowrap">
-                            <thead className="bg-white border-b border-gray-200 text-gray-500 uppercase text-[10px] font-black tracking-wider">
-                              <tr>
-                                <th className="px-5 py-3 w-12 text-center">No</th>
-                                <th className="px-5 py-3">Kelas</th>
-                                <th className="px-5 py-3">Nama Siswa</th>
-                                <th className="px-5 py-3 text-center">Status</th>
-                                <th className="px-5 py-3 text-center">Nilai</th>
-                                <th className="px-5 py-3 text-right">Detail</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                              {pkg.studentAttempts.length === 0 ? (
+                      const displayedStudents = pkg.studentAttempts.filter(s => {
+                        const isDone = s.status === 'COMPLETED' || s.status === 'GRADED';
+                        if (currentFilter === 'UNFINISHED') return !isDone;
+                        if (currentFilter === 'COMPLETED') return isDone;
+                        return true;
+                      });
+
+                      return (
+                        <div className="border-t border-gray-100 bg-gray-50/30">
+                          <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <h5 className="text-xs font-bold text-gray-600 uppercase tracking-wider mr-2">
+                                Daftar Siswa ({displayedStudents.length} / {pkg.studentAttempts.length})
+                              </h5>
+                              <div className="inline-flex rounded-lg border border-gray-200 bg-white p-0.5 text-xs shadow-sm">
+                                <button
+                                  type="button"
+                                  onClick={() => setPackageStatusFilter(prev => ({ ...prev, [pkg.packageId]: 'ALL' }))}
+                                  className={`px-2.5 py-1 rounded-md font-bold transition-colors ${
+                                    currentFilter === 'ALL'
+                                      ? 'bg-blue-600 text-white'
+                                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                                  }`}
+                                >
+                                  Semua ({pkg.studentAttempts.length})
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setPackageStatusFilter(prev => ({ ...prev, [pkg.packageId]: 'UNFINISHED' }))}
+                                  className={`px-2.5 py-1 rounded-md font-bold transition-colors flex items-center gap-1 ${
+                                    currentFilter === 'UNFINISHED'
+                                      ? 'bg-amber-500 text-white'
+                                      : 'text-amber-700 hover:bg-amber-50'
+                                  }`}
+                                >
+                                  <span>Belum Selesai</span>
+                                  <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${currentFilter === 'UNFINISHED' ? 'bg-amber-700 text-white' : 'bg-amber-100 text-amber-800'}`}>
+                                    {unfinishedCount}
+                                  </span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setPackageStatusFilter(prev => ({ ...prev, [pkg.packageId]: 'COMPLETED' }))}
+                                  className={`px-2.5 py-1 rounded-md font-bold transition-colors ${
+                                    currentFilter === 'COMPLETED'
+                                      ? 'bg-emerald-600 text-white'
+                                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                                  }`}
+                                >
+                                  Selesai ({completedCount})
+                                </button>
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => handleExportExcel(pkg)}
+                              className="self-end sm:self-auto flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 text-xs font-bold rounded-lg transition-colors shadow-sm active:translate-y-px"
+                            >
+                              <span className="material-symbols-outlined text-[16px]">sim_card_download</span>
+                              Download Excel
+                            </button>
+                          </div>
+
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-left text-sm whitespace-nowrap">
+                              <thead className="bg-white border-b border-gray-200 text-gray-500 uppercase text-[10px] font-black tracking-wider">
                                 <tr>
-                                  <td colSpan={6} className="px-5 py-8 text-center text-gray-400 text-xs font-medium">
-                                    Belum ada data siswa untuk kelas ini.
-                                  </td>
+                                  <th className="px-5 py-3 w-12 text-center">No</th>
+                                  <th className="px-5 py-3">Kelas</th>
+                                  <th className="px-5 py-3">Nama Siswa</th>
+                                  <th className="px-5 py-3 text-center">Status</th>
+                                  <th className="px-5 py-3 text-center">Nilai</th>
+                                  <th className="px-5 py-3 text-right">Detail</th>
                                 </tr>
-                              ) : (
-                                pkg.studentAttempts.map((s, idx) => {
-                                  const isDone = s.status === 'COMPLETED' || s.status === 'GRADED';
+                              </thead>
+                              <tbody className="divide-y divide-gray-100">
+                                {displayedStudents.length === 0 ? (
+                                  <tr>
+                                    <td colSpan={6} className="px-5 py-8 text-center text-gray-400 text-xs font-medium">
+                                      {currentFilter === 'UNFINISHED' 
+                                        ? 'Semua siswa sudah menyelesaikan kuis/materi ini! 🎉'
+                                        : 'Belum ada data siswa untuk filter ini.'}
+                                    </td>
+                                  </tr>
+                                ) : (
+                                  displayedStudents.map((s, idx) => {
+                                    const isDone = s.status === 'COMPLETED' || s.status === 'GRADED';
                                   
                                   return (
                                     <tr key={s.id} className="hover:bg-white transition-colors bg-transparent">
@@ -443,8 +502,9 @@ export default function TaskRecapView({
                           </table>
                         </div>
                       </div>
-                    )}
-                  </div>
+                    );
+                  })()}
+                </div>
                 );
               })}
             </div>
