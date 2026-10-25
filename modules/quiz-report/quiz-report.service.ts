@@ -1100,57 +1100,144 @@ export async function getTaskRecapList(params: {
 }): Promise<TaskRecapResponse> {
   const { classId, courseId, teacherId } = params;
 
-  // We can leverage the existing getQuizReports logic which already handles all the joining and formatting.
-  // We just fetch all attempts for the specified class, then group them by package.
-  const baseData = await getQuizReports({
-    classId,
-    courseId,
-    teacherId,
-    limit: 10000, // Fetch all for grouping
-    page: 1
-  });
-
-  const allPackages = await db.orm.public.QuizPackage.all();
-  const allPages = await db.orm.public.Page.all();
-  const allCategories = await db.orm.public.MaterialCategory.all();
-  const courses = await db.orm.public.Course.all();
+  // Fetch all data we need in parallel
+  const [allPackages, allPages, allCategories, courses, allAttempts, allStudents, allStudentCourses, allVariants] = await Promise.all([
+    db.orm.public.QuizPackage.all(),
+    db.orm.public.Page.all(),
+    db.orm.public.MaterialCategory.all(),
+    db.orm.public.Course.all(),
+    db.orm.public.QuizAttempt.all(),
+    db.orm.public.User.where({ role: 'MURID' }).all(),
+    db.orm.public.CourseStudent.all(),
+    db.orm.public.QuizVariant.all(),
+  ]);
 
   const packageMap = new Map(allPackages.map(p => [p.id, p]));
   const pageMap = new Map(allPages.map(p => [p.id, p]));
   const catMap = new Map(allCategories.map(c => [c.id, c]));
   const courseMap = new Map(courses.map(c => [c.id, c.name]));
-
-  // Find all active packages
-  const activePackages = allPackages.filter(p => p.isActive);
-  
-  // Create a map to group student attempts by packageId
-  const attemptsByPackage = new Map<string, QuizReportItem[]>();
-  for (const item of baseData.items) {
-    if (!item.packageId) continue;
-    const list = attemptsByPackage.get(item.packageId) || [];
-    list.push(item);
-    attemptsByPackage.set(item.packageId, list);
+  // Build classMap from all classrooms
+  const allClassrooms = await db.orm.public.Classroom.all();
+  const classMap = new Map(allClassrooms.map(c => [c.id, c.name]));
+  const variantsByPackage = new Map<string, string[]>(); // packageId -> variantIds
+  for (const v of allVariants) {
+    const list = variantsByPackage.get(v.quizPackageId) || [];
+    list.push(v.id);
+    variantsByPackage.set(v.quizPackageId, list);
   }
+
+  // Build attempt lookup: studentId+packageId -> attempt
+  const attemptLookup = new Map<string, typeof allAttempts[0]>();
+  for (const a of allAttempts) {
+    const variant = allVariants.find(v => v.id === a.quizVariantId);
+    if (!variant) continue;
+    const key = `${a.studentId}:${variant.quizPackageId}`;
+    // Keep latest attempt (prefer COMPLETED/GRADED over IN_PROGRESS)
+    const existing = attemptLookup.get(key);
+    if (!existing || a.status === 'COMPLETED' || a.status === 'GRADED') {
+      attemptLookup.set(key, a);
+    }
+  }
+
+  // Filter students
+  let targetStudents = allStudents;
+  if (classId) {
+    targetStudents = targetStudents.filter(s => s.classId === classId);
+  }
+
+  // Teacher filter: only packages belonging to teacher's courses
+  let validPackageIds: Set<string> | null = null;
+  if (teacherId) {
+    const teacherCourses = await db.orm.public.CourseTeacher.where({ teacherId }).all();
+    const validCourseIds = new Set(teacherCourses.map(c => c.courseId));
+    const validCategoryIds = new Set(
+      allCategories.filter(c => c.courseId && validCourseIds.has(c.courseId)).map(c => c.id)
+    );
+    const validPageIds = new Set(
+      allPages.filter(p => validCategoryIds.has(p.categoryId)).map(p => p.id)
+    );
+    validPackageIds = new Set(
+      allPackages.filter(p => p.pageId && validPageIds.has(p.pageId)).map(p => p.id)
+    );
+  }
+
+  // Course filter (for Superadmin)
+  let courseFilterPackageIds: Set<string> | null = null;
+  if (courseId) {
+    const validCategoryIds = new Set(
+      allCategories.filter(c => c.courseId === courseId).map(c => c.id)
+    );
+    const validPageIds = new Set(
+      allPages.filter(p => validCategoryIds.has(p.categoryId)).map(p => p.id)
+    );
+    courseFilterPackageIds = new Set(
+      allPackages.filter(p => p.pageId && validPageIds.has(p.pageId)).map(p => p.id)
+    );
+  }
+
+  const activePackages = allPackages.filter(p => {
+    if (!p.isActive) return false;
+    if (validPackageIds && !validPackageIds.has(p.id)) return false;
+    if (courseFilterPackageIds && !courseFilterPackageIds.has(p.id)) return false;
+    return true;
+  });
 
   const items: TaskRecapItem[] = [];
 
   for (const pkg of activePackages) {
     const page = pkg.pageId ? pageMap.get(pkg.pageId) : null;
-    if (pkg.pageId && !page) continue; // Skip if it has pageId but page not found
+    if (pkg.pageId && !page) continue;
     const category = page ? catMap.get(page.categoryId) : null;
     const catName = category?.name || 'Umum';
     const cId = category?.courseId || pkg.courseId || null;
     const courseName = cId ? (courseMap.get(cId) || 'Tanpa Mata Pelajaran') : 'Tanpa Mata Pelajaran';
+    const passingScore = pkg.passingScore || 70;
 
-    const attempts = attemptsByPackage.get(pkg.id) || [];
-    
-    // Because baseData limits total records by students * variants,
-    // if a student hasn't started, getQuizReports still returns 'NOT_STARTED' records for them!
-    // So 'attempts' naturally contains all students in the class.
+    // Filter students by course enrollment if package is tied to a course
+    const enrolledStudentIds = cId
+      ? new Set(allStudentCourses.filter(cs => cs.courseId === cId).map(cs => cs.studentId))
+      : null;
 
-    const completedAttempts = attempts.filter(a => a.status === 'COMPLETED' || a.status === 'GRADED');
-    const needReviewCount = attempts.filter(a => a.needsReview).length;
-    
+    const pkgStudents = enrolledStudentIds
+      ? targetStudents.filter(s => enrolledStudentIds.has(s.id))
+      : targetStudents;
+
+    // Build student attempt list — cross-reference ALL pkgStudents with attempts
+    const studentAttempts: QuizReportItem[] = pkgStudents.map(student => {
+      const key = `${student.id}:${pkg.id}`;
+      const attempt = attemptLookup.get(key);
+      const score = attempt?.score ?? null;
+      const isPassed = score !== null && score >= passingScore;
+
+      return {
+        id: attempt?.id || `unstarted-${student.id}-${pkg.id}`,
+        attemptId: attempt?.id || null,
+        studentId: student.id,
+        studentName: student.name,
+        studentEmail: student.email,
+        classId: student.classId || null,
+        className: student.classId ? (classMap.get(student.classId) || 'Tanpa Kelas') : 'Tanpa Kelas',
+        packageId: pkg.id,
+        packageTitle: pkg.title,
+        pageTitle: page?.title || pkg.title,
+        categoryName: catName,
+        courseName,
+        passingScore,
+        score,
+        status: (attempt?.status || 'NOT_STARTED') as any,
+        startedAt: attempt?.startedAt || null,
+        finishedAt: attempt?.finishedAt || null,
+        assignedVariantId: attempt?.quizVariantId || null,
+        isPassed,
+        hasEssay: false,
+        needsReview: false,
+        essayCount: 0,
+        totalQuestions: 0,
+      };
+    });
+
+    const completedAttempts = studentAttempts.filter(a => a.status === 'COMPLETED' || a.status === 'GRADED');
+    const needReviewCount = studentAttempts.filter(a => a.needsReview).length;
     const sumScore = completedAttempts.reduce((acc, a) => acc + (a.score || 0), 0);
     const avg = completedAttempts.length > 0 ? Math.round((sumScore / completedAttempts.length) * 10) / 10 : 0;
 
@@ -1161,19 +1248,17 @@ export async function getTaskRecapList(params: {
       categoryName: catName,
       courseName,
       orderIndex: (category?.orderIndex || 0) * 1000 + (page?.orderIndex || 999),
-      passingScore: pkg.passingScore,
+      passingScore,
       stats: {
-        totalStudents: attempts.length,
+        totalStudents: studentAttempts.length,
         completedCount: completedAttempts.length,
         needReviewCount,
-        averageScore: avg
+        averageScore: avg,
       },
-      studentAttempts: attempts.sort((a, b) => a.studentName.localeCompare(b.studentName))
+      studentAttempts: studentAttempts.sort((a, b) => a.studentName.localeCompare(b.studentName)),
     });
   }
 
-  // Sort tasks primarily by category and then by page order
   items.sort((a, b) => a.orderIndex - b.orderIndex);
-
   return { items };
 }
