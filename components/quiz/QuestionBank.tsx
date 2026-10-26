@@ -9,6 +9,7 @@ import {
   reorderQuestionsAction 
 } from '@/modules/quiz/quiz.action';
 import AdminModal, { AdminModalType } from '@/components/quiz/AdminModal';
+import { DEFAULT_WEB_PROJECT, serializeProjectFiles } from '@/lib/virtual-fs';
 
 type QuestionBankProps = {
   quizVariantId: string;
@@ -88,7 +89,28 @@ export default function QuestionBank({ quizVariantId, initialQuestions }: Questi
     setPoints(type === 'ESSAY' ? 10 : (type === 'CODE_CHALLENGE' ? 20 : 1));
     setOptions([{ text: '', isCorrect: true }, { text: '', isCorrect: false }]);
     setCodeLanguage('html');
-    setInitialCode('');
+    setInitialCode(`<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    /* Tulis kode CSS di sini */
+    body { font-family: sans-serif; padding: 20px; }
+  </style>
+</head>
+<body>
+  <!-- Tulis kode HTML di sini -->
+  <h2 id="judul">Halo Dunia</h2>
+  <button id="btnKlik">Klik Saya</button>
+
+  <script>
+    // Tulis kode JavaScript di sini
+    document.getElementById('btnKlik').addEventListener('click', () => {
+      document.getElementById('judul').innerText = 'JavaScript Berhasil Dijalankan!';
+    });
+  </script>
+</body>
+</html>`);
     setTestCases('');
     setShowForm(true);
   };
@@ -499,22 +521,40 @@ export default function QuestionBank({ quizVariantId, initialQuestions }: Questi
                     onChange={(e) => setCodeLanguage(e.target.value)}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none text-sm font-semibold"
                   >
-                    <option value="html">HTML / CSS (Visual Preview)</option>
+                    <option value="html">HTML, CSS & JavaScript (Live Web Preview)</option>
                     <option value="javascript">JavaScript (Unit Testing)</option>
                     <option value="sql">SQL (Regex Matching)</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1">
-                    Kode Awal (Initial Code)
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-sm font-bold text-gray-700">
+                      Kode Awal (Initial Code)
+                    </label>
+                    {codeLanguage === 'html' && (
+                      <button
+                        type="button"
+                        onClick={() => setInitialCode(serializeProjectFiles(DEFAULT_WEB_PROJECT))}
+                        className="text-xs text-blue-600 hover:text-blue-800 font-semibold flex items-center gap-1 hover:underline"
+                        title="Isi template standar multi-file (index.html, css/style.css, js/script.js)"
+                      >
+                        <span className="material-symbols-outlined text-sm">auto_fix_high</span>
+                        Muat Template Multi-File (HTML, CSS, JS)
+                      </button>
+                    )}
+                  </div>
                   <textarea
                     value={initialCode}
                     onChange={(e) => setInitialCode(e.target.value)}
                     rows={4}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none text-sm font-mono"
-                    placeholder="Masukkan kode awal (kerangka) yang akan dilihat siswa saat pertama kali membuka soal..."
+                    placeholder="Masukkan kode awal (kerangka) atau JSON proyek virtual. Kosongkan untuk menggunakan template default..."
                   />
+                  {codeLanguage === 'html' && (
+                    <p className="text-[11px] text-gray-500 mt-1">
+                      💡 <strong>Tips:</strong> Siswa akan mendapatkan struktur multi-file dan folder explorer secara otomatis.
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-1">

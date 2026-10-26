@@ -84,9 +84,11 @@ export async function updateQuizPackageAction(id: string, formData: FormData) {
 
 export async function deleteQuizPackageAction(id: string) {
   try {
-    await deleteQuizPackage(id);
-  revalidatePath(`/dashboard/quizzes`);
-    return { success: true };
+    const res = await deleteQuizPackage(id);
+    revalidatePath(`/dashboard/quizzes`);
+    revalidatePath(`/dashboard/gradebook`);
+    revalidatePath(`/dashboard/archives`);
+    return { success: true, archived: (res as any)?.archived };
   } catch (error) {
     return { success: false, message: error instanceof Error ? error.message : 'Unknown error' };
   }

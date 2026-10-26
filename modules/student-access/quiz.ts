@@ -5,12 +5,12 @@ export async function getStudentQuizHistory(studentId: string) {
   const enrollments = await db.orm.public.CourseStudent.where({ studentId }).all();
   const enrolledCourseIds = enrollments.map(e => e.courseId);
 
-  // Ambil Quiz Attempts
+  // Ambil Quiz Attempts siswa
   const attempts = await db.orm.public.QuizAttempt.where({ studentId }).all();
   
   if (attempts.length === 0) return [];
 
-  // Ambil data pendukung (karena LMS ini ringan, kita load semua lalu filter in-memory untuk menghindari masalah type-checking)
+  // Ambil data pendukung
   const allVariants = await db.orm.public.QuizVariant.all();
   const variants = allVariants.filter(v => attempts.some(a => a.quizVariantId === v.id));
   
@@ -18,40 +18,49 @@ export async function getStudentQuizHistory(studentId: string) {
   const packages = allPackages.filter(p => variants.some(v => v.quizPackageId === p.id));
   
   const allPages = await db.orm.public.Page.all();
-  const pages = allPages.filter(pg => packages.some(p => p.pageId === pg.id));
-  
   const allCategories = await db.orm.public.MaterialCategory.all();
-  const categories = allCategories.filter(c => pages.some(p => p.categoryId === c.id));
-  
   const courses = await db.orm.public.Course.all();
+
+  // Ambil snapshot cadangan dari QuizCompletionRecord jika ada kuis master yang diarsipkan/decoupled
+  const completionRecords = await db.orm.public.QuizCompletionRecord.where({ studentId }).all();
 
   // Mapping hasil akhir
   let results = attempts.map(attempt => {
     const variant = variants.find(v => v.id === attempt.quizVariantId);
     const quizPackage = packages.find(p => p.id === variant?.quizPackageId);
-    const page = pages.find(p => p.id === quizPackage?.pageId);
-    const category = categories.find(c => c.id === page?.categoryId);
+    const page = quizPackage?.pageId ? allPages.find(p => p.id === quizPackage.pageId) : null;
+    const category = page ? allCategories.find(c => c.id === page.categoryId) : null;
     const course = courses.find(c => c.id === (quizPackage?.courseId || category?.courseId));
+
+    // Snapshot fallback dari immutable completion record
+    const record = completionRecords.find(r => r.sourceId === attempt.id);
+
+    const rawTitle = quizPackage?.title || record?.sourceTitle || 'Kuis Materi';
+    const cleanTitle = rawTitle.replace(/^\[ARSIP\]\s*/i, '');
+
+    const resolvedCourseId = course?.id || quizPackage?.courseId || (enrolledCourseIds.length > 0 ? enrolledCourseIds[0] : '');
+    const resolvedCourse = courses.find(c => c.id === resolvedCourseId);
 
     return {
       attemptId: attempt.id,
-      score: attempt.score,
+      score: attempt.score ?? record?.score ?? null,
       status: attempt.status,
       startedAt: attempt.startedAt,
-      finishedAt: attempt.finishedAt,
-      quizTitle: quizPackage?.title || 'Unknown Quiz',
-      pageTitle: page?.title || null,
-      categoryName: category?.name || 'Kuis Mandiri',
-      courseId: course?.id || '',
-      courseName: course?.name || 'Unknown Course',
-      courseSlug: course?.slug || '',
-      pageSlug: page?.slug || '',
+      finishedAt: attempt.finishedAt || record?.completedAt || null,
+      quizTitle: cleanTitle,
+      pageTitle: page?.title || record?.pageTitle || null,
+      categoryName: category?.name || record?.categoryName || 'Kuis Materi',
+      courseId: resolvedCourseId,
+      courseName: resolvedCourse?.name || course?.name || 'Mata Pelajaran',
+      courseSlug: resolvedCourse?.slug || course?.slug || '',
+      pageSlug: page?.slug || record?.pageSlug || '',
     };
   });
 
-  // Filter HANYA untuk mapel yang masih di-join/enroll oleh siswa
-  // (Jika siswa keluar mapel, kuisnya mungkin tidak perlu dimunculkan lagi sesuai kebutuhan, tapi jika ingin dimunculkan tetap hapus filter ini. SOP bilang "ambil kuis yang berelasi dengan user", ini cukup)
-  results = results.filter(r => enrolledCourseIds.includes(r.courseId));
+  // Filter untuk mapel yang relevan dengan siswa
+  if (enrolledCourseIds.length > 0) {
+    results = results.filter(r => enrolledCourseIds.includes(r.courseId) || !r.courseId);
+  }
 
   // Urutkan berdasarkan startedAt DESC (terbaru di atas)
   results.sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime());

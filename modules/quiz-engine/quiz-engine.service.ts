@@ -45,6 +45,29 @@ export async function getQuizStatus(pageSlug: string, studentId: string) {
   }
 
   if (!attempt) {
+    // Cek apakah siswa sudah pernah menyelesaikan materi ini sebelumnya (misal melalui kuis terdahulu)
+    const pageAccess = await db.orm.public.PageAccess.where({ pageId: page.id, studentId }).first();
+    if (pageAccess && pageAccess.status === 'COMPLETED') {
+      const pastRecord = await db.orm.public.QuizCompletionRecord.where({
+        studentId,
+        pageSlug: page.slug
+      }).first();
+
+      if (pastRecord) {
+        return {
+          status: 'COMPLETED',
+          attemptId: pastRecord.sourceId,
+          score: pastRecord.score,
+          passed: pastRecord.isPassed,
+          passingScore: pastRecord.passingScore,
+          packageTitle: pastRecord.sourceTitle || pkg.title,
+          hasEssay: pastRecord.essayCount > 0,
+          needsReview: false,
+          antiCheatConfig
+        };
+      }
+    }
+
     return { status: 'READY', assignmentId: assignment.id, packageTitle: pkg.title, hasEssay, antiCheatConfig };
   }
 
@@ -233,7 +256,7 @@ export async function submitQuiz(
 
     await tx.orm.public.QuizAttempt.where({ id: attemptId }).update({
       score: roundedScore,
-      status: hasEssay ? 'COMPLETED' : 'GRADED',
+      status: 'COMPLETED',
       finishedAt: new Date().toISOString()
     });
 
@@ -287,6 +310,15 @@ export async function submitQuiz(
             unlockedAt: new Date().toISOString()
           });
         }
+      }
+    }
+
+    if (!hasEssay) {
+      try {
+        const { recordQuizCompletion } = await import('@/modules/quiz-completion/quiz-completion.service');
+        await recordQuizCompletion(attemptId);
+      } catch (err) {
+        console.error('Auto record completion error in submitQuiz:', err);
       }
     }
 

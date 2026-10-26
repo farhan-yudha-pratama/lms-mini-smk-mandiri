@@ -10,6 +10,7 @@ export interface GradebookMatrixResponse {
     id: string;
     title: string;
     isStandalone: boolean;
+    passingScore: number;
   }[];
   matrix: Record<string, Record<string, {
     score: number | null;
@@ -35,7 +36,8 @@ export async function getGradebookMatrix(classId: string, courseId: string): Pro
   const quizzes = allPackages.map(p => ({
     id: p.id,
     title: p.title,
-    isStandalone: !p.pageId
+    isStandalone: !p.pageId,
+    passingScore: p.passingScore || 70
   }));
 
   const packageIds = new Set(quizzes.map(q => q.id));
@@ -60,10 +62,23 @@ export async function getGradebookMatrix(classId: string, courseId: string): Pro
   // 5. Get questions to determine if they need review
   const allQuestions = await db.orm.public.Question.all();
   const variantEssayMap = new Map<string, boolean>();
+  const essayQuestionIds = new Set<string>();
+
   for (const q of allQuestions) {
-    if (q.questionType === 'ESSAY') {
+    if (q.questionType === 'ESSAY' || q.questionType === 'CODE_CHALLENGE') {
       variantEssayMap.set(q.quizVariantId, true);
+      essayQuestionIds.add(q.id);
     }
+  }
+
+  // Get student answers to check if any essay is still ungraded (isCorrect === null)
+  const allAnswers = await db.orm.public.StudentAnswer.all();
+  const attemptAnswerMap = new Map<string, any[]>();
+  for (const ans of allAnswers) {
+    if (!attemptAnswerMap.has(ans.quizAttemptId)) {
+      attemptAnswerMap.set(ans.quizAttemptId, []);
+    }
+    attemptAnswerMap.get(ans.quizAttemptId)!.push(ans);
   }
 
   // 6. Build matrix
@@ -87,7 +102,11 @@ export async function getGradebookMatrix(classId: string, courseId: string): Pro
     if (!pkgId || !matrix[attempt.studentId]) continue;
 
     const hasEssay = variantEssayMap.get(attempt.quizVariantId) || false;
-    const needsReview = hasEssay && attempt.status === 'COMPLETED';
+    const attemptAnswers = attemptAnswerMap.get(attempt.id) || [];
+    const hasUngradedEssay = attemptAnswers.some(ans => essayQuestionIds.has(ans.questionId) && ans.isCorrect === null);
+
+    // Kuis butuh review jika ada essay dan jawaban essay belum dinilai
+    const needsReview = hasEssay && attempt.status !== 'GRADED' && hasUngradedEssay;
 
     matrix[attempt.studentId][pkgId] = {
       score: attempt.score,

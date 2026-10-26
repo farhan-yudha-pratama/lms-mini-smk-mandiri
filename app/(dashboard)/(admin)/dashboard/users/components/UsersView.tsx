@@ -10,6 +10,7 @@ import UsersPagination from './UsersPagination';
 import ConfirmModal from './ConfirmModal';
 import EditNameModal from './EditNameModal';
 import FloatingActionBar from './FloatingActionBar';
+import UserQuizHistoryModal from './UserQuizHistoryModal';
 
 interface UsersViewProps {
   initialUsers: UserRow[];
@@ -43,6 +44,8 @@ export default function UsersView({ initialUsers }: UsersViewProps) {
     userId: string;
     initialName: string;
   } | null>(null);
+
+  const [quizHistoryUser, setQuizHistoryUser] = useState<UserRow | null>(null);
 
   // Apply filter & sort locally
   const displayedUsers = useMemo(() => {
@@ -120,7 +123,9 @@ export default function UsersView({ initialUsers }: UsersViewProps) {
       isDestructive: true,
       onConfirm: () => {
         setModalConfig(null);
-        runAction(() => bulkResetPassword(Array.from(selectedIds)));
+        runAction(async () => {
+          return await bulkResetPassword(Array.from(selectedIds));
+        });
       }
     });
   };
@@ -130,6 +135,7 @@ export default function UsersView({ initialUsers }: UsersViewProps) {
       isOpen: true,
       title: 'Ubah Role Pengguna',
       message: `Yakin mengubah role ${selectedIds.size} pengguna menjadi ${newRole}?`,
+      isDestructive: false,
       onConfirm: () => {
         setModalConfig(null);
         runAction(async () => {
@@ -146,7 +152,7 @@ export default function UsersView({ initialUsers }: UsersViewProps) {
   const onBulkToggleActive = (isActive: boolean) => {
     setModalConfig({
       isOpen: true,
-      title: isActive ? 'Aktifkan Pengguna' : 'Non-aktifkan Pengguna',
+      title: `${isActive ? 'Aktifkan' : 'Nonaktifkan'} Pengguna`,
       message: `Yakin ${isActive ? 'mengaktifkan' : 'menonaktifkan'} ${selectedIds.size} pengguna?`,
       isDestructive: !isActive,
       onConfirm: () => {
@@ -177,8 +183,6 @@ export default function UsersView({ initialUsers }: UsersViewProps) {
     runAction(async () => {
       const res = await editUserNameAction(userId, newName);
       if (res.success) {
-        // the action already applies titlecase, but for optimistic update we can just let server response revalidate,
-        // or update locally. We will update locally.
         const formattedName = newName.replace(
           /\w\S*/g,
           (txt) => txt.charAt(0).toUpperCase() + txt.substring(1).toLowerCase()
@@ -193,7 +197,7 @@ export default function UsersView({ initialUsers }: UsersViewProps) {
     setModalConfig({
       isOpen: true,
       title: 'Hapus Pengguna',
-      message: `Data yang dihapus tidak dapat dikembalikan. Yakin menghapus pengguna ${user.name}?`,
+      message: `Data yang dihapus tidak dapat dikembalikan. Yakin menghapus pengguna ${user.name}? Jika pengguna memiliki riwayat kuis, Anda harus membersihkannya terlebih dahulu melalui "Cek Riwayat Kuis".`,
       isDestructive: true,
       onConfirm: () => {
         setModalConfig(null);
@@ -212,7 +216,7 @@ export default function UsersView({ initialUsers }: UsersViewProps) {
     setModalConfig({
       isOpen: true,
       title: 'Hapus Pengguna Terpilih',
-      message: `Data yang dihapus tidak dapat dikembalikan. Yakin menghapus ${selectedIds.size} pengguna?`,
+      message: `Data yang dihapus tidak dapat dikembalikan. Yakin menghapus ${selectedIds.size} pengguna? Pengguna yang masih memiliki riwayat kuis aktif tidak akan terhapus hingga riwayatnya dibersihkan.`,
       isDestructive: true,
       onConfirm: () => {
         setModalConfig(null);
@@ -230,43 +234,44 @@ export default function UsersView({ initialUsers }: UsersViewProps) {
   const onBulkRevokeToken = () => {
     setModalConfig({
       isOpen: true,
-      title: 'Revoke Token',
-      message: `Yakin me-revoke token dari ${selectedIds.size} pengguna? Ini akan me-logout perangkat mereka secara paksa.`,
+      title: 'Revoke Token Pengguna',
+      message: `Yakin ingin me-revoke token / mengeluarkan sesi login ${selectedIds.size} pengguna terpilih secara paksa?`,
       isDestructive: true,
       onConfirm: () => {
         setModalConfig(null);
         runAction(async () => {
-          const res = await bulkRevokeUserTokenAction(Array.from(selectedIds));
-          return res;
+          return await bulkRevokeUserTokenAction(Array.from(selectedIds));
         });
       }
     });
   };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Manajemen Pengguna</h1>
-          <p className="text-gray-500 mt-1">Kelola data murid, guru, dan admin dalam satu tempat.</p>
-        </div>
-      </div>
-
+    <div className="flex flex-col gap-6">
+      {/* Toast Notification Alert */}
       {message && (
-        <div className={`p-4 rounded-lg border ${message.type === 'success' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
-          {message.text}
+        <div className={`p-4 rounded-xl border flex items-center justify-between transition-all animate-in fade-in slide-in-from-top-2 duration-200 ${
+          message.type === 'success' 
+            ? 'bg-emerald-50 border-emerald-200 text-emerald-800' 
+            : 'bg-rose-50 border-rose-200 text-rose-800'
+        }`}>
+          <div className="flex items-center gap-3">
+            <span className="material-symbols-outlined text-xl">
+              {message.type === 'success' ? 'check_circle' : 'error'}
+            </span>
+            <span className="text-sm font-medium">{message.text}</span>
+          </div>
+          <button 
+            onClick={() => setMessage(null)}
+            className="text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            <span className="material-symbols-outlined text-lg">close</span>
+          </button>
         </div>
       )}
 
-      <div className="sticky top-16 z-30">
-        <div className="absolute inset-0 bg-gray-50/80 backdrop-blur-md -m-4 p-4 md:-m-0 md:p-0"></div>
-        <div className="relative">
-          <UsersToolbar
-            onSearchChange={setSearchQuery}
-          />
-        </div>
-      </div>
+      {/* Modern Toolbar */}
+      <UsersToolbar onSearchChange={setSearchQuery} />
 
       <div className="md:bg-white md:rounded-xl md:border md:border-gray-200 md:shadow-sm flex flex-col relative z-0">
         <UsersTable
@@ -279,6 +284,7 @@ export default function UsersView({ initialUsers }: UsersViewProps) {
           onSort={handleSort}
           onEditName={onEditName}
           onDeleteUser={onDeleteUser}
+          onViewQuizHistory={(u) => setQuizHistoryUser(u)}
         />
 
         <UsersPagination
@@ -294,6 +300,7 @@ export default function UsersView({ initialUsers }: UsersViewProps) {
           }}
         />
       </div>
+
       <ConfirmModal 
         isOpen={modalConfig?.isOpen ?? false}
         title={modalConfig?.title ?? ''}
@@ -302,12 +309,27 @@ export default function UsersView({ initialUsers }: UsersViewProps) {
         onConfirm={modalConfig?.onConfirm ?? (() => {})}
         onCancel={() => setModalConfig(null)}
       />
+
       <EditNameModal
         isOpen={editModalConfig?.isOpen ?? false}
         initialName={editModalConfig?.initialName ?? ''}
         onConfirm={handleEditConfirm}
         onCancel={() => setEditModalConfig(null)}
       />
+
+      {/* Modal Cek Riwayat & Relasi Kuis Pengguna */}
+      {quizHistoryUser && (
+        <UserQuizHistoryModal
+          user={quizHistoryUser}
+          onClose={() => setQuizHistoryUser(null)}
+          onHistoryCleared={() => {
+            setMessage({
+              type: 'success',
+              text: `Riwayat kuis untuk "${quizHistoryUser.name}" berhasil dibersihkan. Sekarang pengguna siap untuk dihapus.`
+            });
+          }}
+        />
+      )}
       
       <FloatingActionBar
         selectedCount={selectedIds.size}
