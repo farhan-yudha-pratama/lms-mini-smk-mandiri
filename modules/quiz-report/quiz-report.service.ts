@@ -445,6 +445,95 @@ export async function getLeaderboardByPackageAndClass(packageId: string, classId
   };
 }
 
+export async function completeQuizAttempt(attemptId: string) {
+  const attempt = await db.orm.public.QuizAttempt.where({ id: attemptId }).first();
+  if (!attempt) throw new Error('Attempt tidak ditemukan');
+
+  const variant = await db.orm.public.QuizVariant.where({ id: attempt.quizVariantId }).first();
+  if (!variant) throw new Error('Variant kuis tidak ditemukan');
+
+  const pkg = await db.orm.public.QuizPackage.where({ id: variant.quizPackageId }).first();
+  const passingScore = pkg?.passingScore || 70;
+  const score = attempt.score ?? 0;
+
+  if (score < passingScore) {
+    throw new Error(`Kuis belum memenuhi KKM (${score} < ${passingScore}). Tidak dapat diselesaikan.`);
+  }
+
+  // Update status attempt menjadi COMPLETED
+  await db.orm.public.QuizAttempt.where({ id: attemptId }).update({
+    status: 'COMPLETED',
+    finishedAt: attempt.finishedAt || new Date().toISOString()
+  });
+
+  // Pastikan akses halaman materi selesai dan buka materi prasyarat berikutnya jika ada
+  if (pkg?.pageId) {
+    const currentPageAccess = await db.orm.public.PageAccess.where({
+      pageId: pkg.pageId,
+      studentId: attempt.studentId
+    }).first();
+
+    if (currentPageAccess) {
+      if (currentPageAccess.status !== 'COMPLETED') {
+        await db.orm.public.PageAccess.where({ id: currentPageAccess.id }).update({
+          status: 'COMPLETED',
+          completedAt: new Date().toISOString()
+        });
+      }
+    } else {
+      await db.orm.public.PageAccess.create({
+        id: randomUUID(),
+        pageId: pkg.pageId,
+        studentId: attempt.studentId,
+        status: 'COMPLETED',
+        unlockedAt: new Date().toISOString(),
+        completedAt: new Date().toISOString()
+      });
+    }
+
+    const sequences = await db.orm.public.PageSequence.where({ prerequisitePageId: pkg.pageId }).all();
+    for (const seq of sequences) {
+      const existingAccess = await db.orm.public.PageAccess.where({
+        pageId: seq.pageId,
+        studentId: attempt.studentId
+      }).first();
+
+      if (existingAccess) {
+        if (existingAccess.status === 'LOCKED') {
+          await db.orm.public.PageAccess.where({ id: existingAccess.id }).update({
+            status: 'UNLOCKED',
+            unlockedAt: new Date().toISOString()
+          });
+        }
+      } else {
+        await db.orm.public.PageAccess.create({
+          id: randomUUID(),
+          pageId: seq.pageId,
+          studentId: attempt.studentId,
+          status: 'UNLOCKED',
+          unlockedAt: new Date().toISOString()
+        });
+      }
+    }
+  }
+
+  // Catat arsip permanen ke QuizCompletionRecord & update StudentScoreSummary
+  try {
+    const { recordQuizCompletion } = await import('@/modules/quiz-completion/quiz-completion.service');
+    await recordQuizCompletion(attemptId);
+  } catch (err) {
+    console.error('Gagal mencatat arsip kuis otomatis:', err);
+  }
+
+  return {
+    attemptId,
+    studentId: attempt.studentId,
+    packageId: variant.quizPackageId,
+    score,
+    passingScore
+  };
+}
+
 export async function resetQuizAttempt(studentId: string, packageId: string, attemptId?: string) {
   let targetAttempt: any = null;
 

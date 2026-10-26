@@ -136,12 +136,41 @@ export async function updateQuizPackage(id: string, data: QuizFormValues) {
 }
 
 export async function deleteQuizPackage(id: string) {
+  const pkg = await db.orm.public.QuizPackage.where({ id }).first();
+  if (!pkg) return { id };
+
   const variants = await db.orm.public.QuizVariant.where({ quizPackageId: id }).all();
+
+  // Periksa apakah kuis sudah pernah dikerjakan oleh siswa
+  let hasAttempts = false;
+  for (const v of variants) {
+    const attempts = await db.orm.public.QuizAttempt.where({ quizVariantId: v.id }).all();
+    if (attempts.length > 0) {
+      hasAttempts = true;
+      break;
+    }
+  }
+
+  if (hasAttempts) {
+    // SAFE ARCHIVE (Anti Hard-Delete):
+    // Lepaskan kaitan materi (pageId: null) agar materi bisa dipasangkan kuis baru,
+    // tandai inaktif dan tersembunyi. Seluruh riwayat pengerjaan murid tetap utuh.
+    const updatedTitle = pkg.title.startsWith('[ARSIP]') ? pkg.title : `[ARSIP] ${pkg.title}`;
+    await db.orm.public.QuizPackage.where({ id }).update({
+      pageId: null,
+      isActive: false,
+      isHidden: true,
+      title: updatedTitle,
+    });
+    return { id, archived: true };
+  }
+
+  // Jika belum ada pengerjaan sama sekali (draft kosong), aman untuk hard delete
   for (const v of variants) {
     await deleteQuizVariant(v.id);
   }
   await db.orm.public.QuizPackage.where({ id }).delete();
-  return { id };
+  return { id, archived: false };
 }
 
 export async function createQuizVariant(data: QuizVariantFormValues) {
@@ -172,33 +201,29 @@ export async function updateQuizVariant(id: string, name: string) {
 }
 
 export async function deleteQuizVariant(id: string) {
-  // 1. Hapus semua riwayat jawaban dan attempt kuis siswa terkait varian ini
   const attempts = await db.orm.public.QuizAttempt.where({ quizVariantId: id }).all();
-  for (const attempt of attempts) {
-    const answers = await db.orm.public.StudentAnswer.where({ quizAttemptId: attempt.id }).all();
-    for (const ans of answers) {
-      await db.orm.public.StudentAnswer.where({ id: ans.id }).delete();
-    }
-    await db.orm.public.QuizAttempt.where({ id: attempt.id }).delete();
+  if (attempts.length > 0) {
+    throw new Error('Varian kuis tidak dapat dihapus karena sudah memiliki riwayat pengerjaan siswa.');
   }
 
-  // 2. Hapus semua jawaban siswa, opsi jawaban, dan butir soal terkait varian ini
+  // Belum ada pengerjaan: aman untuk dihapus
+  // 1. Hapus opsi jawaban dan butir soal
   const questions = await db.orm.public.Question.where({ quizVariantId: id }).all();
   for (const q of questions) {
-    const answers = await db.orm.public.StudentAnswer.where({ questionId: q.id }).all();
-    for (const ans of answers) {
-      await db.orm.public.StudentAnswer.where({ id: ans.id }).delete();
-    }
-
     const options = await db.orm.public.QuestionOption.where({ questionId: q.id }).all();
     for (const opt of options) {
       await db.orm.public.QuestionOption.where({ id: opt.id }).delete();
     }
-
     await db.orm.public.Question.where({ id: q.id }).delete();
   }
 
-  // 3. Hapus penugasan kuis (assignment) terkait varian ini
+  // 2. Hapus anti-cheat config jika ada
+  const antiCheat = await db.orm.public.QuizAntiCheatConfig.where({ quizVariantId: id }).first();
+  if (antiCheat) {
+    await db.orm.public.QuizAntiCheatConfig.where({ id: antiCheat.id }).delete();
+  }
+
+  // 3. Hapus penugasan kuis (assignment)
   const assignments = await db.orm.public.QuizAssignment.where({ quizVariantId: id }).all();
   for (const assign of assignments) {
     await db.orm.public.QuizAssignment.where({ id: assign.id }).delete();

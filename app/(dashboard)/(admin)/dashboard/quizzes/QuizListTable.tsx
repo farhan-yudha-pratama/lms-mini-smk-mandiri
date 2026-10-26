@@ -105,11 +105,11 @@ export default function QuizListTable({ packages }: { packages: MappedPackage[] 
 
   const handleDelete = (id: string, title: string) => {
     showModal(
-      'Hapus Kuis',
-      <p>Apakah Anda yakin ingin menghapus kuis <strong>{title}</strong>? Semua soal dan jawaban siswa akan ikut terhapus.</p>,
+      'Hapus / Arsipkan Kuis',
+      <p>Apakah Anda yakin ingin menghapus kuis <strong>{title}</strong>? Jika kuis sudah pernah dikerjakan oleh siswa, kuis akan diarsipkan secara aman dan seluruh riwayat nilai siswa tetap tersimpan permanen.</p>,
       'confirm',
       {
-        confirmText: 'Hapus Kuis',
+        confirmText: 'Lanjutkan',
         onConfirm: async () => {
           closeModal();
           await deleteQuizPackageAction(id);

@@ -26,11 +26,9 @@ function handleActionError(error: unknown): ActionResponse {
     return { success: false, error: 'Akses ditolak. Sesi Anda telah berakhir atau Anda tidak memiliki izin sebagai Admin.' };
   }
   
-  // Zod error atau pesan general (opsional: tangkap ZodError terpisah)
   if (error instanceof Error) {
-    // Hindari membocorkan pesan DB spesifik, gunakan fallback
     console.error('[User Action Error]:', error);
-    return { success: false, error: 'Mohon maaf, terjadi kesalahan pada server saat memproses data pengguna. Silakan coba beberapa saat lagi.' };
+    return { success: false, error: error.message || 'Mohon maaf, terjadi kesalahan pada server saat memproses data pengguna.' };
   }
 
   return { success: false, error: 'Terjadi kesalahan sistem yang tidak diketahui.' };
@@ -132,7 +130,7 @@ export async function bulkDeleteUsersAction(userIds: string[]): Promise<ActionRe
     console.error('[User Action Error - Delete]:', error);
     return { 
       success: false, 
-      error: 'Pengguna tidak dapat dihapus karena masih memiliki relasi data aktif di sistem (misal: riwayat kuis).' 
+      error: error instanceof Error ? error.message : 'Pengguna tidak dapat dihapus karena masih memiliki relasi data aktif.' 
     };
   }
 }
@@ -151,5 +149,37 @@ export async function bulkRevokeUserTokenAction(userIds: string[]): Promise<Acti
     return { success: true, message: 'Token pengguna berhasil di-revoke secara paksa.' };
   } catch (error) {
     return handleActionError(error);
+  }
+}
+
+export async function getUserQuizHistoryDetailsAction(userId: string) {
+  try {
+    await requireSuperAdmin();
+    const data = await userService.getUserQuizDetails(userId);
+    return { success: true, data };
+  } catch (error) {
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Gagal mengambil riwayat kuis pengguna' 
+    };
+  }
+}
+
+export async function clearUserQuizHistoryAction(userId: string): Promise<ActionResponse> {
+  try {
+    await requireSuperAdmin();
+    const result = await userService.clearUserQuizHistory(userId);
+    revalidatePath('/dashboard/users');
+    revalidatePath('/dashboard/gradebook');
+    revalidatePath('/dashboard/archives');
+    return { 
+      success: true, 
+      message: `Berhasil membersihkan ${result.clearedAttempts} riwayat kuis, ${result.clearedAssignments} penugasan, dan ${result.clearedCompletions} arsip nilai.` 
+    };
+  } catch (error) {
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Gagal membersihkan riwayat kuis pengguna' 
+    };
   }
 }

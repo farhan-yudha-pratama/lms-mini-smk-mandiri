@@ -95,8 +95,8 @@ export async function updateQuestion(id: string, data: QuestionFormValues) {
 
 export async function deleteQuestion(id: string) {
   const answers = await db.orm.public.StudentAnswer.where({ questionId: id }).all();
-  for (const ans of answers) {
-    await db.orm.public.StudentAnswer.where({ id: ans.id }).delete();
+  if (answers.length > 0) {
+    throw new Error('Soal tidak dapat dihapus karena sudah memiliki riwayat jawaban siswa.');
   }
 
   const options = await db.orm.public.QuestionOption.where({ questionId: id }).all();

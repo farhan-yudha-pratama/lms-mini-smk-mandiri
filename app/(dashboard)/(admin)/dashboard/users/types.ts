@@ -18,6 +18,42 @@ export interface ActionResponse {
   error?: string;
 }
 
+export interface UserQuizHistoryDetails {
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    role: Role;
+  };
+  attempts: {
+    id: string;
+    quizTitle: string;
+    status: string;
+    score: number | null;
+    startedAt: string;
+    finishedAt: string | null;
+  }[];
+  assignments: {
+    id: string;
+    quizTitle: string;
+    assignedAt: string;
+  }[];
+  completionRecords: {
+    id: string;
+    sourceTitle: string;
+    score: number;
+    isPassed: boolean;
+    completedAt: string;
+  }[];
+  scoreSummary: {
+    overallAverageScore: number | null;
+    totalPointsEarned: number;
+    totalMaterialQuizCompleted: number;
+  } | null;
+  courseCount: number;
+  pageAccessCount: number;
+}
+
 // Komponen UI Props
 export interface UsersTableProps {
   users: UserRow[];
@@ -29,6 +65,7 @@ export interface UsersTableProps {
   onSort: (col: keyof UserRow) => void;
   onEditName?: (user: UserRow) => void;
   onDeleteUser?: (user: UserRow) => void;
+  onViewQuizHistory?: (user: UserRow) => void;
 }
 
 export interface UsersToolbarProps {

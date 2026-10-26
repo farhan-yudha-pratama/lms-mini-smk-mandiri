@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { getQuizQuestionsAction, submitQuizAction } from '@/modules/quiz-engine/quiz-engine.action';
 import QuizModal from './QuizModal';
 import CodeSandbox from './CodeSandbox';
+import CodeChallengeModal from './CodeChallengeModal';
 
 interface QuizEngineModalProps {
   attemptId: string;
@@ -505,6 +506,19 @@ export default function QuizEngineModal({
         </div>
         {modalConfig && <QuizModal {...modalConfig} />}
       </div>
+    );
+  }
+
+  // If the quiz contains any Code Challenge question, hand over to the dedicated Fullscreen CodeChallengeModal
+  const hasCodeChallenge = (data?.questions || []).some((q: any) => q.type === 'CODE_CHALLENGE');
+  if (hasCodeChallenge) {
+    return (
+      <CodeChallengeModal
+        attemptId={attemptId}
+        onClose={onClose}
+        onComplete={onComplete}
+        initialData={data}
+      />
     );
   }
 

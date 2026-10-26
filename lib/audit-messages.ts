@@ -30,6 +30,10 @@ export const msg = {
   resetQuiz: ({ student, pkg, previousScore, previousStatus }: any) => {
     return `Mereset kuis "${pkg.title}" (materi: ${pkg.pageTitle} · kategori: ${pkg.categoryName}) milik ${formatStudent(student)}. Nilai sebelumnya: ${previousScore ?? 'Belum ada'} (${previousStatus || '-'}).`;
   },
+
+  completeQuiz: ({ student, pkg, score }: any) => {
+    return `Menyelesaikan kuis "${pkg.title}" milik ${formatStudent(student)} dengan nilai akhir ${score ?? 0} (LULUS, KKM ${pkg.passingScore}).`;
+  },
   
   gradeEssay: ({ student, pkg, gradedCount, beforeScore, afterScore, passed }: any) => {
     const passText = passed ? 'LULUS' : 'TIDAK LULUS';

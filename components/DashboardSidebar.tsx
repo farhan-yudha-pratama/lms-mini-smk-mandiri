@@ -37,6 +37,7 @@ export default function DashboardSidebar({
     { label: 'Manajemen Kuis', icon: 'quiz', href: '/dashboard/quizzes', roles: ['SUPERADMIN'] },
     { label: 'Evaluasi & Kuis', icon: 'quiz', href: '/dashboard/quizzes', roles: ['GURU'] },
     { label: 'Buku Nilai (Matrix)', icon: 'grading', href: '/dashboard/gradebook', roles: ['SUPERADMIN', 'GURU'] },
+    { label: 'Buku Arsip Kuis', icon: 'inventory_2', href: '/dashboard/archives', roles: ['SUPERADMIN', 'GURU'] },
     { label: 'Laporan Belajar', icon: 'analytics', href: '/dashboard/reports', roles: ['SUPERADMIN', 'GURU'] },
     { label: 'Audit Logs', icon: 'history', href: '/dashboard/audit-logs', roles: ['SUPERADMIN'] },
     { label: 'Pengaturan', icon: 'settings', href: '/dashboard/settings', roles: ['SUPERADMIN', 'GURU'] },

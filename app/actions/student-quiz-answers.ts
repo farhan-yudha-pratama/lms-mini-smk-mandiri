@@ -46,6 +46,7 @@ export async function getStudentAttemptDetails(attemptId: string) {
 
     return {
       id: q.id,
+      answerId: studentAnswer?.id || null,
       text: q.questionText,
       type: q.questionType,
       codeLanguage: q.codeLanguage || null,

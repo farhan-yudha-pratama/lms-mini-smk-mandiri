@@ -7,7 +7,7 @@ type AuditAction =
   | "CREATE_PAGE" | "UPDATE_PAGE" | "DELETE_PAGE" | "REORDER_CATEGORY" | "REORDER_PAGE"
   | "UPDATE_ACCESS_STATUS" | "BULK_UPDATE_ACCESS" 
   | "BYPASS_CATEGORY_ACCESS" | "BYPASS_PAGE_ACCESS"
-  | "EXPORT_REPORT" | "GRADE_ESSAY" | "RESET_QUIZ" | "CLEANUP_LOGS";
+  | "EXPORT_REPORT" | "GRADE_ESSAY" | "COMPLETE_QUIZ" | "RESET_QUIZ" | "SYNC_ARCHIVES" | "CLEANUP_LOGS";
 
 export interface AuditDetailsV2 { v: 2; message: string; meta?: Record<string, unknown> }
 

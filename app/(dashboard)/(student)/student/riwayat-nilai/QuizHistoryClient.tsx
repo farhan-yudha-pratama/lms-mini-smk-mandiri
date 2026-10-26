@@ -346,7 +346,25 @@ export default function QuizHistoryClient({ history, courses, initialSearch, ini
 
                         {q.studentEssayAnswer ? (
                           q.type === 'CODE_CHALLENGE' ? (
-                            <div className="space-y-2">
+                            <div className="space-y-3">
+                              {q.answerId && (
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between bg-blue-50 border-2 border-black p-3 gap-2 shadow-[2px_2px_0px_0px_#000]">
+                                  <div className="flex items-center gap-2 text-xs font-black uppercase text-blue-950">
+                                    <span className="material-symbols-outlined text-base text-blue-700">laptop_chromebook</span>
+                                    <span>Tampilan Web Interaktif & Editor Kode (HTML, CSS & JS)</span>
+                                  </div>
+                                  <a
+                                    href={`/code-preview/${q.answerId}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="px-3.5 py-1.5 bg-[#4285F4] hover:bg-blue-600 text-white text-xs font-black uppercase rounded border-2 border-black shadow-[2px_2px_0px_0px_#000] inline-flex items-center gap-1.5 transition-all self-start sm:self-auto shrink-0"
+                                  >
+                                    <span>Buka di Halaman Baru</span>
+                                    <span className="material-symbols-outlined text-sm">open_in_new</span>
+                                  </a>
+                                </div>
+                              )}
+
                               {q.codeLanguage === 'html' && (
                                 <div className="border-4 border-black bg-white overflow-hidden mb-2">
                                   <div className="bg-black text-white px-3 py-1 text-xs font-black uppercase">

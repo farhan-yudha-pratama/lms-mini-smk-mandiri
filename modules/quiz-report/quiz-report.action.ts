@@ -4,7 +4,8 @@ import { revalidatePath } from 'next/cache';
 import { getSession } from '@/lib/session';
 import { 
   getLeaderboardByPackageAndClass, 
-  resetQuizAttempt, 
+  resetQuizAttempt,
+  completeQuizAttempt, 
   getQuizReports,
   getQuizAttemptDetail,
   gradeQuizAttempt,
@@ -44,6 +45,25 @@ export async function getLeaderboardAction(packageId: string, classId: string) {
     return { success: true, data };
   } catch (error) {
     return { success: false, message: error instanceof Error ? error.message : 'Gagal mengambil data laporan' };
+  }
+}
+
+
+export async function completeQuizAttemptAction(attemptId: string) {
+  try {
+    const result = await completeQuizAttempt(attemptId);
+    const [student, pkg] = await Promise.all([getStudentLabel(result.studentId), getPackageLabel(result.packageId)]);
+
+    await logAudit({
+      action: 'COMPLETE_QUIZ',
+      message: msg.completeQuiz({ student, pkg, score: result.score }),
+      meta: { ...result }
+    });
+
+    revalidatePath('/dashboard/reports');
+    return { success: true };
+  } catch (error) {
+    return { success: false, message: error instanceof Error ? error.message : 'Gagal menyelesaikan kuis' };
   }
 }
 

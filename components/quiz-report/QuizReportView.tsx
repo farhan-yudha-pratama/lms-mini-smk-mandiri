@@ -4,6 +4,7 @@ import { useState, useTransition, useMemo } from 'react';
 import { 
   getQuizReportsAction, 
   resetQuizAttemptAction,
+  completeQuizAttemptAction,
   getQuizAttemptDetailAction,
   gradeQuizAttemptAction
 } from '@/modules/quiz-report/quiz-report.action';
@@ -75,6 +76,7 @@ export default function QuizReportView({
 
   const [modalConfig, setModalConfig] = useState<ModalState | null>(null);
   const [resettingId, setResettingId] = useState<string | null>(null);
+  const [completingId, setCompletingId] = useState<string | null>(null);
 
   // DETAIL & ESSAY REVIEW MODAL STATE
   const [detailModalOpen, setDetailModalOpen] = useState(false);
@@ -295,6 +297,75 @@ export default function QuizReportView({
         onConfirm: () => setModalConfig(null)
       });
     }
+  };
+
+  // Selesaikan Quiz Attempt (Khusus yang sudah dinilai dan lulus KKM)
+  const handleCompleteQuiz = (row: QuizReportItem) => {
+    if (!row.attemptId) return;
+
+    setModalConfig({
+      isOpen: true,
+      type: 'confirm',
+      title: 'Tandai Kuis Selesai?',
+      confirmText: 'Ya, Selesaikan',
+      cancelText: 'Batal',
+      onCancel: () => setModalConfig(null),
+      message: (
+        <div className="space-y-3">
+          <p className="text-sm text-gray-700">
+            Apakah Anda yakin ingin menyelesaikan kuis ini? Status akan diperbarui menjadi <strong>Selesai</strong>.
+          </p>
+          <div className="bg-gray-50 border border-gray-200/20 p-3 rounded-lg text-sm space-y-1">
+            <div className="flex justify-between">
+              <span className="text-gray-500 font-medium">Nama Murid:</span>
+              <span className="font-bold text-gray-900">{row.studentName}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-500 font-medium">Kelas:</span>
+              <span className="font-semibold text-gray-800">{row.className}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-500 font-medium">Kuis / Materi:</span>
+              <span className="font-semibold text-gray-800">{row.pageTitle}</span>
+            </div>
+            <div className="flex justify-between pt-1 border-t border-gray-200/60">
+              <span className="text-gray-500 font-medium">Nilai / KKM:</span>
+              <span className="font-bold text-emerald-600">{row.score} / {row.passingScore} (LULUS)</span>
+            </div>
+          </div>
+        </div>
+      ),
+      onConfirm: async () => {
+        setModalConfig(null);
+        setCompletingId(row.id);
+        const res = await completeQuizAttemptAction(row.attemptId!);
+        setCompletingId(null);
+
+        if (res.success) {
+          setModalConfig({
+            isOpen: true,
+            type: 'success',
+            title: 'Berhasil Diselesaikan',
+            message: `Status kuis ${row.studentName} pada materi "${row.pageTitle}" telah berhasil diselesaikan.`,
+            confirmText: 'OK',
+            onConfirm: () => {
+              setModalConfig(null);
+              loadReports();
+            }
+          });
+          loadReports();
+        } else {
+          setModalConfig({
+            isOpen: true,
+            type: 'error',
+            title: 'Gagal Menyelesaikan',
+            message: res.message || 'Terjadi kesalahan saat menyelesaikan kuis.',
+            confirmText: 'Tutup',
+            onConfirm: () => setModalConfig(null)
+          });
+        }
+      }
+    });
   };
 
   // Reset Quiz Attempt for a student
@@ -899,6 +970,22 @@ export default function QuizReportView({
                             </button>
                           )}
 
+                          {/* SELESAIKAN BUTTON (Muncul jika status GRADED dan Lulus KKM) */}
+                          {row.status === 'GRADED' && row.isPassed && (
+                            <button
+                              type="button"
+                              onClick={() => handleCompleteQuiz(row)}
+                              disabled={completingId === row.id}
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded text-xs font-bold border-2 border-emerald-500 bg-emerald-50 text-emerald-800 hover:bg-emerald-600 hover:text-white transition-all shadow-sm active:translate-y-0.5"
+                              title="Tandai tugas kuis ini selesai secara final"
+                            >
+                              <span className="material-symbols-outlined text-[15px]">
+                                {completingId === row.id ? 'sync' : 'task_alt'}
+                              </span>
+                              {completingId === row.id ? 'Selesai...' : 'Selesaikan'}
+                            </button>
+                          )}
+
                           {/* RESET BUTTON */}
                           <button
                             type="button"
@@ -1219,18 +1306,40 @@ export default function QuizReportView({
                                 <div className="p-4 bg-[#FFFDF9] border border-gray-200/40 text-sm md:text-base text-gray-900 font-mono leading-relaxed whitespace-pre-wrap min-h-[80px]">
                                   {studentAns?.essayAnswer?.trim() ? (
                                     <>
-                                      {isCode && q.codeLanguage === 'html' ? (
-                                        <div className="mb-4">
-                                          <div className="text-xs font-bold text-gray-500 mb-1">Live Preview (HTML/CSS):</div>
-                                          <div className="border-4 border-black bg-white rounded overflow-hidden">
-                                            <iframe
-                                              srcDoc={studentAns.essayAnswer}
-                                              className="w-full h-[300px] border-none bg-white"
-                                              sandbox="allow-scripts"
-                                              title="Code Challenge Preview"
-                                            />
-                                          </div>
-                                          <div className="text-xs font-bold text-gray-500 mt-3 mb-1">Source Code:</div>
+                                      {isCode ? (
+                                        <div className="mb-4 space-y-3">
+                                          {studentAns?.id && (
+                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between bg-emerald-50 border border-emerald-300 p-3 rounded-lg gap-2 shadow-xs">
+                                              <div className="flex items-center gap-2 text-xs font-bold text-emerald-950">
+                                                <span className="material-symbols-outlined text-emerald-700 text-lg">laptop_chromebook</span>
+                                                <span>Tampilan Web Interaktif & Editor Kode (HTML, CSS & JS)</span>
+                                              </div>
+                                              <a
+                                                href={`/code-preview/${studentAns.id}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg shadow-sm inline-flex items-center gap-1.5 transition-all self-start sm:self-auto shrink-0"
+                                              >
+                                                <span>Buka di Halaman Baru</span>
+                                                <span className="material-symbols-outlined text-sm">open_in_new</span>
+                                              </a>
+                                            </div>
+                                          )}
+
+                                          {q.codeLanguage === 'html' && (
+                                            <div>
+                                              <div className="text-xs font-bold text-gray-500 mb-1">Pratinjau Cepat Web:</div>
+                                              <div className="border-2 border-gray-300 bg-white rounded overflow-hidden">
+                                                <iframe
+                                                  srcDoc={studentAns.essayAnswer}
+                                                  className="w-full h-[250px] border-none bg-white"
+                                                  sandbox="allow-scripts"
+                                                  title="Code Challenge Preview"
+                                                />
+                                              </div>
+                                              <div className="text-xs font-bold text-gray-500 mt-3 mb-1">Kode Sumber:</div>
+                                            </div>
+                                          )}
                                         </div>
                                       ) : null}
                                       {studentAns.essayAnswer}
