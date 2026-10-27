@@ -3,10 +3,13 @@
 import { useState } from 'react';
 import { submitEssayGrades } from '@/app/actions/essay-grading';
 import { useRouter } from 'next/navigation';
+import CodeAnswerPreview from '@/components/quiz/CodeAnswerPreview';
 
 interface EssayItem {
   id: string;
   text: string;
+  questionType?: string;
+  codeLanguage?: string | null;
   maxPoints: number;
   answerId: string | null;
   answerText: string;
@@ -98,27 +101,25 @@ export default function ReviewClient({ attemptId, essays }: ReviewClientProps) {
               <div className="flex-1">
                 <p className="font-medium text-gray-900 leading-relaxed mb-4">{essay.text}</p>
                 
-                {essay.answerId && essay.answerText && (
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between bg-blue-50 border border-blue-200 p-3 rounded-lg mb-3 gap-2">
-                    <div className="flex items-center gap-2 text-xs font-bold text-blue-900">
-                      <span className="material-symbols-outlined text-blue-700 text-lg">laptop_chromebook</span>
-                      <span>Tampilan Web Interaktif & Editor Kode (HTML, CSS & JS)</span>
+                {(() => {
+                  const isCode = essay.questionType === 'CODE_CHALLENGE' || essay.answerText?.trim().startsWith('{');
+                  if (isCode && essay.answerText?.trim()) {
+                    return (
+                      <div className="mb-6">
+                        <CodeAnswerPreview
+                          answerText={essay.answerText}
+                          answerId={essay.answerId}
+                          codeLanguage={essay.codeLanguage}
+                        />
+                      </div>
+                    );
+                  }
+                  return (
+                    <div className="bg-gray-900 p-4 rounded-lg border border-gray-700 text-green-400 whitespace-pre-wrap font-mono text-sm leading-relaxed mb-6 overflow-x-auto shadow-inner">
+                      {essay.answerText || <span className="italic text-gray-500">Tidak ada jawaban.</span>}
                     </div>
-                    <a
-                      href={`/code-preview/${essay.answerId}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg shadow-sm inline-flex items-center gap-1.5 transition-all self-start sm:self-auto shrink-0"
-                    >
-                      <span>Buka Web & Kode (Halaman Baru)</span>
-                      <span className="material-symbols-outlined text-sm">open_in_new</span>
-                    </a>
-                  </div>
-                )}
-
-                <div className="bg-gray-900 p-4 rounded-lg border border-gray-700 text-green-400 whitespace-pre-wrap font-mono text-sm leading-relaxed mb-6 overflow-x-auto shadow-inner">
-                  {essay.answerText || <span className="italic text-gray-500">Tidak ada jawaban.</span>}
-                </div>
+                  );
+                })()}
 
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div className="md:col-span-1">

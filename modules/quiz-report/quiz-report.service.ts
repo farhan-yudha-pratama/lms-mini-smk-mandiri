@@ -60,7 +60,7 @@ export async function getQuizReports(params: {
   const { classId, packageId, courseId, search, page = 1, limit = 50, reviewFilter = 'ALL', teacherId } = params;
 
   // 1. Fetch reference collections including questions for essay detection
-  const [classrooms, categories, pages, quizPackages, quizVariants, allStudents, allQuestions, courses, allStudentCourses] = await Promise.all([
+  const [classrooms, categories, pages, quizPackages, quizVariants, allStudents, allQuestions, courses, allStudentCourses, allAnswers] = await Promise.all([
     db.orm.public.Classroom.all(),
     db.orm.public.MaterialCategory.all(),
     db.orm.public.Page.all(),
@@ -70,6 +70,7 @@ export async function getQuizReports(params: {
     db.orm.public.Question.all(),
     db.orm.public.Course.all(),
     db.orm.public.CourseStudent.all(),
+    db.orm.public.StudentAnswer.all(),
   ]);
 
   // Lookup dictionaries
@@ -90,6 +91,26 @@ export async function getQuizReports(params: {
       cur.essayCount += 1;
     }
     variantQuestionMap.set(q.quizVariantId, cur);
+  }
+
+  // Variant essay questions map
+  const variantEssayMap = new Map<string, string[]>();
+  for (const q of allQuestions) {
+    if (q.questionType === 'ESSAY' || q.questionType === 'CODE_CHALLENGE') {
+      if (!variantEssayMap.has(q.quizVariantId)) {
+        variantEssayMap.set(q.quizVariantId, []);
+      }
+      variantEssayMap.get(q.quizVariantId)!.push(q.id);
+    }
+  }
+
+  // Attempt answers map: attemptId -> answers
+  const attemptAnswerMap = new Map<string, any[]>();
+  for (const ans of allAnswers) {
+    if (!attemptAnswerMap.has(ans.quizAttemptId)) {
+      attemptAnswerMap.set(ans.quizAttemptId, []);
+    }
+    attemptAnswerMap.get(ans.quizAttemptId)!.push(ans);
   }
 
   // Filter students if classId provided
@@ -187,8 +208,15 @@ export async function getQuizReports(params: {
       const essayCount = variantInfo?.essayCount || 0;
       const hasEssay = essayCount > 0;
       const totalQuestions = variantInfo?.total || 0;
-      // Needs review if attempt is COMPLETED (or submitted) and has essay questions that need grading
-      const needsReview = hasEssay && attempt?.status === 'COMPLETED';
+      let needsReview = false;
+      if (hasEssay && attempt && attempt.status !== 'IN_PROGRESS' && attempt.status !== 'GRADED') {
+        const attemptAnswers = attemptAnswerMap.get(attempt.id) || [];
+        const variantEssayIds = variantId ? (variantEssayMap.get(variantId) || []) : [];
+        needsReview = variantEssayIds.some(qId => {
+          const ans = attemptAnswers.find(a => a.questionId === qId);
+          return !ans || ans.isCorrect === null;
+        });
+      }
 
       return {
         id: attempt?.id || `unstarted-${student.id}-${packageId}`,
@@ -237,7 +265,15 @@ export async function getQuizReports(params: {
       const essayCount = variantInfo?.essayCount || 0;
       const hasEssay = essayCount > 0;
       const totalQuestions = variantInfo?.total || 0;
-      const needsReview = hasEssay && attempt.status === 'COMPLETED';
+      let needsReview = false;
+      if (hasEssay && attempt.status !== 'IN_PROGRESS' && attempt.status !== 'GRADED') {
+        const attemptAnswers = attemptAnswerMap.get(attempt.id) || [];
+        const variantEssayIds = attempt.quizVariantId ? (variantEssayMap.get(attempt.quizVariantId) || []) : [];
+        needsReview = variantEssayIds.some(qId => {
+          const ans = attemptAnswers.find(a => a.questionId === qId);
+          return !ans || ans.isCorrect === null;
+        });
+      }
 
       return {
         id: attempt.id,
@@ -643,7 +679,8 @@ export async function getQuizAttemptDetail(attemptId: string) {
   const totalEarnedPoints = questions.reduce((sum, q) => sum + (q.studentAnswer?.pointsEarned || 0), 0);
   const essayQuestions = questions.filter(q => q.questionType === 'ESSAY' || q.questionType === 'CODE_CHALLENGE');
   const hasEssay = essayQuestions.length > 0;
-  const needsReview = hasEssay && attempt.status === 'COMPLETED';
+  const hasUngradedEssay = essayQuestions.some(q => !q.studentAnswer || q.studentAnswer.isCorrect === null);
+  const needsReview = hasEssay && attempt.status !== 'IN_PROGRESS' && attempt.status !== 'GRADED' && hasUngradedEssay;
 
   return {
     attempt: {

@@ -52,6 +52,13 @@ export async function recordQuizCompletion(attemptId: string) {
   // 1. Cek idempotency: Jangan duplikasi jika sourceId sudah pernah dicatat
   const existingRecord = await db.orm.public.QuizCompletionRecord.where({ sourceId: attemptId }).first();
   if (existingRecord) {
+    if (existingRecord.score !== (attempt.score ?? 0)) {
+      await db.orm.public.QuizCompletionRecord.where({ id: existingRecord.id }).update({
+        score: attempt.score ?? 0,
+        isPassed: (attempt.score ?? 0) >= existingRecord.passingScore,
+        completedAt: attempt.finishedAt || new Date().toISOString()
+      });
+    }
     // Tetap sinkronkan ringkasan nilai siswa
     await updateStudentScoreSummary(attempt.studentId);
     return existingRecord;

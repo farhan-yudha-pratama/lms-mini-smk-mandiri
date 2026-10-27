@@ -21,6 +21,8 @@ export default async function ReviewEssayPage({ params }: { params: { attemptId:
     return {
       id: q.id,
       text: q.questionText,
+      questionType: q.questionType,
+      codeLanguage: q.codeLanguage,
       maxPoints: q.points,
       answerId: ans?.id || null,
       answerText: ans?.essayAnswer || '',
