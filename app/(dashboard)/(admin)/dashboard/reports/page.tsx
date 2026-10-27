@@ -1,9 +1,9 @@
 import { getQuizzesWithPageStatus } from '@/modules/quiz/quiz.service';
 import { getAllClasses } from '@/modules/class/class.service';
 import { getQuizReports, getUnfinishedStudentsReport } from '@/modules/quiz-report/quiz-report.service';
+import { getCourses } from '@/modules/course/course.service';
 import QuizReportView from '@/components/quiz-report/QuizReportView';
 import { getSession } from '@/lib/session';
-import { db } from '@/prisma/db';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,17 +12,29 @@ export default async function QuizReportsPage() {
   const role = session?.role || 'MURID';
   const teacherId = role === 'GURU' ? session?.userId : undefined;
 
-  const [allPages, classes, initialReports, initialUnfinishedReports, courses] = await Promise.all([
+  const [
+    pagesResult,
+    classesResult,
+    reportsResult,
+    unfinishedResult,
+    coursesResult
+  ] = await Promise.allSettled([
     getQuizzesWithPageStatus(teacherId),
     getAllClasses(),
     getQuizReports({ page: 1, limit: 50, teacherId }),
     getUnfinishedStudentsReport({ page: 1, limit: 50, sortBy: 'UNOPENED_DESC', filterMode: 'ALL', teacherId }),
-    db.orm.public.Course.all()
+    getCourses(teacherId)
   ]);
 
+  const allPages = pagesResult.status === 'fulfilled' ? pagesResult.value : [];
+  const classes = classesResult.status === 'fulfilled' ? classesResult.value : [];
+  const initialReports = reportsResult.status === 'fulfilled' ? reportsResult.value : undefined;
+  const initialUnfinishedReports = unfinishedResult.status === 'fulfilled' ? unfinishedResult.value : undefined;
+  const courses = coursesResult.status === 'fulfilled' ? coursesResult.value : [];
+
   const availablePackages = allPages
-    .filter(p => p.hasQuizPackage)
-    .map(p => ({
+    .filter((p) => Boolean(p.hasQuizPackage && p.quizPackage))
+    .map((p) => ({
       id: p.quizPackage!.id,
       title: p.quizPackage!.title,
       pageTitle: p.title,
