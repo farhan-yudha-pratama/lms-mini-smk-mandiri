@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { getQuizQuestionsAction, submitQuizAction } from '@/modules/quiz-engine/quiz-engine.action';
 import QuizModal from './QuizModal';
-import CodeSandbox from './CodeSandbox';
 import CodeChallengeModal from './CodeChallengeModal';
 
 interface QuizEngineModalProps {
@@ -730,24 +729,7 @@ export default function QuizEngineModal({
                   {currentIdx + 1}. {currentQ.text}
                 </h3>
 
-                {currentQ.type === 'CODE_CHALLENGE' ? (
-                  <div className="space-y-3 mt-4 border-t-2 border-black pt-4">
-                    <div className="bg-green-50 border border-green-200 p-3 mb-2 rounded flex gap-2">
-                      <span className="material-symbols-outlined text-green-700">code</span>
-                      <p className="text-sm font-semibold text-green-900">
-                        Soal Coding ({currentQ.codeLanguage?.toUpperCase() || 'HTML'})
-                      </p>
-                    </div>
-                    <CodeSandbox
-                      language={currentQ.codeLanguage || 'html'}
-                      initialCode={currentQ.initialCode || ''}
-                      testCases={currentQ.testCases || ''}
-                      value={answers[currentQ.id] || ''}
-                      onChange={(val) => setAnswers(prev => ({ ...prev, [currentQ.id]: val }))}
-                      disabled={submitting || cheatingWarning}
-                    />
-                  </div>
-                ) : currentQ.type === 'ESSAY' ? (
+                {currentQ.type === 'ESSAY' ? (
                   <div className="space-y-3">
                     <div className="flex justify-between items-center text-xs font-bold text-gray-600">
                       <span>Ketikkan Jawaban Uraian / Essay Anda:</span>
