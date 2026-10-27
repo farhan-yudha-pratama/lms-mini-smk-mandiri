@@ -11,6 +11,7 @@ import {
 import { QuizReportItem, QuizReportsResponse, UnfinishedStudentsResponse } from '@/modules/quiz-report/quiz-report.service';
 import UnfinishedStudentsView from './UnfinishedStudentsView';
 import TaskRecapView from './TaskRecapView';
+import CodeAnswerPreview from '@/components/quiz/CodeAnswerPreview';
 
 type Package = { id: string; title: string; pageTitle: string; categoryName: string; };
 type ClassType = { id: string; name: string; };
@@ -1303,47 +1304,19 @@ export default function QuizReportView({
                                     </button>
                                   )}
                                 </div>
-                                <div className="p-4 bg-[#FFFDF9] border border-gray-200/40 text-sm md:text-base text-gray-900 font-mono leading-relaxed whitespace-pre-wrap min-h-[80px]">
+                                <div className="p-4 bg-[#FFFDF9] border border-gray-200/40 text-sm md:text-base text-gray-900 leading-relaxed min-h-[80px]">
                                   {studentAns?.essayAnswer?.trim() ? (
-                                    <>
-                                      {isCode ? (
-                                        <div className="mb-4 space-y-3">
-                                          {studentAns?.id && (
-                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between bg-emerald-50 border border-emerald-300 p-3 rounded-lg gap-2 shadow-xs">
-                                              <div className="flex items-center gap-2 text-xs font-bold text-emerald-950">
-                                                <span className="material-symbols-outlined text-emerald-700 text-lg">laptop_chromebook</span>
-                                                <span>Tampilan Web Interaktif & Editor Kode (HTML, CSS & JS)</span>
-                                              </div>
-                                              <a
-                                                href={`/code-preview/${studentAns.id}`}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg shadow-sm inline-flex items-center gap-1.5 transition-all self-start sm:self-auto shrink-0"
-                                              >
-                                                <span>Buka di Halaman Baru</span>
-                                                <span className="material-symbols-outlined text-sm">open_in_new</span>
-                                              </a>
-                                            </div>
-                                          )}
-
-                                          {q.codeLanguage === 'html' && (
-                                            <div>
-                                              <div className="text-xs font-bold text-gray-500 mb-1">Pratinjau Cepat Web:</div>
-                                              <div className="border-2 border-gray-300 bg-white rounded overflow-hidden">
-                                                <iframe
-                                                  srcDoc={studentAns.essayAnswer}
-                                                  className="w-full h-[250px] border-none bg-white"
-                                                  sandbox="allow-scripts"
-                                                  title="Code Challenge Preview"
-                                                />
-                                              </div>
-                                              <div className="text-xs font-bold text-gray-500 mt-3 mb-1">Kode Sumber:</div>
-                                            </div>
-                                          )}
-                                        </div>
-                                      ) : null}
-                                      {studentAns.essayAnswer}
-                                    </>
+                                    isCode ? (
+                                      <CodeAnswerPreview
+                                        answerText={studentAns.essayAnswer}
+                                        answerId={studentAns.id}
+                                        codeLanguage={q.codeLanguage}
+                                      />
+                                    ) : (
+                                      <div className="font-mono whitespace-pre-wrap">
+                                        {studentAns.essayAnswer}
+                                      </div>
+                                    )
                                   ) : (
                                     <span className="text-gray-400 italic font-sans text-xs">
                                       (Murid tidak mengisi teks jawaban)

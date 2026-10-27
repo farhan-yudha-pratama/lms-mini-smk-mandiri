@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { getStudentAttemptDetails } from '@/app/actions/student-quiz-answers';
+import CodeAnswerPreview from '@/components/quiz/CodeAnswerPreview';
 
 interface QuizHistoryItem {
   attemptId: string;
@@ -346,42 +347,11 @@ export default function QuizHistoryClient({ history, courses, initialSearch, ini
 
                         {q.studentEssayAnswer ? (
                           q.type === 'CODE_CHALLENGE' ? (
-                            <div className="space-y-3">
-                              {q.answerId && (
-                                <div className="flex flex-col sm:flex-row sm:items-center justify-between bg-blue-50 border-2 border-black p-3 gap-2 shadow-[2px_2px_0px_0px_#000]">
-                                  <div className="flex items-center gap-2 text-xs font-black uppercase text-blue-950">
-                                    <span className="material-symbols-outlined text-base text-blue-700">laptop_chromebook</span>
-                                    <span>Tampilan Web Interaktif & Editor Kode (HTML, CSS & JS)</span>
-                                  </div>
-                                  <a
-                                    href={`/code-preview/${q.answerId}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="px-3.5 py-1.5 bg-[#4285F4] hover:bg-blue-600 text-white text-xs font-black uppercase rounded border-2 border-black shadow-[2px_2px_0px_0px_#000] inline-flex items-center gap-1.5 transition-all self-start sm:self-auto shrink-0"
-                                  >
-                                    <span>Buka di Halaman Baru</span>
-                                    <span className="material-symbols-outlined text-sm">open_in_new</span>
-                                  </a>
-                                </div>
-                              )}
-
-                              {q.codeLanguage === 'html' && (
-                                <div className="border-4 border-black bg-white overflow-hidden mb-2">
-                                  <div className="bg-black text-white px-3 py-1 text-xs font-black uppercase">
-                                    Live Preview:
-                                  </div>
-                                  <iframe
-                                    srcDoc={q.studentEssayAnswer}
-                                    className="w-full h-48 border-none bg-white"
-                                    sandbox="allow-scripts"
-                                    title="Student Code Preview"
-                                  />
-                                </div>
-                              )}
-                              <div className="bg-[#092328] text-[#8BBB92] font-mono border-4 border-black p-4 text-xs md:text-sm overflow-x-auto whitespace-pre">
-                                {q.studentEssayAnswer}
-                              </div>
-                            </div>
+                            <CodeAnswerPreview
+                              answerText={q.studentEssayAnswer}
+                              answerId={q.answerId}
+                              codeLanguage={q.codeLanguage}
+                            />
                           ) : (
                             <div className="bg-gray-100 border-4 border-black p-4 font-bold text-sm whitespace-pre-wrap leading-relaxed">
                               {q.studentEssayAnswer}
