@@ -131,15 +131,32 @@ export default function CodeChallengeModal({
   const [fullscreenSupported, setFullscreenSupported] = useState(true);
   const [modalConfig, setModalConfig] = useState<ModalConfig | null>(null);
 
-  // Mobile responsiveness & Preview Overlay
+  // Mobile responsiveness & Pane Navigation (Soal | Kode | Hasil)
   const [isMobile, setIsMobile] = useState(false);
-  const [mobilePreviewOpen, setMobilePreviewOpen] = useState(false);
+  const [mobilePane, setMobilePane] = useState<'problem' | 'code' | 'result'>('code');
 
   useEffect(() => {
     const updateSize = () => setIsMobile(window.innerWidth < 768);
     updateSize();
     window.addEventListener('resize', updateSize);
     return () => window.removeEventListener('resize', updateSize);
+  }, []);
+
+  // Mobile Symbol Insert Helper (inserts character at cursor and keeps editor focused)
+  const handleInsertSymbol = useCallback((char: string) => {
+    if (!editorInstanceRef.current) return;
+    const editor = editorInstanceRef.current;
+    if (char === 'Tab') {
+      editor.trigger('keyboard', 'tab', null);
+    } else {
+      const selection = editor.getSelection();
+      if (selection) {
+        editor.executeEdits('mobile-symbols', [{ range: selection, text: char, forceMoveMarkers: true }]);
+      } else {
+        editor.trigger('keyboard', 'type', { text: char });
+      }
+    }
+    editor.focus();
   }, []);
 
   // Editor Customization & Workspace Controls
@@ -293,6 +310,8 @@ export default function CodeChallengeModal({
       });
     }
   };
+
+
 
   useEffect(() => {
     return () => {
@@ -463,6 +482,8 @@ export default function CodeChallengeModal({
 
     const handleFullscreenChange = () => {
       if (!isArmedRef.current || submittingRef.current || cheatingRef.current) return;
+      // On mobile devices (< 768px), disable fullscreen exit penalty to prevent false positives from soft keyboards, OS navigation bars, rotation, etc.
+      if (typeof window !== 'undefined' && window.innerWidth < 768) return;
       if (!getFullscreenElement()) {
         submitCheater('Keluar dari mode Layar Penuh (Fullscreen)');
       }
@@ -479,6 +500,8 @@ export default function CodeChallengeModal({
       if (!isArmedRef.current || submittingRef.current || cheatingRef.current) return;
       if (isInternalModalOpenRef.current) return;
       if (isResizingRef.current) return; // Prevent false positive anti-cheat trigger while dragging layout panels
+      // On mobile devices (< 768px), disable blur penalty (notification shade, soft keyboard voice input, etc. trigger blur)
+      if (typeof window !== 'undefined' && window.innerWidth < 768) return;
 
       if (blurTimeoutRef.current) clearTimeout(blurTimeoutRef.current);
       blurTimeoutRef.current = setTimeout(() => {
@@ -648,9 +671,18 @@ export default function CodeChallengeModal({
     }
   };
 
+  // Autosave status state for Visual Micro-Badge
+  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving'>('saved');
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   // Editor Changes (Strictly updates only current question's answers)
   const handleEditorChange = (newVal: string) => {
     if (!currentQ) return;
+    setSaveStatus('saving');
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = setTimeout(() => {
+      setSaveStatus('saved');
+    }, 450);
     if (isHtmlMode) {
       const updated = { ...currentFiles, [activeFile]: newVal };
       const serialized = serializeProjectFiles(updated);
@@ -667,9 +699,10 @@ export default function CodeChallengeModal({
     const bundled = bundleVirtualProject(currentFiles);
     setPreviewOutputs(prev => ({ ...prev, [currentQ.id]: bundled }));
 
-    // On mobile (< 768px), open full-screen popup overlay to view result
+    setActiveRightTab('preview');
+    // On mobile (< 768px), switch to Result tab
     if (typeof window !== 'undefined' && window.innerWidth < 768) {
-      setMobilePreviewOpen(true);
+      setMobilePane('result');
     }
   }, [currentQ, isHtmlMode, currentFiles]);
 
@@ -790,6 +823,9 @@ export default function CodeChallengeModal({
           }
         }));
         setActiveRightTab('tests');
+        if (typeof window !== 'undefined' && window.innerWidth < 768) {
+          setMobilePane('result');
+        }
       }, 2000);
 
       worker.onmessage = (e) => {
@@ -801,6 +837,9 @@ export default function CodeChallengeModal({
           [currentQ.id]: { passed: passedCount, total, results }
         }));
         setActiveRightTab('tests');
+        if (typeof window !== 'undefined' && window.innerWidth < 768) {
+          setMobilePane('result');
+        }
       };
 
       worker.postMessage({ code: userCode, testCases: parsedCases });
@@ -913,7 +952,97 @@ export default function CodeChallengeModal({
     }
   };
 
-  // Loading Screen
+  // Timer Countdown State & Logic (Retrieved from Database: data.timeLimit & data.startedAt)
+  const [timeLeftSeconds, setTimeLeftSeconds] = useState<number | null>(null);
+  const autoSubmitTriggeredRef = useRef(false);
+
+  useEffect(() => {
+    if (quizStage !== 'ACTIVE' || !data?.timeLimit || !data?.startedAt) return;
+
+    const totalSeconds = Number(data.timeLimit) * 60;
+    const startTime = new Date(data.startedAt).getTime();
+
+    const calculateRemaining = () => {
+      const now = Date.now();
+      const elapsed = Math.floor((now - startTime) / 1000);
+      return Math.max(0, totalSeconds - elapsed);
+    };
+
+    const initialRemaining = calculateRemaining();
+    setTimeLeftSeconds(initialRemaining);
+
+    if (initialRemaining <= 0 && !autoSubmitTriggeredRef.current) {
+      autoSubmitTriggeredRef.current = true;
+      processSubmit();
+      return;
+    }
+
+    const timer = setInterval(() => {
+      const remaining = calculateRemaining();
+      setTimeLeftSeconds(remaining);
+
+      if (remaining <= 0) {
+        clearInterval(timer);
+        if (!autoSubmitTriggeredRef.current) {
+          autoSubmitTriggeredRef.current = true;
+          isInternalModalOpenRef.current = true;
+          setModalConfig({
+            isOpen: true,
+            type: 'warning',
+            title: 'Waktu Ujian Habis!',
+            message: 'Batas waktu pengerjaan telah berakhir. Jawaban Anda dikumpulkan secara otomatis.',
+            confirmText: 'Kumpulkan Sekarang',
+            onConfirm: async () => {
+              setModalConfig(null);
+              isInternalModalOpenRef.current = false;
+              await processSubmit();
+            }
+          });
+          setTimeout(() => {
+            processSubmit();
+          }, 2500);
+        }
+      }
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [quizStage, data?.timeLimit, data?.startedAt]);
+
+  const formatTimer = (totalSeconds: number) => {
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    if (hours > 0) {
+      return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+    }
+    return `${pad(minutes)}:${pad(seconds)}`;
+  };
+
+  // Run Shortcut Notification Tooltip State & Logic
+  const [showRunShortcutTip, setShowRunShortcutTip] = useState(false);
+
+  const dismissRunShortcutTip = useCallback(() => {
+    setShowRunShortcutTip(false);
+    try {
+      localStorage.setItem('cc-seen-run-shortcut-tip', 'true');
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    if (quizStage === 'ACTIVE' && isHtmlMode && !isMobile) {
+      try {
+        const seen = localStorage.getItem('cc-seen-run-shortcut-tip');
+        if (!seen) {
+          setShowRunShortcutTip(true);
+          const t = setTimeout(() => {
+            setShowRunShortcutTip(false);
+          }, 9000);
+          return () => clearTimeout(t);
+        }
+      } catch {}
+    }
+  }, [quizStage, isHtmlMode, isMobile]);
   if (loading || !data) {
     return (
       <div className="fixed inset-0 z-[100] bg-[#121214] flex items-center justify-center p-4">
@@ -947,6 +1076,21 @@ export default function CodeChallengeModal({
             </div>
 
             <div className="space-y-3">
+              {data.timeLimit && Number(data.timeLimit) > 0 ? (
+                <div className="flex items-start justify-between gap-3 bg-[#F4F0EA] border-2 border-black p-3">
+                  <div className="flex items-start gap-2.5">
+                    <span className="material-symbols-outlined text-lg mt-0.5 text-amber-600">timer</span>
+                    <div>
+                      <div className="font-bold text-sm">Batas Waktu Pengerjaan</div>
+                      <div className="text-xs text-gray-600">Kuis dibatasi waktu selama <strong>{data.timeLimit} Menit</strong>. Waktu berjalan otomatis setelah tombol Mulai ditekan.</div>
+                    </div>
+                  </div>
+                  <span className="shrink-0 px-2.5 py-1 text-xs font-black uppercase bg-amber-300 text-black border border-black">
+                    {data.timeLimit} Menit
+                  </span>
+                </div>
+              ) : null}
+
               {data.antiCheatConfig?.enableFullscreen && (
                 <div className="flex items-start justify-between gap-3 bg-[#F4F0EA] border-2 border-black p-3">
                   <div className="flex items-start gap-2.5">
@@ -1052,19 +1196,22 @@ export default function CodeChallengeModal({
       {/* TOP APPLICATION BAR */}
       <header className="h-14 bg-[#18181b] border-b-2 border-black flex items-center justify-between px-3 md:px-4 shrink-0 shadow-sm z-20">
         {/* Left: Brand, Title, and Question Tabs */}
-        <div className="flex items-center gap-3 overflow-x-auto py-1">
-          <div className="flex items-center gap-2 shrink-0">
-            <span className="bg-[#00E599] text-black font-black text-xs px-2.5 py-1 border-2 border-black uppercase tracking-wider flex items-center gap-1 shadow-[2px_2px_0px_0px_#000]">
-              <span className="material-symbols-outlined text-[15px]">code</span>
-              CODE LAB
+        <div className="flex items-center gap-2 sm:gap-3 overflow-x-auto py-1 scrollbar-none">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            <span className="bg-[#00E599] text-black font-black text-[11px] sm:text-xs px-2 sm:px-2.5 py-0.5 sm:py-1 border-2 border-black uppercase tracking-wider flex items-center gap-1 shadow-xs">
+              <span className="material-symbols-outlined text-[14px] sm:text-[15px]">code</span>
+              <span>CODE LAB</span>
             </span>
-            <h1 className="font-bold text-sm md:text-base text-zinc-200 truncate max-w-[180px] md:max-w-xs" title={data.title}>
+            <span className="text-[11px] font-bold text-zinc-300 md:hidden bg-zinc-800 px-2 py-0.5 border border-zinc-700 rounded font-mono">
+              #{currentIdx + 1}/{data.questions.length}
+            </span>
+            <h1 className="hidden md:block font-bold text-sm md:text-base text-zinc-200 truncate max-w-[180px] md:max-w-xs" title={data.title}>
               {data.title}
             </h1>
           </div>
 
-          {/* Question Number Pills */}
-          <div className="flex items-center gap-1.5 border-l-2 border-zinc-700 pl-3">
+          {/* Question Number Pills (Desktop only) */}
+          <div className="hidden md:flex items-center gap-1.5 border-l-2 border-zinc-700 pl-3">
             {data.questions.map((qItem: any, i: number) => {
               const val = answers[qItem.id];
               const isAnswered = qItem.type === 'ESSAY' || qItem.type === 'CODE_CHALLENGE' ? Boolean(val && val.trim().length > 0) : Boolean(val);
@@ -1096,24 +1243,46 @@ export default function CodeChallengeModal({
           </div>
         </div>
 
-        {/* Center: Anti-Cheat Badges */}
-        <div className="hidden lg:flex items-center gap-2">
-          {data.antiCheatConfig?.enableFullscreen && (
-            <span className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-black uppercase bg-zinc-800 text-[#00E599] border border-zinc-700">
-              <span className="material-symbols-outlined text-[14px]">fullscreen</span>
-              Layar Penuh Aktif
-            </span>
+        {/* Center: Timer Countdown & Anti-Cheat Badges */}
+        <div className="flex items-center gap-2">
+          {/* Timer Countdown Visual */}
+          {timeLeftSeconds !== null && (
+            <div
+              className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-0.5 sm:py-1 text-[11px] sm:text-xs font-mono font-black border-2 border-black transition-all select-none ${
+                timeLeftSeconds <= 60
+                  ? 'bg-red-500 text-white animate-bounce shadow-[2px_2px_0px_0px_#000]'
+                  : timeLeftSeconds <= 300
+                  ? 'bg-amber-400 text-black animate-pulse shadow-[2px_2px_0px_0px_#000]'
+                  : 'bg-zinc-900 text-[#00E599] border-zinc-700 shadow-xs'
+              }`}
+              title={`Sisa Waktu Pengerjaan: ${formatTimer(timeLeftSeconds)}`}
+            >
+              <span className={`material-symbols-outlined text-[13px] sm:text-[15px] ${timeLeftSeconds <= 60 ? 'animate-spin' : ''}`}>
+                {timeLeftSeconds <= 60 ? 'alarm' : 'timer'}
+              </span>
+              <span>{formatTimer(timeLeftSeconds)}</span>
+            </div>
           )}
-          {data.antiCheatConfig?.preventTabSwitch && (
-            <span className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-black uppercase bg-zinc-800 text-blue-400 border border-zinc-700">
-              <span className="material-symbols-outlined text-[14px]">shield</span>
-              Proteksi Ujian
-            </span>
-          )}
+
+          {/* Anti-Cheat Badges */}
+          <div className="hidden lg:flex items-center gap-2">
+            {data.antiCheatConfig?.enableFullscreen && (
+              <span className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-black uppercase bg-zinc-800 text-[#00E599] border border-zinc-700">
+                <span className="material-symbols-outlined text-[14px]">fullscreen</span>
+                Layar Penuh Aktif
+              </span>
+            )}
+            {data.antiCheatConfig?.preventTabSwitch && (
+              <span className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-black uppercase bg-zinc-800 text-blue-400 border border-zinc-700">
+                <span className="material-symbols-outlined text-[14px]">shield</span>
+                Proteksi Ujian
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Right: Progress and Action Buttons */}
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           <div className="bg-zinc-800 border-2 border-black text-xs font-bold px-3 py-1 text-zinc-300 hidden sm:block">
             Terjawab: <span className="text-[#00E599] font-black">{answeredCount}</span> / {data.questions.length}
           </div>
@@ -1122,7 +1291,7 @@ export default function CodeChallengeModal({
             type="button"
             onClick={() => setCurrentIdx(prev => Math.max(0, prev - 1))}
             disabled={currentIdx === 0 || submitting || cheatingWarning}
-            className="px-3 py-1.5 border-2 border-black bg-zinc-800 hover:bg-zinc-700 text-xs font-bold disabled:opacity-40 transition-colors shadow-sm"
+            className="hidden md:block px-3 py-1.5 border-2 border-black bg-zinc-800 hover:bg-zinc-700 text-xs font-bold disabled:opacity-40 transition-colors shadow-sm"
           >
             Prev
           </button>
@@ -1132,7 +1301,7 @@ export default function CodeChallengeModal({
               type="button"
               onClick={() => setCurrentIdx(prev => Math.min(data.questions.length - 1, prev + 1))}
               disabled={submitting || cheatingWarning}
-              className="px-3.5 py-1.5 border-2 border-black bg-blue-600 hover:bg-blue-500 text-white text-xs font-black uppercase transition-all shadow-[2px_2px_0px_0px_#000] active:translate-x-[1px] active:translate-y-[1px]"
+              className="hidden md:block px-3.5 py-1.5 border-2 border-black bg-blue-600 hover:bg-blue-500 text-white text-xs font-black uppercase transition-all shadow-[2px_2px_0px_0px_#000] active:translate-x-[1px] active:translate-y-[1px]"
             >
               Next
             </button>
@@ -1142,10 +1311,10 @@ export default function CodeChallengeModal({
             type="button"
             onClick={handleOpenSubmitConfirm}
             disabled={submitting || cheatingWarning}
-            className="px-4 py-1.5 border-2 border-black bg-[#FF6B6B] hover:bg-red-500 text-white text-xs font-black uppercase tracking-wider transition-all shadow-[2px_2px_0px_0px_#000] active:translate-x-[1px] active:translate-y-[1px] flex items-center gap-1.5"
+            className="px-2.5 sm:px-4 py-1 sm:py-1.5 border-2 border-black bg-[#FF6B6B] hover:bg-red-500 text-white text-xs font-black uppercase tracking-wider transition-all shadow-[2px_2px_0px_0px_#000] active:translate-x-[1px] active:translate-y-[1px] flex items-center gap-1 sm:gap-1.5"
           >
             <span className="material-symbols-outlined text-[15px]">send</span>
-            <span>{submitting ? 'Mengirim...' : 'Kumpulkan'}</span>
+            <span className="hidden sm:inline">{submitting ? 'Mengirim...' : 'Kumpulkan'}</span>
           </button>
         </div>
       </header>
@@ -1163,14 +1332,16 @@ export default function CodeChallengeModal({
           <div className="flex-1 flex overflow-hidden">
             {/* 1. LEFT PANE: PROBLEM STATEMENT */}
             <div
-              style={!isProblemCollapsed && !isMobile ? { width: `${problemPanelWidth}px` } : undefined}
-              className={`transition-all duration-200 border-r-2 border-black bg-[#18181b] flex flex-col shrink-0 overflow-hidden ${
-                isProblemCollapsed ? 'w-12' : 'fixed inset-0 z-40 md:relative md:inset-auto md:z-auto w-full md:w-auto'
+              style={!isMobile && !isProblemCollapsed ? { width: `${problemPanelWidth}px` } : undefined}
+              className={`transition-all duration-200 border-r-2 border-black bg-[#18181b] flex-col shrink-0 overflow-hidden ${
+                isMobile
+                  ? mobilePane === 'problem' ? 'flex flex-1 w-full h-full' : 'hidden'
+                  : isProblemCollapsed ? 'flex w-12' : 'flex'
               }`}
             >
               {/* Header Panel Soal */}
-              {isProblemCollapsed ? (
-                /* Collapsed Header & Quick Expand Button */
+              {!isMobile && isProblemCollapsed ? (
+                /* Desktop Collapsed Header & Quick Expand Button */
                 <div className="h-10 bg-zinc-900 border-b border-zinc-800 flex items-center justify-center shrink-0">
                   <button
                     type="button"
@@ -1194,21 +1365,31 @@ export default function CodeChallengeModal({
                     </span>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => setIsProblemCollapsed(true)}
-                    title="Sembunyikan Panel Soal"
-                    className="px-2 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white rounded text-xs transition-colors flex items-center gap-1 font-bold"
-                  >
-                    <span className="material-symbols-outlined text-[18px]">close</span>
-                    <span className="md:hidden">Mulai Ngoding</span>
-                  </button>
+                  {isMobile ? (
+                    <button
+                      type="button"
+                      onClick={() => setMobilePane('code')}
+                      className="px-2.5 py-1 bg-[#00E599] text-black rounded text-xs font-black flex items-center gap-1 shadow-xs"
+                    >
+                      <span>Mulai Ngoding</span>
+                      <span className="material-symbols-outlined text-[15px]">arrow_forward</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setIsProblemCollapsed(true)}
+                      title="Sembunyikan Panel Soal"
+                      className="px-2 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white rounded text-xs transition-colors flex items-center gap-1 font-bold"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">close</span>
+                    </button>
+                  )}
                 </div>
               )}
 
               {/* Body Panel Soal */}
-              {isProblemCollapsed ? (
-                /* Clickable Vertical Strip to easily restore the panel */
+              {!isMobile && isProblemCollapsed ? (
+                /* Clickable Vertical Strip to easily restore the panel on desktop */
                 <div
                   onClick={() => setIsProblemCollapsed(false)}
                   className="flex-1 flex flex-col items-center py-4 cursor-pointer hover:bg-zinc-800/60 transition-colors group select-none"
@@ -1227,7 +1408,7 @@ export default function CodeChallengeModal({
                   <div className="bg-zinc-900/90 p-2.5 border border-zinc-800 rounded">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Daftar Soal:</span>
-                      <span className="text-[11px] text-zinc-500">
+                      <span className="text-[11px] text-zinc-500 font-mono">
                         {currentIdx + 1} dari {data.questions.length}
                       </span>
                     </div>
@@ -1267,7 +1448,7 @@ export default function CodeChallengeModal({
                   </div>
 
                   {/* Actions: Reset Code for Current Question */}
-                  <div className="pt-2 border-t border-zinc-800">
+                  <div className="pt-2 border-t border-zinc-800 space-y-2">
                     <button
                       type="button"
                       onClick={handleResetCode}
@@ -1276,13 +1457,24 @@ export default function CodeChallengeModal({
                       <span className="material-symbols-outlined text-[16px]">restart_alt</span>
                       Reset Kode Soal Ini ke Template Awal
                     </button>
+
+                    {isMobile && (
+                      <button
+                        type="button"
+                        onClick={() => setMobilePane('code')}
+                        className="w-full py-2.5 bg-[#00E599] text-black font-black text-xs uppercase tracking-wider rounded shadow-xs flex items-center justify-center gap-1.5 transition-all active:scale-98"
+                      >
+                        <span className="material-symbols-outlined text-base">code</span>
+                        <span>Mulai Tulis Solusi di Editor</span>
+                      </button>
+                    )}
                   </div>
                 </div>
               )}
             </div>
 
-            {/* Splitter between Problem Panel and Editor Workspace */}
-            {!isProblemCollapsed && (
+            {/* Splitter between Problem Panel and Editor Workspace (Desktop only) */}
+            {!isMobile && !isProblemCollapsed && (
               <div
                 onPointerDown={startResizing('problem')}
                 onPointerMove={handlePointerMove}
@@ -1299,12 +1491,18 @@ export default function CodeChallengeModal({
             )}
 
             {/* 2. CENTER PANE: MONACO CODE EDITOR */}
-            <div className="flex-1 flex flex-col overflow-hidden border-r-2 border-black bg-[#1e1e1e]">
+            <div
+              className={`flex-col overflow-hidden border-r-2 border-black bg-[#1e1e1e] ${
+                isMobile
+                  ? mobilePane === 'code' ? 'flex flex-1 w-full h-full' : 'hidden'
+                  : 'flex-1 flex'
+              }`}
+            >
               {/* Editor Top Toolbar */}
               <div className="h-10 bg-[#252526] border-b border-black flex items-center justify-between px-2 shrink-0">
-                {/* Left: Quick Show Problem Button (if collapsed) & Multi-File Tabs */}
-                <div className="flex items-center gap-1 overflow-x-auto">
-                  {isProblemCollapsed && (
+                {/* Left: Multi-File Tabs */}
+                <div className="flex items-center gap-1 overflow-x-auto scrollbar-none">
+                  {!isMobile && isProblemCollapsed && (
                     <button
                       type="button"
                       onClick={() => setIsProblemCollapsed(false)}
@@ -1337,7 +1535,7 @@ export default function CodeChallengeModal({
                           key={fName}
                           type="button"
                           onClick={() => setActiveFile(fName)}
-                          className={`h-7 px-3 text-xs font-mono flex items-center gap-1.5 border-t-2 transition-all ${
+                          className={`h-7 px-2.5 sm:px-3 text-xs font-mono flex items-center gap-1.5 border-t-2 transition-all shrink-0 ${
                             isActive
                               ? 'bg-[#1e1e1e] text-white border-[#00E599]'
                               : 'bg-[#2d2d2d] text-zinc-400 border-transparent hover:text-zinc-200'
@@ -1361,16 +1559,51 @@ export default function CodeChallengeModal({
                 {/* Right: Editor Actions (Run, Format, Theme, Font Size) */}
                 <div className="flex items-center gap-1.5 shrink-0">
                   {isHtmlMode ? (
-                    <button
-                      type="button"
-                      onClick={handleRunPreview}
-                      title="Jalankan Web Preview (Shortcut: Ctrl + Enter)"
-                      className="px-3 py-1 bg-[#00E599] hover:bg-[#00c784] text-black text-xs font-black rounded flex items-center gap-1 shadow-xs transition-all active:scale-95"
-                    >
-                      <span className="material-symbols-outlined text-[16px]">play_arrow</span>
-                      <span>Run</span>
-                      <span className="hidden xl:inline text-[9px] opacity-75 font-mono">(Ctrl+Enter)</span>
-                    </button>
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={handleRunPreview}
+                        title="Jalankan Web Preview (Shortcut: Ctrl + Enter)"
+                        className="px-3 py-1 bg-[#00E599] hover:bg-[#00c784] text-black text-xs font-black rounded flex items-center gap-1 shadow-xs transition-all active:scale-95"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">play_arrow</span>
+                        <span>Run</span>
+                        <span className="hidden xl:inline text-[9px] opacity-75 font-mono">(Ctrl+Enter)</span>
+                      </button>
+
+                      {/* Tooltip Animasi Pemberitahuan Run Shortcut (Desktop only) */}
+                      {showRunShortcutTip && (
+                        <div className="hidden md:block absolute right-0 sm:left-1/2 sm:-translate-x-1/2 top-full mt-2.5 z-50 w-60 sm:w-64 bg-zinc-950 border-2 border-[#00E599] text-white p-2.5 rounded shadow-[4px_4px_0px_0px_#000] animate-bounce">
+                          <div className="absolute -top-2 right-4 sm:left-1/2 sm:-translate-x-1/2 w-0 h-0 border-x-6 border-x-transparent border-b-6 border-b-[#00E599]" />
+                          <div className="flex items-start justify-between gap-1.5">
+                            <div className="flex items-center gap-1.5 text-xs font-black text-[#00E599]">
+                              <span className="material-symbols-outlined text-sm">tips_and_updates</span>
+                              <span>Tips Cepat!</span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={dismissRunShortcutTip}
+                              className="text-zinc-400 hover:text-white p-0.5"
+                              title="Tutup tips"
+                            >
+                              <span className="material-symbols-outlined text-xs">close</span>
+                            </button>
+                          </div>
+                          <p className="text-[11px] text-zinc-300 mt-1 leading-snug">
+                            Tekan <kbd className="px-1.5 py-0.5 bg-zinc-800 border border-zinc-600 rounded text-[10px] font-mono text-yellow-300 font-bold">Ctrl</kbd> + <kbd className="px-1.5 py-0.5 bg-zinc-800 border border-zinc-600 rounded text-[10px] font-mono text-yellow-300 font-bold">Enter</kbd> langsung dari keyboard untuk melihat hasil web preview seketika.
+                          </p>
+                          <div className="mt-2 flex justify-end">
+                            <button
+                              type="button"
+                              onClick={dismissRunShortcutTip}
+                              className="px-2 py-0.5 bg-[#00E599] text-black text-[10px] font-black rounded hover:bg-[#00c784] transition-colors"
+                            >
+                              Mengerti
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   ) : currentQ.codeLanguage === 'javascript' ? (
                     <button
                       type="button"
@@ -1382,143 +1615,274 @@ export default function CodeChallengeModal({
                     </button>
                   ) : null}
 
-                  <button
-                    type="button"
-                    onClick={handleFormatCode}
-                    title="Rapikan Format Kode"
-                    className="p-1 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded text-xs transition-colors"
-                  >
-                    <span className="material-symbols-outlined text-[17px]">auto_fix_high</span>
-                  </button>
-
-                  <div className="flex items-center border border-zinc-700 rounded overflow-hidden">
+                  {/* Desktop actions: Format, Font Size, Theme */}
+                  <div className="hidden md:flex items-center gap-1.5">
                     <button
                       type="button"
-                      onClick={() => setFontSize(prev => Math.max(11, prev - 1))}
-                      title="Perkecil Font"
-                      className="px-1.5 py-0.5 text-zinc-400 hover:text-white hover:bg-zinc-800 text-[11px] font-mono"
+                      onClick={handleFormatCode}
+                      title="Rapikan Format Kode"
+                      className="p-1 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded text-xs transition-colors"
                     >
-                      A-
+                      <span className="material-symbols-outlined text-[17px]">auto_fix_high</span>
                     </button>
-                    <span className="px-1 text-[10px] text-zinc-400 font-mono border-x border-zinc-700">
-                      {fontSize}px
-                    </span>
+
+                    <div className="flex items-center border border-zinc-700 rounded overflow-hidden">
+                      <button
+                        type="button"
+                        onClick={() => setFontSize(prev => Math.max(11, prev - 1))}
+                        title="Perkecil Font"
+                        className="px-1.5 py-0.5 text-zinc-400 hover:text-white hover:bg-zinc-800 text-[11px] font-mono"
+                      >
+                        A-
+                      </button>
+                      <span className="px-1 text-[10px] text-zinc-400 font-mono border-x border-zinc-700">
+                        {fontSize}px
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setFontSize(prev => Math.min(22, prev + 1))}
+                        title="Perbesar Font"
+                        className="px-1.5 py-0.5 text-zinc-400 hover:text-white hover:bg-zinc-800 text-[11px] font-mono"
+                      >
+                        A+
+                      </button>
+                    </div>
+
                     <button
                       type="button"
-                      onClick={() => setFontSize(prev => Math.min(22, prev + 1))}
-                      title="Perbesar Font"
-                      className="px-1.5 py-0.5 text-zinc-400 hover:text-white hover:bg-zinc-800 text-[11px] font-mono"
+                      onClick={() => setEditorTheme(prev => prev === 'vs-dark' ? 'vs-light' : 'vs-dark')}
+                      title="Ganti Tema Editor"
+                      className="p-1 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded transition-colors"
                     >
-                      A+
+                      <span className="material-symbols-outlined text-[17px]">
+                        {editorTheme === 'vs-dark' ? 'light_mode' : 'dark_mode'}
+                      </span>
                     </button>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => setEditorTheme(prev => prev === 'vs-dark' ? 'vs-light' : 'vs-dark')}
-                    title="Ganti Tema Editor"
-                    className="p-1 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded transition-colors"
-                  >
-                    <span className="material-symbols-outlined text-[17px]">
-                      {editorTheme === 'vs-dark' ? 'light_mode' : 'dark_mode'}
-                    </span>
-                  </button>
+                  {/* Mobile More Options Dropdown Menu */}
+                  <details className="relative md:hidden">
+                    <summary className="list-none p-1 text-zinc-400 hover:text-white cursor-pointer rounded flex items-center justify-center">
+                      <span className="material-symbols-outlined text-[19px]">more_vert</span>
+                    </summary>
+                    <div className="absolute right-0 top-full mt-1 bg-zinc-900 border border-zinc-700 p-2 rounded shadow-2xl z-50 flex flex-col gap-2 min-w-[150px]">
+                      <button
+                        type="button"
+                        onClick={handleFormatCode}
+                        className="flex items-center gap-2 px-2 py-1.5 text-xs text-zinc-200 hover:bg-zinc-800 rounded text-left"
+                      >
+                        <span className="material-symbols-outlined text-sm">auto_fix_high</span>
+                        <span>Rapikan Kode</span>
+                      </button>
+                      <div className="flex items-center justify-between px-2 py-1 text-xs text-zinc-300 border-t border-zinc-800 pt-2">
+                        <span>Ukuran Font</span>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => setFontSize(prev => Math.max(11, prev - 1))}
+                            className="w-6 h-6 bg-zinc-800 hover:bg-zinc-700 rounded text-xs font-mono font-bold"
+                          >
+                            -
+                          </button>
+                          <span className="text-[11px] font-mono px-1">{fontSize}</span>
+                          <button
+                            type="button"
+                            onClick={() => setFontSize(prev => Math.min(22, prev + 1))}
+                            className="w-6 h-6 bg-zinc-800 hover:bg-zinc-700 rounded text-xs font-mono font-bold"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setEditorTheme(prev => prev === 'vs-dark' ? 'vs-light' : 'vs-dark')}
+                        className="flex items-center gap-2 px-2 py-1.5 text-xs text-zinc-200 hover:bg-zinc-800 rounded text-left border-t border-zinc-800"
+                      >
+                        <span className="material-symbols-outlined text-sm">
+                          {editorTheme === 'vs-dark' ? 'light_mode' : 'dark_mode'}
+                        </span>
+                        <span>{editorTheme === 'vs-dark' ? 'Tema Terang' : 'Tema Gelap'}</span>
+                      </button>
+                    </div>
+                  </details>
                 </div>
               </div>
 
               {/* Editor Workspace (Sidebar + Monaco) */}
-              <div className="flex-1 flex overflow-hidden">
+              <div className="flex-1 flex overflow-hidden relative">
                 {/* File Explorer Sidebar */}
                 {isHtmlMode && showFileExplorer && (
                   <>
                     <div 
-                      style={{ width: `${fileExplorerWidth}px` }}
-                      className="h-full shrink-0 border-r border-zinc-800 bg-[#18181b]"
+                      style={!isMobile ? { width: `${fileExplorerWidth}px` } : undefined}
+                      className={
+                        isMobile
+                          ? 'absolute inset-y-0 left-0 z-40 w-56 bg-[#18181b] border-r border-zinc-700 shadow-2xl flex flex-col'
+                          : 'h-full shrink-0 border-r border-zinc-800 bg-[#18181b]'
+                      }
                     >
-                      <FileExplorer
-                        files={currentFiles}
-                        activeFile={activeFile}
-                        onSelectFile={(f) => setActiveFile(f)}
-                        onCreateFile={handleCreateFile}
-                        onDeleteFile={handleDeleteFile}
-                        readOnly={submitting || cheatingWarning}
-                        theme="dark"
-                      />
+                      {isMobile && (
+                        <div className="p-2 border-b border-zinc-800 flex items-center justify-between bg-zinc-900 shrink-0">
+                          <span className="text-xs font-bold text-zinc-300">File Proyek</span>
+                          <button
+                            type="button"
+                            onClick={() => setShowFileExplorer(false)}
+                            className="p-0.5 text-zinc-400 hover:text-white"
+                          >
+                            <span className="material-symbols-outlined text-sm">close</span>
+                          </button>
+                        </div>
+                      )}
+                      <div className="flex-1 overflow-hidden">
+                        <FileExplorer
+                          files={currentFiles}
+                          activeFile={activeFile}
+                          onSelectFile={(f) => {
+                            setActiveFile(f);
+                            if (isMobile) setShowFileExplorer(false);
+                          }}
+                          onCreateFile={handleCreateFile}
+                          onDeleteFile={handleDeleteFile}
+                          readOnly={submitting || cheatingWarning}
+                          theme="dark"
+                        />
+                      </div>
                     </div>
 
-                    {/* Splitter between File Explorer and Monaco Editor */}
-                    <div
-                      onPointerDown={startResizing('explorer')}
-                      onPointerMove={handlePointerMove}
-                      onPointerUp={stopResizing}
-                      onPointerCancel={stopResizing}
-                      onDoubleClick={() => setFileExplorerWidth(200)}
-                      title="Geser untuk mengubah lebar file explorer (Double click untuk reset)"
-                      className={`w-2 -mr-1 z-20 cursor-col-resize flex items-center justify-center group select-none transition-colors shrink-0 touch-none ${
-                        activeResizer === 'explorer' ? 'bg-[#00E599]' : 'hover:bg-[#00E599] bg-zinc-900 border-r border-black'
-                      }`}
-                    >
-                      <div className={`w-0.5 h-6 rounded-full transition-colors ${activeResizer === 'explorer' ? 'bg-black' : 'bg-zinc-600 group-hover:bg-black'}`} />
-                    </div>
+                    {/* Splitter between File Explorer and Monaco Editor (Desktop only) */}
+                    {!isMobile && (
+                      <div
+                        onPointerDown={startResizing('explorer')}
+                        onPointerMove={handlePointerMove}
+                        onPointerUp={stopResizing}
+                        onPointerCancel={stopResizing}
+                        onDoubleClick={() => setFileExplorerWidth(200)}
+                        title="Geser untuk mengubah lebar file explorer (Double click untuk reset)"
+                        className={`w-2 -mr-1 z-20 cursor-col-resize flex items-center justify-center group select-none transition-colors shrink-0 touch-none ${
+                          activeResizer === 'explorer' ? 'bg-[#00E599]' : 'hover:bg-[#00E599] bg-zinc-900 border-r border-black'
+                        }`}
+                      >
+                        <div className={`w-0.5 h-6 rounded-full transition-colors ${activeResizer === 'explorer' ? 'bg-black' : 'bg-zinc-600 group-hover:bg-black'}`} />
+                      </div>
+                    )}
                   </>
                 )}
 
                 {/* Monaco Editor Instance (Strictly isolated by key and path per question & file) */}
-                <div className="flex-1 h-full overflow-hidden relative">
-                  <Editor
-                    path={`question_${currentQ.id}/${activeFile}`}
-                    height="100%"
-                    language={isHtmlMode ? getFileLanguage(activeFile) : currentQ.codeLanguage || 'javascript'}
-                    theme={editorTheme}
-                    value={isHtmlMode ? (currentFiles[activeFile] ?? '') : (answers[currentQ.id] ?? currentQ.initialCode ?? '')}
-                    onChange={(val) => handleEditorChange(val || '')}
-                    onMount={(editor, monaco) => {
-                      editorInstanceRef.current = editor;
-                      editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => {
-                        handleRunPreviewRef.current?.();
-                      });
-                    }}
-                    options={{
-                      minimap: { enabled: false },
-                      fontSize: fontSize,
-                      wordWrap: wordWrap,
-                      lineNumbers: 'on',
-                      lineNumbersMinChars: isMobile ? 2 : 3,
-                      glyphMargin: !isMobile,
-                      folding: !isMobile,
-                      automaticLayout: true,
-                      tabSize: 2,
-                      scrollBeyondLastLine: false,
-                      readOnly: submitting || cheatingWarning
-                    }}
-                  />
+                <div className="flex-1 h-full flex flex-col overflow-hidden relative">
+                  <div className="flex-1 w-full min-h-0 relative">
+                    <Editor
+                      path={`question_${currentQ.id}/${activeFile}`}
+                      height="100%"
+                      language={isHtmlMode ? getFileLanguage(activeFile) : currentQ.codeLanguage || 'javascript'}
+                      theme={editorTheme}
+                      value={isHtmlMode ? (currentFiles[activeFile] ?? '') : (answers[currentQ.id] ?? currentQ.initialCode ?? '')}
+                      onChange={(val) => handleEditorChange(val || '')}
+                      onMount={(editor, monaco) => {
+                        editorInstanceRef.current = editor;
+                        editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => {
+                          handleRunPreviewRef.current?.();
+                        });
+                      }}
+                      options={{
+                        minimap: { enabled: false },
+                        fontSize: fontSize,
+                        wordWrap: wordWrap,
+                        lineNumbers: 'on',
+                        lineNumbersMinChars: isMobile ? 2 : 3,
+                        glyphMargin: !isMobile,
+                        folding: !isMobile,
+                        automaticLayout: true,
+                        tabSize: 2,
+                        scrollBeyondLastLine: false,
+                        readOnly: submitting || cheatingWarning,
+                        contextmenu: !isMobile,
+                        scrollbar: isMobile ? { verticalScrollbarSize: 4, horizontalScrollbarSize: 4 } : undefined,
+                      }}
+                    />
+                  </div>
+
+                  {/* Quick Symbol Toolbar on Mobile Keyboard */}
+                  {isMobile && (
+                    <div className="h-8 bg-[#1f1f23] border-t border-zinc-800 px-1.5 flex items-center gap-1 overflow-x-auto shrink-0 select-none scrollbar-none">
+                      {['Tab', '<', '>', '/', '{', '}', '(', ')', '[', ']', ';', '=', '"', "'", '!', ':', '.', '$'].map((sym) => (
+                        <button
+                          key={sym}
+                          type="button"
+                          onPointerDown={(e) => {
+                            e.preventDefault();
+                            handleInsertSymbol(sym);
+                          }}
+                          className="h-6 min-w-[28px] px-1.5 bg-zinc-800 active:bg-[#00E599] active:text-black hover:bg-zinc-700 text-zinc-200 text-xs font-mono font-bold rounded border border-zinc-700/80 shrink-0 flex items-center justify-center transition-colors"
+                        >
+                          {sym}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Micro Status Bar below Monaco Editor with Autosave Visual Badge */}
+                  <div className="h-6 bg-[#18181b] border-t border-zinc-800/80 px-3 flex items-center justify-between text-[11px] text-zinc-400 select-none shrink-0 font-mono">
+                    <div className="flex items-center gap-2 sm:gap-3 truncate">
+                      <span className="flex items-center gap-1 text-zinc-300">
+                        <span className="material-symbols-outlined text-[13px] text-yellow-400">code</span>
+                        <span className="truncate max-w-[100px] sm:max-w-none">{isHtmlMode ? activeFile : (currentQ.codeLanguage || 'javascript')}</span>
+                      </span>
+                      <span className="hidden sm:inline-block text-zinc-600">•</span>
+                      <span className="hidden sm:inline-block text-zinc-500">UTF-8</span>
+                      <span className="hidden sm:inline-block text-zinc-600">•</span>
+                      <span className="hidden sm:inline-block text-zinc-500">Spaces: 2</span>
+                    </div>
+
+                    {/* Autosave Visual Badge */}
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {saveStatus === 'saving' ? (
+                        <div className="flex items-center gap-1 text-amber-400 font-sans font-medium transition-colors">
+                          <span className="material-symbols-outlined text-[13px] animate-spin">sync</span>
+                          <span className="text-[11px]">Menyimpan...</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1 text-[#00E599] font-sans font-medium transition-colors">
+                          <span className="material-symbols-outlined text-[14px]">cloud_done</span>
+                          <span className="text-[11px] font-semibold">Tersimpan</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Splitter between Monaco Editor and Preview/Console Panel */}
-            <div
-              onPointerDown={startResizing('preview')}
-              onPointerMove={handlePointerMove}
-              onPointerUp={stopResizing}
-              onPointerCancel={stopResizing}
-              onDoubleClick={() => setPreviewWidthPercent(45)}
-              title="Geser untuk mengubah perbandingan editor & preview (Double click untuk reset)"
-              className={`hidden md:flex w-2.5 -ml-1 z-20 cursor-col-resize items-center justify-center group select-none transition-colors shrink-0 touch-none ${
-                activeResizer === 'preview' ? 'bg-[#00E599]' : 'hover:bg-[#00E599] bg-[#18181b] border-x border-black'
+            {/* Splitter between Monaco Editor and Preview/Console Panel (Desktop only) */}
+            {!isMobile && (
+              <div
+                onPointerDown={startResizing('preview')}
+                onPointerMove={handlePointerMove}
+                onPointerUp={stopResizing}
+                onPointerCancel={stopResizing}
+                onDoubleClick={() => setPreviewWidthPercent(45)}
+                title="Geser untuk mengubah perbandingan editor & preview (Double click untuk reset)"
+                className={`hidden md:flex w-2.5 -ml-1 z-20 cursor-col-resize items-center justify-center group select-none transition-colors shrink-0 touch-none ${
+                  activeResizer === 'preview' ? 'bg-[#00E599]' : 'hover:bg-[#00E599] bg-[#18181b] border-x border-black'
+                }`}
+              >
+                <div className={`w-0.5 h-10 rounded-full transition-colors ${activeResizer === 'preview' ? 'bg-black' : 'bg-zinc-500 group-hover:bg-black'}`} />
+              </div>
+            )}
+
+            {/* 3. RIGHT PANE: LIVE PREVIEW & CONSOLE */}
+            <div 
+              style={!isMobile ? { width: `${previewWidthPercent}%` } : undefined}
+              className={`flex-col bg-[#141416] overflow-hidden shrink-0 ${
+                isMobile
+                  ? mobilePane === 'result' ? 'flex flex-1 w-full h-full' : 'hidden'
+                  : 'hidden md:flex'
               }`}
             >
-              <div className={`w-0.5 h-10 rounded-full transition-colors ${activeResizer === 'preview' ? 'bg-black' : 'bg-zinc-500 group-hover:bg-black'}`} />
-            </div>
-
-            {/* 3. RIGHT PANE: LIVE PREVIEW & CONSOLE (Desktop only, mobile uses popup overlay) */}
-            <div 
-              style={{ width: `${previewWidthPercent}%` }}
-              className="hidden md:flex flex-col bg-[#141416] overflow-hidden shrink-0"
-            >
-              {/* Right Panel Tabs & Device Switcher */}
+              {/* Right Panel Tabs & Mobile Re-Run */}
               <div className="h-10 bg-[#18181b] border-b border-black px-3 flex items-center justify-between shrink-0">
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1 overflow-x-auto scrollbar-none">
                   {isHtmlMode && (
                     <button
                       type="button"
@@ -1568,52 +1932,78 @@ export default function CodeChallengeModal({
                   )}
                 </div>
 
-                {/* Device Switcher (Desktop, Tablet, Mobile) */}
-                {isHtmlMode && activeRightTab === 'preview' && (
-                  <div className="flex items-center gap-1 bg-zinc-900 p-0.5 rounded border border-zinc-700">
-                    <button
-                      type="button"
-                      onClick={() => setViewportMode('desktop')}
-                      title="Desktop (100%)"
-                      className={`p-1 rounded text-xs transition-colors ${
-                        viewportMode === 'desktop' ? 'bg-[#00E599] text-black' : 'text-zinc-400 hover:text-white'
-                      }`}
-                    >
-                      <span className="material-symbols-outlined text-[16px]">desktop_windows</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setViewportMode('tablet')}
-                      title="Tablet (768px)"
-                      className={`p-1 rounded text-xs transition-colors ${
-                        viewportMode === 'tablet' ? 'bg-[#00E599] text-black' : 'text-zinc-400 hover:text-white'
-                      }`}
-                    >
-                      <span className="material-symbols-outlined text-[16px]">tablet</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setViewportMode('mobile')}
-                      title="Mobile (375px)"
-                      className={`p-1 rounded text-xs transition-colors ${
-                        viewportMode === 'mobile' ? 'bg-[#00E599] text-black' : 'text-zinc-400 hover:text-white'
-                      }`}
-                    >
-                      <span className="material-symbols-outlined text-[16px]">smartphone</span>
-                    </button>
-                  </div>
-                )}
+                {/* Right controls: Device Switcher (Desktop) or Quick Re-run (Mobile) */}
+                <div className="flex items-center gap-1.5">
+                  {/* On Mobile: Re-run action right here */}
+                  {isMobile && (
+                    isHtmlMode ? (
+                      <button
+                        type="button"
+                        onClick={handleRunPreview}
+                        className="px-2.5 py-1 bg-[#00E599] hover:bg-[#00c784] text-black text-xs font-black rounded flex items-center gap-1 shadow-xs"
+                      >
+                        <span className="material-symbols-outlined text-[15px]">refresh</span>
+                        <span>Run</span>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={handleRunJSTests}
+                        className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded flex items-center gap-1 shadow-xs"
+                      >
+                        <span className="material-symbols-outlined text-[15px]">refresh</span>
+                        <span>Run Tests</span>
+                      </button>
+                    )
+                  )}
 
-                {activeRightTab === 'console' && currentConsoleLogs.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => currentQ && setConsoleLogsByQuestion(prev => ({ ...prev, [currentQ.id]: [] }))}
-                    className="text-[11px] text-zinc-400 hover:text-red-400 flex items-center gap-1"
-                  >
-                    <span className="material-symbols-outlined text-[14px]">delete</span>
-                    <span>Clear</span>
-                  </button>
-                )}
+                  {/* Device Switcher (Desktop only) */}
+                  {isHtmlMode && activeRightTab === 'preview' && (
+                    <div className="hidden md:flex items-center gap-1 bg-zinc-900 p-0.5 rounded border border-zinc-700">
+                      <button
+                        type="button"
+                        onClick={() => setViewportMode('desktop')}
+                        title="Desktop (100%)"
+                        className={`p-1 rounded text-xs transition-colors ${
+                          viewportMode === 'desktop' ? 'bg-[#00E599] text-black' : 'text-zinc-400 hover:text-white'
+                        }`}
+                      >
+                        <span className="material-symbols-outlined text-[16px]">desktop_windows</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setViewportMode('tablet')}
+                        title="Tablet (768px)"
+                        className={`p-1 rounded text-xs transition-colors ${
+                          viewportMode === 'tablet' ? 'bg-[#00E599] text-black' : 'text-zinc-400 hover:text-white'
+                        }`}
+                      >
+                        <span className="material-symbols-outlined text-[16px]">tablet</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setViewportMode('mobile')}
+                        title="Mobile (375px)"
+                        className={`p-1 rounded text-xs transition-colors ${
+                          viewportMode === 'mobile' ? 'bg-[#00E599] text-black' : 'text-zinc-400 hover:text-white'
+                        }`}
+                      >
+                        <span className="material-symbols-outlined text-[16px]">smartphone</span>
+                      </button>
+                    </div>
+                  )}
+
+                  {activeRightTab === 'console' && currentConsoleLogs.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => currentQ && setConsoleLogsByQuestion(prev => ({ ...prev, [currentQ.id]: [] }))}
+                      className="text-[11px] text-zinc-400 hover:text-red-400 flex items-center gap-1"
+                    >
+                      <span className="material-symbols-outlined text-[14px]">delete</span>
+                      <span className="hidden sm:inline">Clear</span>
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* Panel Content */}
@@ -1640,7 +2030,7 @@ export default function CodeChallengeModal({
                       ) : (
                         <div className="w-full h-full flex flex-col items-center justify-center text-zinc-400 text-xs font-semibold p-4 text-center">
                           <span className="material-symbols-outlined text-4xl mb-2 text-zinc-300">play_circle</span>
-                          <span>Klik tombol "Run" atau tekan Ctrl+Enter untuk melihat hasil halaman web</span>
+                          <span>Klik tombol "Run" untuk melihat hasil halaman web</span>
                         </div>
                       )}
                     </div>
@@ -1777,8 +2167,8 @@ export default function CodeChallengeModal({
         )}
       </main>
 
-      {/* Transparent Drag Overlay to guarantee 100% mouse tracking across iframes & Monaco */}
-      {activeResizer && (
+      {/* Transparent Drag Overlay to guarantee 100% mouse tracking across iframes & Monaco (Desktop only) */}
+      {!isMobile && activeResizer && (
         <div 
           className="fixed inset-0 z-[999] cursor-col-resize select-none pointer-events-auto touch-none"
           onPointerMove={handlePointerMove}
@@ -1787,117 +2177,75 @@ export default function CodeChallengeModal({
         />
       )}
 
-      {/* MOBILE PREVIEW FULLSCREEN OVERLAY */}
-      {mobilePreviewOpen && isHtmlMode && (
-        <div className="fixed inset-0 z-50 flex flex-col bg-[#141416] md:hidden">
-          {/* Header */}
-          <div className="h-12 bg-[#18181b] border-b border-black px-3 flex items-center justify-between shrink-0">
-            <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={() => setActiveRightTab('preview')}
-                className={`h-7 px-2.5 text-xs font-bold rounded flex items-center gap-1 ${
-                  activeRightTab === 'preview'
-                    ? 'bg-[#00E599] text-black shadow-xs'
-                    : 'text-zinc-400 hover:text-white'
-                }`}
-              >
-                <span className="material-symbols-outlined text-[15px]">visibility</span>
-                <span>Preview</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveRightTab('console')}
-                className={`h-7 px-2.5 text-xs font-bold rounded flex items-center gap-1 ${
-                  activeRightTab === 'console'
-                    ? 'bg-[#00E599] text-black shadow-xs'
-                    : 'text-zinc-400 hover:text-white'
-                }`}
-              >
-                <span className="material-symbols-outlined text-[15px]">terminal</span>
-                <span>Console</span>
-                {currentConsoleLogs.length > 0 && (
-                  <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.2 rounded-full font-mono">
-                    {currentConsoleLogs.length}
-                  </span>
-                )}
-              </button>
-            </div>
+      {/* MOBILE BOTTOM NAVIGATION BAR FOR CODE CHALLENGE */}
+      {isMobile && currentQ?.type === 'CODE_CHALLENGE' && (
+        <nav className="h-12 bg-[#18181b] border-t-2 border-black flex items-center justify-around px-2 shrink-0 z-30 md:hidden pb-[env(safe-area-inset-bottom)]">
+          <button
+            type="button"
+            onClick={() => setMobilePane('problem')}
+            className={`flex-1 py-1 flex flex-col items-center justify-center gap-0.5 rounded transition-all ${
+              mobilePane === 'problem'
+                ? 'bg-[#00E599] text-black font-black shadow-xs'
+                : 'text-zinc-400 hover:text-white'
+            }`}
+          >
+            <span className="material-symbols-outlined text-[18px]">description</span>
+            <span className="text-[10px] tracking-wide uppercase font-bold">Soal</span>
+          </button>
 
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={handleRunPreview}
-                className="px-2.5 py-1 bg-zinc-800 hover:bg-zinc-700 text-[#00E599] rounded text-xs flex items-center gap-1 font-bold"
-                title="Refresh Tampilan Web"
-              >
-                <span className="material-symbols-outlined text-[15px]">refresh</span>
-                <span className="text-[11px]">Run</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setMobilePreviewOpen(false)}
-                className="px-3 py-1 bg-[#FF6B6B] hover:bg-red-500 text-white text-xs font-black uppercase rounded flex items-center gap-1 shadow-sm active:scale-95"
-              >
-                <span className="material-symbols-outlined text-[16px]">close</span>
-                <span>Tutup</span>
-              </button>
-            </div>
-          </div>
+          <button
+            type="button"
+            onClick={() => setMobilePane('code')}
+            className={`flex-1 py-1 flex flex-col items-center justify-center gap-0.5 rounded transition-all ${
+              mobilePane === 'code'
+                ? 'bg-[#00E599] text-black font-black shadow-xs'
+                : 'text-zinc-400 hover:text-white'
+            }`}
+          >
+            <span className="material-symbols-outlined text-[18px]">code</span>
+            <span className="text-[10px] tracking-wide uppercase font-bold">Kode</span>
+          </button>
 
-          {/* Body */}
-          <div className="flex-1 overflow-hidden relative bg-[#0e0e10]">
-            {activeRightTab === 'preview' ? (
-              <div className="w-full h-full flex items-center justify-center p-2 overflow-auto bg-zinc-900/60">
-                <div className="h-full w-full bg-white rounded shadow-md overflow-hidden">
-                  {currentPreviewOutput ? (
-                    <iframe
-                      key={`mobile-preview-${currentQ.id}`}
-                      srcDoc={currentPreviewOutput}
-                      sandbox="allow-scripts"
-                      className="w-full h-full border-none bg-white"
-                      title={`Mobile Web Preview Soal ${currentIdx + 1}`}
-                    />
-                  ) : (
-                    <div className="w-full h-full flex flex-col items-center justify-center text-zinc-400 text-xs font-semibold p-4 text-center">
-                      <span className="material-symbols-outlined text-4xl mb-2 text-zinc-300">play_circle</span>
-                      <span>Belum ada hasil preview. Klik "Run" untuk melihat tampilan web.</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ) : (
-              <div className="h-full bg-[#0a0a0c] text-zinc-200 font-mono text-xs p-3 overflow-y-auto">
-                {currentConsoleLogs.length === 0 ? (
-                  <div className="text-zinc-500 text-center py-12 flex flex-col items-center gap-2">
-                    <span className="material-symbols-outlined text-3xl">terminal</span>
-                    <span>Belum ada log console. Output `console.log(...)` atau error akan muncul di sini.</span>
-                  </div>
-                ) : (
-                  currentConsoleLogs.map((log, idx) => (
-                    <div
-                      key={idx}
-                      className={`py-1.5 border-b border-zinc-800 flex items-start gap-2 ${
-                        log.type === 'error'
-                          ? 'text-red-400 bg-red-950/20'
-                          : log.type === 'warn'
-                          ? 'text-amber-400'
-                          : 'text-zinc-200'
-                      }`}
-                    >
-                      <span className="text-[10px] text-zinc-500 shrink-0 select-none">[{log.timestamp}]</span>
-                      <span className={`text-[9px] uppercase font-bold px-1 rounded shrink-0 select-none ${
-                        log.type === 'error' ? 'bg-red-900 text-red-200' : log.type === 'warn' ? 'bg-amber-900 text-amber-200' : 'bg-zinc-800 text-zinc-300'
-                      }`}>
-                        {log.type}
-                      </span>
-                      <span className="whitespace-pre-wrap break-all flex-1">{log.message}</span>
-                    </div>
-                  ))
-                )}
-              </div>
+          <button
+            type="button"
+            onClick={() => setMobilePane('result')}
+            className={`flex-1 py-1 flex flex-col items-center justify-center gap-0.5 rounded transition-all relative ${
+              mobilePane === 'result'
+                ? 'bg-[#00E599] text-black font-black shadow-xs'
+                : 'text-zinc-400 hover:text-white'
+            }`}
+          >
+            <span className="material-symbols-outlined text-[18px]">play_circle</span>
+            <span className="text-[10px] tracking-wide uppercase font-bold">Hasil</span>
+            {currentConsoleLogs.length > 0 && (
+              <span className="absolute top-1 right-1/4 w-2 h-2 rounded-full bg-red-500 animate-pulse" />
             )}
-          </div>
+          </button>
+        </nav>
+      )}
+
+      {/* MOBILE BOTTOM NAVIGATION BAR FOR MULTIPLE CHOICE / ESSAY */}
+      {isMobile && currentQ?.type !== 'CODE_CHALLENGE' && (
+        <div className="h-12 bg-[#18181b] border-t-2 border-black flex items-center justify-between px-3 md:hidden shrink-0 z-30 pb-[env(safe-area-inset-bottom)]">
+          <button
+            type="button"
+            onClick={() => setCurrentIdx(prev => Math.max(0, prev - 1))}
+            disabled={currentIdx === 0 || submitting || cheatingWarning}
+            className="px-3 py-1 bg-zinc-800 text-xs font-bold rounded border border-zinc-700 disabled:opacity-40"
+          >
+            ← Prev
+          </button>
+          <span className="text-xs text-zinc-400 font-bold font-mono">
+            Soal {currentIdx + 1} / {data.questions.length}
+          </span>
+          <button
+            type="button"
+            onClick={() => setCurrentIdx(prev => Math.min(data.questions.length - 1, prev + 1))}
+            disabled={isLast || submitting || cheatingWarning}
+            className="px-3 py-1 bg-blue-600 text-white text-xs font-bold rounded border border-black disabled:opacity-40"
+          >
+            Next →
+          </button>
         </div>
       )}
 

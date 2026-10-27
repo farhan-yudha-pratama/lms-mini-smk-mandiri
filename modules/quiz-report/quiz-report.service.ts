@@ -325,32 +325,27 @@ export async function getQuizReports(params: {
     reportItems = reportItems.filter(item => !item.hasEssay);
   }
 
-  // 5. SORTING:
+  // 5. SORTING (Opsi 1: Global Activity Feed - Real-time First):
   // Rule:
-  // A. Kelas (Classroom Name A-Z)
-  // B. Butuh Review Essay lebih dulu jika ada
-  // C. Data Terbaru (finishedAt / startedAt DESC)
-  // D. Nilai Tertinggi
-  // E. Nama Murid (A-Z)
+  // 1. Prioritaskan yang butuh review essay (needsReview) agar segera dikoreksi guru
+  // 2. Waktu Terbaru Global (finishedAt / startedAt DESC) - Siswa yang baru submit/mulai muncul paling atas
+  // 3. Status penyelesaian (Selesai/Graded > Sedang Mengerjakan > Belum Mulai)
+  // 4. Skor lebih tinggi
+  // 5. Kelas alfabetis (A-Z)
+  // 6. Nama murid alfabetis (A-Z)
   reportItems.sort((a, b) => {
-    // A. Kelas terlebih dahulu
-    const classA = a.className || 'ZZZ';
-    const classB = b.className || 'ZZZ';
-    const classComp = classA.localeCompare(classB);
-    if (classComp !== 0) return classComp;
-
-    // B. Prioritaskan yang perlu review essay
+    // 1. Prioritaskan yang perlu review essay
     if (a.needsReview && !b.needsReview) return -1;
     if (!a.needsReview && b.needsReview) return 1;
 
-    // C. Data terbaru dalam kelas tersebut
+    // 2. Data aktivitas terbaru secara global (DESC - Selesai atau Mulai)
     const timeA = a.finishedAt ? new Date(a.finishedAt).getTime() : (a.startedAt ? new Date(a.startedAt).getTime() : 0);
     const timeB = b.finishedAt ? new Date(b.finishedAt).getTime() : (b.startedAt ? new Date(b.startedAt).getTime() : 0);
     if (timeB !== timeA) {
       return timeB - timeA;
     }
 
-    // D. Status penyelesaian (Selesai > Sedang Mengerjakan > Belum Mulai)
+    // 3. Status penyelesaian (Selesai / Dinilai > Sedang Mengerjakan > Belum Mulai)
     const statusWeight: Record<string, number> = { COMPLETED: 1, GRADED: 1, IN_PROGRESS: 2, NOT_STARTED: 3 };
     const weightA = statusWeight[a.status] || 99;
     const weightB = statusWeight[b.status] || 99;
@@ -358,12 +353,18 @@ export async function getQuizReports(params: {
       return weightA - weightB;
     }
 
-    // E. Skor lebih tinggi
+    // 4. Skor lebih tinggi
     if ((b.score ?? -1) !== (a.score ?? -1)) {
       return (b.score ?? -1) - (a.score ?? -1);
     }
 
-    // F. Nama murid alfabetis
+    // 5. Kelas alfabetis (A-Z)
+    const classA = a.className || 'ZZZ';
+    const classB = b.className || 'ZZZ';
+    const classComp = classA.localeCompare(classB);
+    if (classComp !== 0) return classComp;
+
+    // 6. Nama murid alfabetis (A-Z)
     return a.studentName.localeCompare(b.studentName);
   });
 
