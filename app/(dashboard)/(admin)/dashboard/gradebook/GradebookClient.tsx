@@ -179,13 +179,16 @@ export default function GradebookClient({ classes, courses }: GradebookClientPro
                       {q.isStandalone && <span className="block text-[10px] text-blue-600 font-normal mt-0.5">Tugas Mandiri</span>}
                     </th>
                   ))}
-                  <th className="px-4 py-3 font-bold text-center bg-gray-100 min-w-[100px]">Rata-rata</th>
+                  <th className="px-4 py-3 font-bold text-center bg-gray-100 min-w-[120px]" title="Rata-rata kumulatif seluruh kuis di mapel ini (kuis yang belum dikerjakan dihitung bernilai 0)">
+                    Rata-rata Akhir
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {data.students.map((student: any, idx: number) => {
                   let totalScore = 0;
                   let completedCount = 0;
+                  const totalQuizzes = data.quizzes.length;
 
                   return (
                     <tr key={student.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}>
@@ -210,8 +213,8 @@ export default function GradebookClient({ classes, courses }: GradebookClientPro
                         const cell = data.matrix[student.id][q.id];
                         const passingScore = q.passingScore || 70;
                         
-                        // Sesuai aturan Pilihan 1: hanya kuis yang berstatus 'COMPLETED' (selesai) yang masuk perhitungan rata-rata
-                        if (cell.score !== null && cell.status === 'COMPLETED') {
+                        // Solusi 1: Kuis yang berstatus 'COMPLETED' atau 'GRADED' masuk ke akumulasi nilai
+                        if (cell.score !== null && (cell.status === 'COMPLETED' || cell.status === 'GRADED')) {
                           totalScore += cell.score;
                           completedCount++;
                         }
@@ -230,7 +233,7 @@ export default function GradebookClient({ classes, courses }: GradebookClientPro
                               </Link>
                             ) : cell.status === 'GRADED' ? (
                               <div className="inline-flex flex-col items-center">
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold bg-blue-100 text-blue-800 border border-blue-300" title="Sudah dinilai guru/sistem, belum difinalisasi menjadi selesai">
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold bg-blue-100 text-blue-800 border border-blue-300" title="Sudah dinilai guru/sistem">
                                   <span className="material-symbols-outlined text-[13px]">verified</span>
                                   Dinilai
                                 </span>
@@ -256,9 +259,35 @@ export default function GradebookClient({ classes, courses }: GradebookClientPro
                         );
                       })}
 
-                      <td className="px-4 py-3 text-center font-bold bg-gray-100">
-                        {completedCount > 0 ? Math.round(totalScore / completedCount) : '-'}
-                      </td>
+                      {/* Solusi 1: Rata-rata akhir dihitung berdasarkan total seluruh kuis yang tersedia di mapel ini */}
+                      {(() => {
+                        const finalAverage = totalQuizzes > 0 
+                          ? Math.round(totalScore / totalQuizzes) 
+                          : (completedCount > 0 ? Math.round(totalScore / completedCount) : 0);
+                        const isPassing = finalAverage >= 70;
+
+                        return (
+                          <td className="px-4 py-3 text-center bg-gray-100">
+                            {completedCount > 0 ? (
+                              <div>
+                                <span className={`text-base font-black ${isPassing ? 'text-emerald-700' : 'text-red-600'}`}>
+                                  {finalAverage}
+                                </span>
+                                <span className="block text-[10px] text-gray-500 font-medium mt-0.5">
+                                  {completedCount} / {totalQuizzes} Selesai
+                                </span>
+                              </div>
+                            ) : (
+                              <div>
+                                <span className="text-gray-400 font-bold">-</span>
+                                <span className="block text-[10px] text-gray-400 font-medium mt-0.5">
+                                  0 / {totalQuizzes} Selesai
+                                </span>
+                              </div>
+                            )}
+                          </td>
+                        );
+                      })()}
                     </tr>
                   );
                 })}
@@ -297,6 +326,41 @@ export default function GradebookClient({ classes, courses }: GradebookClientPro
 
             {/* Content Modal */}
             <div className="p-5 overflow-y-auto space-y-4 flex-1">
+              {/* Ringkasan Nilai Siswa (Solusi 1) */}
+              {(() => {
+                const totalQ = data.quizzes.length;
+                let sumScore = 0;
+                let doneCount = 0;
+                data.quizzes.forEach((quiz: any) => {
+                  const cell = data.matrix[selectedStudentForDetail.id]?.[quiz.id];
+                  if (cell?.score !== null && (cell?.status === 'COMPLETED' || cell?.status === 'GRADED')) {
+                    sumScore += cell.score;
+                    doneCount++;
+                  }
+                });
+                const studentAvg = totalQ > 0 ? Math.round(sumScore / totalQ) : (doneCount > 0 ? Math.round(sumScore / doneCount) : 0);
+                const isPassed = studentAvg >= 70;
+
+                return (
+                  <div className="grid grid-cols-3 gap-3 p-3 bg-gray-50 rounded-xl border border-gray-200 text-center">
+                    <div>
+                      <div className="text-[11px] font-bold text-gray-500 uppercase">Kuis Selesai</div>
+                      <div className="text-base font-black text-gray-900">{doneCount} / {totalQ}</div>
+                    </div>
+                    <div>
+                      <div className="text-[11px] font-bold text-gray-500 uppercase">Total Poin</div>
+                      <div className="text-base font-black text-blue-600">{sumScore}</div>
+                    </div>
+                    <div>
+                      <div className="text-[11px] font-bold text-gray-500 uppercase">Rata-rata Akhir</div>
+                      <div className={`text-base font-black ${isPassed ? 'text-emerald-600' : 'text-red-600'}`}>
+                        {studentAvg}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
               <div className="flex items-center justify-between text-xs text-gray-500 pb-2 border-b border-gray-100">
                 <span>Daftar Kuis Mata Pelajaran: <strong>{currentCourseName}</strong></span>
               </div>

@@ -7,40 +7,42 @@ import { useState } from 'react';
 import Link from 'next/link';
 
 export default function HakikatPerangkatLunakPage() {
-    const [isStarted, setIsStarted] = useState(false);
-    const [activeStep, setActiveStep] = useState<number>(0);
-    const [missingElement, setMissingElement] = useState<string | null>(null);
+    // State untuk Switcher Anatomi Smartphone (Topik 1)
+    const [inspectMode, setInspectMode] = useState<'both' | 'hardware' | 'software'>('both');
 
-    const simulationSteps = [
+    // State untuk Simulasi Kamera AI (Topik 2)
+    const [cameraStep, setCameraStep] = useState<number>(0);
+
+    // State untuk Simulasi Tubuh vs Pikiran (Topik 3)
+    const [activeSim, setActiveSim] = useState<'normal' | 'noSoftware' | 'noHardware'>('normal');
+
+    const cameraFlow = [
         {
-            step: 1,
-            role: 'Brainware (Manusia / Kamu)',
-            action: 'Menekan Tombol Huruf "A"',
-            desc: 'Kamu punya niat ingin mengetik tugas di laptop, lalu jarimu menekan tuts "A" pada keyboard.',
-            icon: 'person',
-            badge: 'bg-pine-deep text-white',
-            hardwareState: 'Mendeteksi sentuhan fisik jari',
-            softwareState: 'Menunggu input sinyal masuk',
+            stage: "01",
+            title: "Lensa & Sensor (Hardware)",
+            role: "Penerima Fisik",
+            desc: "Lensa optik menangkap pantulan cahaya dari objek nyata, lalu mengarahkannya ke sensor mikroskopis di dalam bodi HP.",
+            techLog: "Sensor foto dioda mengubah partikel foton cahaya menjadi tegangan listrik mikro.",
+            icon: "photo_camera",
+            badgeBg: "bg-[#092328] text-[#8BBB92]",
         },
         {
-            step: 2,
-            role: 'Hardware (Keyboard & CPU)',
-            action: 'Mengirimkan Sinyal Listrik Biner',
-            desc: 'Saklar mekanik keyboard tertekan dan mengirim gelombang listrik biner (0 & 1) menuju motherboard dan processor.',
-            icon: 'keyboard',
-            badge: 'bg-black text-mint-soft',
-            hardwareState: 'Sinyal listrik dikirim ke processor',
-            softwareState: 'Sistem Operasi menerima sinyal interrupt',
+            stage: "02",
+            title: "Algoritma AI Kamera (Software)",
+            role: "Pikiran & Logika",
+            desc: "Software kamera mengambil 5-10 jepretan mikro dalam 0,02 detik, menyeimbangkan warna kulit, dan membuang bintik buram (noise).",
+            techLog: "Algoritma komputasi gambar (Computational Photography) memproses miliaran matriks biner secara instan.",
+            icon: "auto_fix_high",
+            badgeBg: "bg-[#2A835F] text-white",
         },
         {
-            step: 3,
-            role: 'Software (Sistem Operasi & MS Word)',
-            action: 'Menerjemahkan & Merender Huruf',
-            desc: 'OS & software aplikasi mengenali sinyal biner itu sebagai kode huruf "A", lalu memerintahkan layar menampilkan pixel bentuk huruf "A".',
-            icon: 'code',
-            badge: 'bg-jade-vibrant text-white',
-            hardwareState: 'Monitor menyalakan pixel lampu warna',
-            softwareState: 'Karakter "A" berhasil dicatat di dokumen',
+            stage: "03",
+            title: "Galeri & Layar Tampilan",
+            role: "Hasil Kolaborasi",
+            desc: "Layar monitor menyalakan jutaan lampu piksel warna untuk menampilkan foto yang jernih, tajam, dan siap diposting ke medsos.",
+            techLog: "File digital .JPG selesai dikompresi dan dicatat ke dalam chip memori penyimpanan UFS/eMMC.",
+            icon: "image",
+            badgeBg: "bg-[#8BBB92] text-black",
         },
     ];
 
@@ -50,442 +52,707 @@ export default function HakikatPerangkatLunakPage() {
                 links={[
                     { label: 'Dashboard', href: '/', isActive: false },
                     { label: 'DDPK TKJ', href: '/course/ddpk-tkj', isActive: false },
-                    { label: 'Hakikat Perangkat Lunak', href: '/course/ddpk-tkj/hakikat-perangkat-lunak', isActive: true },
+                    { label: 'Bab 1: Hakikat Software', href: '/course/ddpk-tkj/hakikat-perangkat-lunak', isActive: true },
                 ]}
             />
 
+            {/* LIVE SYSTEM TICKER (Sesuai DESIGN.md Part 2.A) */}
+            <div className="fixed top-[64px] left-0 w-full z-40 bg-[#2A835F] border-b-4 border-black py-1.5 px-3 md:px-4 overflow-hidden select-none">
+                <div className="flex items-center gap-4 md:gap-6 whitespace-nowrap text-[11px] md:text-xs font-black uppercase text-white font-mono tracking-wider">
+                    <span className="flex items-center gap-1.5 md:gap-2">
+                        <span className="text-[#8BBB92]">■</span> MODUL 01: HAKIKAT PERANGKAT LUNAK
+                    </span>
+                    <span className="flex items-center gap-1.5 md:gap-2">
+                        <span className="text-white">●</span> DDPK TKJ KELAS 10
+                    </span>
+                    <span className="flex items-center gap-1.5 md:gap-2 bg-black text-[#8BBB92] px-2 py-0.5 border border-black shadow-[2px_2px_0px_0px_#000]">
+                        ★ FUNDAMENTAL SOFTWARE
+                    </span>
+                    <span className="flex items-center gap-1.5 md:gap-2">
+                        <span className="text-[#8BBB92]">▲</span> HARDWARE VS SOFTWARE
+                    </span>
+                    <span className="flex items-center gap-1.5 md:gap-2">
+                        <span className="text-white">■</span> SMK MANDIRI
+                    </span>
+                </div>
+            </div>
+
             <div
-                className="flex pt-[88px] min-h-screen bg-canvas text-black"
+                className="flex pt-[104px] min-h-screen bg-[#EAF4ED] text-black font-sans"
                 style={{
-                    backgroundImage: 'radial-gradient(var(--color-outline) 1px, transparent 1px)',
+                    backgroundImage: 'radial-gradient(#000000 1px, transparent 1px)',
                     backgroundSize: '24px 24px',
                 }}
             >
                 <Sidebar courseSlug="ddpk-tkj" />
 
-                <main className="md:ml-[280px] w-full p-4 md:p-10 relative">
-                    <div className="max-w-5xl mx-auto space-y-12 md:space-y-16">
+                <main className="md:ml-[280px] w-full p-4 sm:p-6 md:p-8 relative">
+                    <div className="max-w-5xl mx-auto space-y-8 md:space-y-12">
 
-                        {/* Header & Hero Section */}
-                        <section className="bg-jade-vibrant border-4 border-black p-6 md:p-12 shadow-neo-xl text-center relative overflow-hidden text-white">
-                            <div className="absolute top-0 left-0 bg-white text-black font-black px-4 py-1 border-b-4 border-r-4 border-black shadow-neo-sm z-20 text-xs md:text-sm">
-                                MODUL 01
-                            </div>
-                            <div className="absolute top-2 md:top-4 left-2 md:left-4 z-0 pointer-events-none opacity-10">
-                                <span className="material-symbols-outlined text-6xl md:text-[100px] text-black">terminal</span>
-                            </div>
-                            <div className="absolute bottom-2 md:bottom-4 right-2 md:right-4 z-0 pointer-events-none opacity-10">
-                                <span className="material-symbols-outlined text-6xl md:text-[100px] text-black">memory</span>
-                            </div>
+                        {/* HERO SECTION (Sesuai DESIGN.md Part 2.B) */}
+                        <section className="bg-white border-4 border-black shadow-[8px_8px_0px_0px_#000] p-5 sm:p-8 md:p-10 relative overflow-hidden rounded-none">
+                            <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+                                <div className="space-y-4 max-w-2xl">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <div className="bg-[#092328] border-2 border-black text-white text-xs font-black uppercase px-3 py-1 shadow-[2px_2px_0px_0px_#000]">
+                                            BAB 01 • DDPK TKJ
+                                        </div>
+                                        <div className="bg-[#8BBB92] border-2 border-black text-black text-xs font-black uppercase px-2.5 py-1 shadow-[2px_2px_0px_0px_#000]">
+                                            KELAS 10 SMK
+                                        </div>
+                                    </div>
 
-                            <div className="relative z-10 pt-4 space-y-4">
-                                <div className="inline-block bg-mint-soft text-black font-black uppercase text-xs md:text-sm px-4 py-1.5 border-2 border-black shadow-neo-sm tracking-wider">
-                                    Dasar-Dasar Program Keahlian TKJ • Kelas 10
+                                    <h1 className="text-3xl sm:text-5xl md:text-6xl font-black uppercase tracking-tighter text-black leading-tight">
+                                        Kenapa HP Kamu <span className="bg-[#8BBB92] px-2 border-4 border-black inline-block shadow-[4px_4px_0px_0px_#000] transform -rotate-1">Bisa Nurut?</span>
+                                    </h1>
+
+                                    <p className="text-sm sm:text-base md:text-lg font-bold text-gray-900 leading-relaxed">
+                                        Pernahkah kamu berpikir: Mengapa lempengan kaca, logam, dan baterai dingin di tanganmu bisa tahu ketika kamu menyentuh layar untuk membuka TikTok, mengetik tugas, atau menelepon teman? Jawabannya ada pada satu komponen tak kasat mata bernama <strong>Software (Perangkat Lunak)</strong>!
+                                    </p>
+
+                                    <div className="flex flex-wrap gap-2 pt-1">
+                                        <span className="bg-white text-black font-black text-xs uppercase px-3 py-1.5 border-2 border-black shadow-[2px_2px_0px_0px_#000]">
+                                            ✓ Bahasa Manusia Biasa
+                                        </span>
+                                        <span className="bg-[#092328] text-white font-black text-xs uppercase px-3 py-1.5 border-2 border-black shadow-[2px_2px_0px_0px_#000]">
+                                            ✓ Analogi Sehari-hari
+                                        </span>
+                                        <span className="bg-[#2A835F] text-white font-black text-xs uppercase px-3 py-1.5 border-2 border-black shadow-[2px_2px_0px_0px_#000]">
+                                            ✓ Simulator Interaktif
+                                        </span>
+                                    </div>
                                 </div>
-                                <h1 className="text-3xl sm:text-5xl md:text-6xl font-black text-white tracking-tighter uppercase drop-shadow-[4px_4px_0px_rgba(0,0,0,1)] leading-tight">
-                                    Apa Itu Perangkat Lunak?
-                                </h1>
-                                <p className="text-sm md:text-lg font-bold text-black bg-mint-soft inline-block px-4 py-2 border-4 border-black shadow-neo-md uppercase tracking-tight max-w-3xl">
-                                    Membedah &quot;jiwa&quot; di balik komputer: Mengapa secanggih apa pun laptopmu, ia hanyalah benda mati tanpa instruksi software!
-                                </p>
-                                <div className="pt-2">
-                                    <button
-                                        onClick={() => setIsStarted(!isStarted)}
-                                        className="bg-white text-black font-black text-lg md:text-2xl px-8 py-4 md:px-10 md:py-5 border-4 border-black shadow-neo-lg hover:-translate-y-1 hover:-translate-x-1 hover:shadow-neo-xl active:translate-x-[4px] active:translate-y-[4px] active:shadow-none transition-all uppercase tracking-widest flex items-center gap-3 mx-auto cursor-pointer"
-                                    >
-                                        {isStarted ? (
-                                            <>
-                                                <span>Sedang Fokus Belajar...</span>
-                                                <span className="material-symbols-outlined font-black text-3xl animate-spin">sync</span>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <span>Mulai Petualangan</span>
-                                                <span className="material-symbols-outlined font-black text-3xl">rocket_launch</span>
-                                            </>
-                                        )}
-                                    </button>
+
+                                {/* Rotated Emblem Box */}
+                                <div className="self-center lg:self-auto shrink-0">
+                                    <div className="w-36 h-36 sm:w-44 sm:h-44 bg-[#092328] border-4 border-black shadow-[8px_8px_0px_0px_#000] transform -rotate-2 hover:rotate-0 transition-transform duration-200 p-4 flex flex-col justify-between items-center text-center">
+                                        <span className="bg-[#8BBB92] text-black font-black text-[11px] uppercase px-2 py-0.5 border-2 border-black shadow-[2px_2px_0px_0px_#000]">
+                                            MODUL INTI
+                                        </span>
+                                        <span className="material-symbols-outlined text-5xl text-[#8BBB92]">
+                                            terminal
+                                        </span>
+                                        <div className="text-[10px] font-mono font-bold text-white uppercase tracking-wider">
+                                            FISIK + INSTRUKSI
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </section>
 
-                        {/* Target & Inti Belajar (Bahasa Santai) */}
-                        <section className="bg-white border-4 border-black shadow-neo-xl p-6 md:p-10 space-y-6">
-                            <div className="border-b-4 border-black pb-4 flex items-center gap-3">
-                                <span className="bg-pine-deep text-white w-10 h-10 md:w-12 md:h-12 flex items-center justify-center border-3 border-black shadow-neo-sm font-black text-xl">
-                                    🎯
-                                </span>
+                        {/* ============================================================== */}
+                        {/* BAGIAN 1: APA ITU PERANGKAT LUNAK (SOFTWARE)? */}
+                        {/* ============================================================== */}
+                        <section className="bg-white border-4 border-black shadow-[8px_8px_0px_0px_#000] p-5 sm:p-8 md:p-10 space-y-6">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b-4 border-black pb-4">
                                 <div>
-                                    <span className="bg-black text-mint-soft text-xs font-black uppercase px-2.5 py-0.5 border-2 border-black inline-block">
-                                        TARGET SANTAI KITA HARI INI
+                                    <span className="bg-[#092328] text-[#8BBB92] font-mono text-xs font-black uppercase px-2.5 py-0.5 border-2 border-black inline-block mb-1">
+                                        01 // DEFINISI PRAKTIS
                                     </span>
-                                    <h2 className="text-xl sm:text-3xl font-black text-black uppercase tracking-tight">
-                                        3 Hal Penting yang Bakal Kamu Kuasai
+                                    <h2 className="text-2xl sm:text-3xl font-black uppercase tracking-tight text-black">
+                                        1. Apa Itu Perangkat Lunak (Software)?
                                     </h2>
                                 </div>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
-                                <div className="bg-[#EAF4ED] border-4 border-black p-5 shadow-neo-md space-y-3">
-                                    <span className="w-8 h-8 bg-jade-vibrant text-white font-black flex items-center justify-center border-2 border-black text-sm shadow-neo-sm">
-                                        1
-                                    </span>
-                                    <h4 className="font-black text-base uppercase text-black">Bisa Jelasin Software</h4>
-                                    <p className="text-xs md:text-sm font-bold text-gray-700 leading-relaxed">
-                                        Bisa mendefinisikan apa itu software dengan gaya bahasa kamu sendiri tanpa hafalan buku tebal.
-                                    </p>
-                                </div>
-                                <div className="bg-[#EAF4ED] border-4 border-black p-5 shadow-neo-md space-y-3">
-                                    <span className="w-8 h-8 bg-pine-deep text-white font-black flex items-center justify-center border-2 border-black text-sm shadow-neo-sm">
-                                        2
-                                    </span>
-                                    <h4 className="font-black text-base uppercase text-black">Paham Peran &quot;Trio Komputer&quot;</h4>
-                                    <p className="text-xs md:text-sm font-bold text-gray-700 leading-relaxed">
-                                        Tahu persis bedanya perangkat keras (fisik), perangkat lunak (instruksi), dan manusia (kamu).
-                                    </p>
-                                </div>
-                                <div className="bg-[#EAF4ED] border-4 border-black p-5 shadow-neo-md space-y-3">
-                                    <span className="w-8 h-8 bg-forest-teal text-white font-black flex items-center justify-center border-2 border-black text-sm shadow-neo-sm">
-                                        3
-                                    </span>
-                                    <h4 className="font-black text-base uppercase text-black">Komputer Itu Satu Tim</h4>
-                                    <p className="text-xs md:text-sm font-bold text-gray-700 leading-relaxed">
-                                        Menyadari komputer itu seperti tim sepak bola: kalau ada satu elemen hilang, game over!
-                                    </p>
-                                </div>
-                            </div>
-                        </section>
-
-                        {/* 1.1 Apa Itu Perangkat Lunak? */}
-                        <section className="bg-white border-4 border-black shadow-neo-xl p-6 md:p-12 space-y-8">
-                            <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-black uppercase border-b-4 border-black pb-4 flex items-center gap-3 md:gap-4 tracking-tighter">
-                                <span className="bg-pine-deep text-white w-12 h-12 md:w-14 md:h-14 flex items-center justify-center border-4 border-black shadow-neo-sm flex-shrink-0 text-xl md:text-2xl font-black">
-                                    1.1
+                                <span className="bg-[#8BBB92] text-black text-xs font-black uppercase px-3 py-1 border-2 border-black shadow-[2px_2px_0px_0px_#000] self-start sm:self-auto">
+                                    Bahasa Manusia
                                 </span>
-                                <span>Hakikat Software: &quot;Jiwa&quot; di Balik Mesin</span>
-                            </h2>
+                            </div>
 
-                            <div className="space-y-4 text-base md:text-lg font-bold text-gray-800 leading-relaxed">
-                                <p>
-                                    Pernahkah kamu memegang laptop yang mati total karena kehabisan baterai? Layarnya gelap, keyboard dipencet tidak ada respon, dan mesinnya diam membisu. Laptop itu hanya tumpukan logam dan plastik.
+                            {/* Komparasi Definisi: Buku Teks vs Bahasa Manusia */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                                <div className="bg-[#FAF8F5] border-4 border-black shadow-[4px_4px_0px_0px_#000] p-5 space-y-2">
+                                    <div className="flex items-center gap-2">
+                                        <span className="w-6 h-6 bg-red-600 text-white font-black text-xs flex items-center justify-center border-2 border-black">
+                                            ✕
+                                        </span>
+                                        <h4 className="font-black text-xs sm:text-sm uppercase text-gray-700">
+                                            Bahasa Buku Teks (Kaku &amp; Teoritis)
+                                        </h4>
+                                    </div>
+                                    <p className="text-xs sm:text-sm text-gray-700 font-medium italic border-2 border-black bg-white p-3 leading-relaxed">
+                                        &quot;Perangkat lunak adalah kumpulan data elektronik yang disimpan dan diatur oleh komputer berupa program atau instruksi terstruktur untuk mengeksekusi suatu prosedur logika komputasi.&quot;
+                                    </p>
+                                    <p className="text-[11px] font-bold text-red-700">
+                                        😅 Sulit dibayangkan oleh orang awam yang baru pertama kali belajar komputer.
+                                    </p>
+                                </div>
+
+                                <div className="bg-[#EAF4ED] border-4 border-black shadow-[4px_4px_0px_0px_#000] p-5 space-y-2">
+                                    <div className="flex items-center gap-2">
+                                        <span className="w-6 h-6 bg-[#2A835F] text-white font-black text-xs flex items-center justify-center border-2 border-black">
+                                            ✓
+                                        </span>
+                                        <h4 className="font-black text-xs sm:text-sm uppercase text-black">
+                                            Bahasa Manusia (Langsung Paham!)
+                                        </h4>
+                                    </div>
+                                    <p className="text-xs sm:text-sm text-gray-900 font-bold border-2 border-black bg-white p-3 leading-relaxed">
+                                        <strong>Software</strong> adalah <u>kumpulan aturan dan perintah kerja tak kasat mata</u> yang memberitahu benda mati: <em>&quot;Kalau tombol ini ditekan, kamu wajib melakukan tugas ini!&quot;</em>
+                                    </p>
+                                    <p className="text-[11px] font-bold text-[#2A835F]">
+                                        💡 Tanpa software, mesin secanggih apa pun tidak tahu harus mengerjakan apa!
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Analogi: Buku Catatan Kosong vs Berisi Tulisan */}
+                            <div className="border-4 border-black bg-[#FAF8F5] p-5 sm:p-6 shadow-[4px_4px_0px_0px_#000] space-y-4">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-2xl">📖</span>
+                                    <h3 className="font-black uppercase text-base sm:text-lg text-black">
+                                        Analogi Super Dekat: Buku Catatan Kosong vs Buku Berisi Tulisan
+                                    </h3>
+                                </div>
+                                <p className="text-xs sm:text-sm font-bold text-gray-800 leading-relaxed">
+                                    Bayangkan kamu membeli buku tulis tebal bersampul kulit mahal:
                                 </p>
 
-                                <div className="bg-mint-canvas border-4 border-black p-6 md:p-8 shadow-neo-md space-y-2">
-                                    <p className="text-base md:text-xl font-black text-forest-teal leading-relaxed">
-                                        <strong>Perangkat Lunak (Software)</strong> adalah sekumpulan instruksi atau barisan kode digital yang memberitahu komputer <em>&quot;Apa yang harus dilakukan saat ini juga&quot;</em>.
-                                    </p>
-                                    <p className="text-sm md:text-base font-bold text-gray-700">
-                                        Software tidak berwujud fisik, tidak bisa kamu pegang dengan tangan, dan tidak punya berat timbangan. Tapi tanpa software, monitor tidak tahu harus menampilkan gambar apa, dan speaker tidak tahu harus mengeluarkan suara apa.
-                                    </p>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs sm:text-sm font-bold">
+                                    <div className="bg-white border-2 border-black p-3.5 space-y-1 shadow-[2px_2px_0px_0px_#000]">
+                                        <div className="text-[#092328] font-black uppercase text-xs">
+                                            📦 BUKU, KERTAS, &amp; SAMPULNYA = HARDWARE
+                                        </div>
+                                        <p className="text-gray-700">
+                                            Bisa kamu raba, pegang, dan punya berat timbangan. Tapi kalau halamannya kosong melompong, buku itu tidak punya arti apa-apa.
+                                        </p>
+                                    </div>
+                                    <div className="bg-[#8BBB92] border-2 border-black p-3.5 space-y-1 shadow-[2px_2px_0px_0px_#000]">
+                                        <div className="text-black font-black uppercase text-xs">
+                                            ✍️ CATATAN, RUMUS, &amp; CERITANYA = SOFTWARE
+                                        </div>
+                                        <p className="text-black">
+                                            Ilmu dan pesan di dalam tulisan itulah yang memberi nilai pada buku. Tulisan tidak punya berat gram, tapi dialah inti dari buku tersebut!
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
 
-                            {/* Komik Visual Analogi Tubuh Manusia */}
-                            <div className="space-y-4">
-                                <div className="flex items-center gap-2">
-                                    <span className="material-symbols-outlined text-3xl text-jade-vibrant font-black">nature_people</span>
-                                    <h3 className="text-xl sm:text-2xl font-black uppercase text-black">
-                                        Visualisasi Analogi: &quot;Tubuh vs Pikiran&quot;
-                                    </h3>
+                            {/* 3 Keunikan Software */}
+                            <div className="space-y-3">
+                                <h3 className="font-black uppercase text-base sm:text-lg text-black flex items-center gap-2">
+                                    <span>🔍</span> 3 Keunikan Software Dibandingkan Benda Fisik
+                                </h3>
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                    <div className="bg-[#EAF4ED] border-3 border-black p-4 space-y-1 shadow-[2px_2px_0px_0px_#000]">
+                                        <span className="font-mono text-xs font-black uppercase bg-[#092328] text-white px-1.5 py-0.5 inline-block">
+                                            01 // SIFAT
+                                        </span>
+                                        <h4 className="font-black text-sm uppercase text-black">Tidak Berwujud Fisik</h4>
+                                        <p className="text-xs font-bold text-gray-700">
+                                            Software tidak bisa kamu pegang langsung dengan tangan, tidak bisa pecah jika jatuh ke lantai, dan tidak punya timbangan berat gram.
+                                        </p>
+                                    </div>
+
+                                    <div className="bg-[#EAF4ED] border-3 border-black p-4 space-y-1 shadow-[2px_2px_0px_0px_#000]">
+                                        <span className="font-mono text-xs font-black uppercase bg-[#2A835F] text-white px-1.5 py-0.5 inline-block">
+                                            02 // DISTRIBUSI
+                                        </span>
+                                        <h4 className="font-black text-sm uppercase text-black">Bisa Digandakan Bebas</h4>
+                                        <p className="text-xs font-bold text-gray-700">
+                                            Sekali dibuat oleh programmer, software (seperti WhatsApp) bisa digandakan dan dipakai oleh miliaran manusia tanpa kehabisan stok.
+                                        </p>
+                                    </div>
+
+                                    <div className="bg-[#EAF4ED] border-3 border-black p-4 space-y-1 shadow-[2px_2px_0px_0px_#000]">
+                                        <span className="font-mono text-xs font-black uppercase bg-[#12544F] text-white px-1.5 py-0.5 inline-block">
+                                            03 // PERBAIKAN
+                                        </span>
+                                        <h4 className="font-black text-sm uppercase text-black">Update Lewat Udara</h4>
+                                        <p className="text-xs font-bold text-gray-700">
+                                            Jika ada kesalahan (*bug*), pembuat aplikasi cukup mengirim pembaruan lewat internet (*update*), tanpa perlu membuka baut fisik HP-mu.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* INSPEKTOR INTERAKTIF SMARTPHONE */}
+                            <div className="border-4 border-black bg-white p-5 sm:p-6 shadow-[4px_4px_0px_0px_#000] space-y-4">
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b-2 border-black pb-2">
+                                    <div>
+                                        <span className="bg-black text-[#8BBB92] text-[10px] font-mono font-black uppercase px-2 py-0.5 border border-black inline-block">
+                                            SIMULASI VISUAL
+                                        </span>
+                                        <h4 className="font-black text-sm sm:text-base uppercase text-black mt-1">
+                                            Inspektor Smartphone: Bedakan Fisik &amp; Logika
+                                        </h4>
+                                    </div>
+                                    <div className="flex gap-1.5">
+                                        <button
+                                            onClick={() => setInspectMode('both')}
+                                            className={`px-2.5 py-1 text-xs font-black uppercase border-2 border-black transition-all cursor-pointer ${inspectMode === 'both' ? 'bg-[#2A835F] text-white shadow-[2px_2px_0px_0px_#000]' : 'bg-white hover:bg-gray-100'}`}
+                                        >
+                                            Semua
+                                        </button>
+                                        <button
+                                            onClick={() => setInspectMode('hardware')}
+                                            className={`px-2.5 py-1 text-xs font-black uppercase border-2 border-black transition-all cursor-pointer ${inspectMode === 'hardware' ? 'bg-[#092328] text-white shadow-[2px_2px_0px_0px_#000]' : 'bg-white hover:bg-gray-100'}`}
+                                        >
+                                            Fisik Saja
+                                        </button>
+                                        <button
+                                            onClick={() => setInspectMode('software')}
+                                            className={`px-2.5 py-1 text-xs font-black uppercase border-2 border-black transition-all cursor-pointer ${inspectMode === 'software' ? 'bg-[#8BBB92] text-black shadow-[2px_2px_0px_0px_#000]' : 'bg-white hover:bg-gray-100'}`}
+                                        >
+                                            Software Saja
+                                        </button>
+                                    </div>
                                 </div>
 
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
-                                    {/* Card Hardware */}
-                                    <div className="bg-[#EAF4ED] border-4 border-black p-6 md:p-8 shadow-neo-md flex flex-col justify-between hover:-translate-y-1 transition-transform space-y-4">
-                                        <div className="space-y-3">
-                                            <div className="flex justify-between items-center">
-                                                <span className="bg-black text-white text-xs font-black uppercase px-3 py-1 border-2 border-black">
-                                                    KOMPONEN FISIK
-                                                </span>
-                                                <span className="material-symbols-outlined text-4xl text-pine-deep font-black">fitness_center</span>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
+                                    <div className="bg-[#FAF8F5] border-3 border-black p-4 flex flex-col items-center justify-center min-h-[220px]">
+                                        <div className="w-36 h-56 bg-white border-4 border-black p-2 flex flex-col justify-between shadow-[4px_4px_0px_0px_#000] relative">
+                                            <div className="w-4 h-4 bg-black rounded-full mx-auto flex items-center justify-center">
+                                                <div className="w-1.5 h-1.5 bg-blue-400 rounded-full"></div>
                                             </div>
-                                            <h4 className="text-2xl font-black uppercase text-black">Hardware = Otot &amp; Tubuh</h4>
-                                            <p className="text-sm md:text-base font-bold text-gray-800 leading-relaxed">
-                                                Ibarat tangan, kaki, mata, dan tulang kita. Bentuknya nyata, bisa diraba, dan terlihat jelas.
-                                            </p>
-                                            <div className="bg-white border-2 border-black p-3 text-xs md:text-sm font-bold text-gray-700">
-                                                ⚡ <strong>Kelemahan:</strong> Otot tangan tidak bisa bergerak sendiri jika otak tidak mengirimkan perintah syaraf!
+
+                                            <div className="space-y-1.5 my-auto text-center">
+                                                {inspectMode !== 'hardware' && (
+                                                    <div className="bg-[#2A835F] text-white p-2 border-2 border-black text-[10px] font-black uppercase animate-pulse">
+                                                        Android OS 14
+                                                    </div>
+                                                )}
+                                                {inspectMode !== 'hardware' && (
+                                                    <div className="grid grid-cols-3 gap-1 px-1">
+                                                        <div className="bg-[#8BBB92] border border-black text-[9px] font-black p-1">WA</div>
+                                                        <div className="bg-[#092328] text-white border border-black text-[9px] font-black p-1">ML</div>
+                                                        <div className="bg-black text-[#8BBB92] border border-black text-[9px] font-black p-1">TT</div>
+                                                    </div>
+                                                )}
+                                                {inspectMode === 'hardware' && (
+                                                    <div className="bg-gray-200 border-2 border-dashed border-black p-3 text-[10px] font-bold text-gray-600">
+                                                        Layar Mati (Kaca Gelap)
+                                                    </div>
+                                                )}
                                             </div>
-                                        </div>
-                                        <div className="bg-pine-deep text-white p-2.5 text-center font-black text-xs uppercase border-2 border-black">
-                                            Contoh: Keyboard, Mouse, RAM, Monitor
+
+                                            <div className="w-12 h-1 bg-black mx-auto rounded-full"></div>
                                         </div>
                                     </div>
 
-                                    {/* Card Software */}
-                                    <div className="bg-mint-soft/30 border-4 border-black p-6 md:p-8 shadow-neo-md flex flex-col justify-between hover:-translate-y-1 transition-transform space-y-4">
-                                        <div className="space-y-3">
-                                            <div className="flex justify-between items-center">
-                                                <span className="bg-jade-vibrant text-white text-xs font-black uppercase px-3 py-1 border-2 border-black">
-                                                    KOMPONEN LOGIKA
-                                                </span>
-                                                <span className="material-symbols-outlined text-4xl text-jade-vibrant font-black">psychology</span>
+                                    <div className="space-y-2 text-xs sm:text-sm font-bold">
+                                        {inspectMode === 'both' && (
+                                            <div className="space-y-1">
+                                                <span className="text-[#2A835F] uppercase font-black">HP Normal &amp; Berfungsi:</span>
+                                                <p className="text-gray-700">Layar kaca (hardware) menampilkan antarmuka aplikasi pesan dan game (software). Kamu bisa mengetik dan berkomunikasi dengan lancar.</p>
                                             </div>
-                                            <h4 className="text-2xl font-black uppercase text-black">Software = Pikiran &amp; Akal</h4>
-                                            <p className="text-sm md:text-base font-bold text-gray-800 leading-relaxed">
-                                                Ibarat ingatan, ide, dan pengetahuan di kepala kita. Tidak bisa disentuh, tapi dialah bos yang mengendalikan seluruh tubuh.
-                                            </p>
-                                            <div className="bg-white border-2 border-black p-3 text-xs md:text-sm font-bold text-gray-700">
-                                                💡 <strong>Peran:</strong> Memberitahu tangan: <em>&quot;Ambil cangkir itu dan minum perlahan.&quot;</em>
+                                        )}
+                                        {inspectMode === 'hardware' && (
+                                            <div className="space-y-1">
+                                                <span className="text-black uppercase font-black">Cuma Perangkat Keras:</span>
+                                                <p className="text-gray-700">Hanya ada lempengan kaca, sirkuit kabel, baterai li-ion, dan bodi aluminium. Tidak ada gambar, tidak ada menu, tidak bisa dipakai apa-apa.</p>
                                             </div>
-                                        </div>
-                                        <div className="bg-jade-vibrant text-white p-2.5 text-center font-black text-xs uppercase border-2 border-black">
-                                            Contoh: Windows, Chrome, Microsoft Word, Game Mobile Legends
-                                        </div>
+                                        )}
+                                        {inspectMode === 'software' && (
+                                            <div className="space-y-1">
+                                                <span className="text-[#12544F] uppercase font-black">Cuma Perangkat Lunak:</span>
+                                                <p className="text-gray-700">Ada jutaan baris kode Android dan file APK aplikasi di memori, tapi tanpa bodi layar sentuh, kode tersebut tidak punya tempat untuk ditampilkan!</p>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </div>
                         </section>
 
-                        {/* 1.2 Segitiga Hubungan Komponen */}
-                        <section className="bg-white border-4 border-black shadow-neo-xl p-6 md:p-12 space-y-8">
-                            <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-black uppercase border-b-4 border-black pb-4 flex items-center gap-3 md:gap-4 tracking-tighter">
-                                <span className="bg-pine-deep text-white w-12 h-12 md:w-14 md:h-14 flex items-center justify-center border-4 border-black shadow-neo-sm flex-shrink-0 text-xl md:text-2xl font-black">
-                                    1.2
-                                </span>
-                                <span>Komponen Komputer: Hardware, Software, &amp; Brainware</span>
-                            </h2>
-
-                            <p className="text-base md:text-lg font-bold text-gray-800 leading-relaxed">
-                                Di dunia komputer, ada rumus abadi bernama <strong>Segitiga Sistem Komputer</strong>. Tiga komponen ini saling bergantung dan tidak boleh ada satu pun yang absen.
-                            </p>
-
-                            {/* Interaktif Visual Segitiga Komputer */}
-                            <div className="bg-[#EAF4ED] border-4 border-black p-6 md:p-10 shadow-neo-xl space-y-6">
-                                <div className="text-center space-y-2">
-                                    <span className="bg-black text-mint-soft text-xs font-black uppercase px-3 py-1 border-2 border-black inline-block">
-                                        DIAGRAM SISTEM EKOSISTEM
+                        {/* ============================================================== */}
+                        {/* BAGIAN 2: FUNGSI SOFTWARE (KENAPA HP DAN LAPTOP BISA PINTAR?) */}
+                        {/* ============================================================== */}
+                        <section className="bg-[#2A835F] border-4 border-black shadow-[8px_8px_0px_0px_#000] p-5 sm:p-8 md:p-10 space-y-6 text-white">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b-4 border-black pb-4">
+                                <div>
+                                    <span className="bg-black text-[#8BBB92] font-mono text-xs font-black uppercase px-2.5 py-0.5 border-2 border-black inline-block mb-1">
+                                        02 // MEKANISME LOGIKA
                                     </span>
-                                    <h3 className="text-2xl md:text-3xl font-black uppercase text-black tracking-tight">
-                                        Segitiga Komputer 📐
-                                    </h3>
-                                    <p className="text-sm font-bold text-gray-700 max-w-xl mx-auto">
-                                        Klik tombol di bawah untuk melihat apa yang terjadi jika salah satu komponen hilang!
-                                    </p>
+                                    <h2 className="text-2xl sm:text-3xl font-black uppercase tracking-tight text-white">
+                                        2. Fungsi Software: Kenapa HP &amp; Laptop Bisa Pintar?
+                                    </h2>
                                 </div>
+                                <span className="bg-white text-black text-xs font-black uppercase px-3 py-1 border-2 border-black shadow-[2px_2px_0px_0px_#000] self-start sm:self-auto">
+                                    Di Balik Layar
+                                </span>
+                            </div>
 
-                                {/* Diagram Box */}
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4">
-                                    {/* Brainware Node */}
-                                    <div className={`p-6 border-4 border-black shadow-neo-md transition-all text-center space-y-3 ${missingElement === 'brainware' ? 'bg-red-200 opacity-60 line-through' : 'bg-white'}`}>
-                                        <div className="w-16 h-16 bg-pine-deep text-white mx-auto border-3 border-black shadow-neo-sm flex items-center justify-center">
-                                            <span className="material-symbols-outlined text-4xl">person</span>
-                                        </div>
-                                        <span className="bg-pine-deep text-white text-xs font-black uppercase px-2 py-0.5 border border-black inline-block">
-                                            PENGENDALI UTAMA
-                                        </span>
-                                        <h4 className="text-xl font-black uppercase">1. Brainware</h4>
-                                        <p className="text-xs font-bold text-gray-600">
-                                            Manusia (Kamu, Siswa, Guru, Programmer) yang memberikan perintah dan tujuan.
-                                        </p>
-                                    </div>
+                            <div className="bg-[#092328] border-3 border-black p-4 space-y-1 shadow-[4px_4px_0px_0px_#000]">
+                                <h3 className="font-black text-sm uppercase text-[#8BBB92] flex items-center gap-2">
+                                    <span>⚡</span> Fakta Mengejutkan: Komputer Aslinya Sangat Bodoh!
+                                </h3>
+                                <p className="text-xs sm:text-sm font-medium text-[#EAF4ED] leading-relaxed">
+                                    Komponen prosesor (CPU) komputer hanyalah kumpulan saklar mikroskopis yang tidak punya perasaan atau pikiran. Ia cuma mengerti dua status: <strong>Ada Listrik (Angka 1)</strong> atau <strong>Tidak Ada Listrik (Angka 0)</strong>. Software bertindak sebagai otak jenius yang menerjemahkan dunia manusia ke dunia listrik tersebut!
+                                </p>
+                            </div>
 
-                                    {/* Hardware Node */}
-                                    <div className={`p-6 border-4 border-black shadow-neo-md transition-all text-center space-y-3 ${missingElement === 'hardware' ? 'bg-red-200 opacity-60 line-through' : 'bg-white'}`}>
-                                        <div className="w-16 h-16 bg-black text-mint-soft mx-auto border-3 border-black shadow-neo-sm flex items-center justify-center">
-                                            <span className="material-symbols-outlined text-4xl">devices</span>
+                            {/* 4 Tugas Pokok Software */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+                                <div className="bg-[#8BBB92] text-black border-4 border-black shadow-[4px_4px_0px_0px_#000] p-4 flex flex-col justify-between hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_#000] transition-all">
+                                    <div className="space-y-2">
+                                        <div className="flex items-center justify-between">
+                                            <span className="bg-[#092328] text-[#8BBB92] font-mono text-xs font-black px-2 py-0.5 border border-black">
+                                                01
+                                            </span>
+                                            <span className="material-symbols-outlined text-2xl">translate</span>
                                         </div>
-                                        <span className="bg-black text-white text-xs font-black uppercase px-2 py-0.5 border border-black inline-block">
-                                            PERANGKAT FISIK
-                                        </span>
-                                        <h4 className="text-xl font-black uppercase">2. Hardware</h4>
-                                        <p className="text-xs font-bold text-gray-600">
-                                            Mesin, processor, layar, dan tombol yang menjadi wadah tempat eksekusi.
-                                        </p>
-                                    </div>
-
-                                    {/* Software Node */}
-                                    <div className={`p-6 border-4 border-black shadow-neo-md transition-all text-center space-y-3 ${missingElement === 'software' ? 'bg-red-200 opacity-60 line-through' : 'bg-white'}`}>
-                                        <div className="w-16 h-16 bg-jade-vibrant text-white mx-auto border-3 border-black shadow-neo-sm flex items-center justify-center">
-                                            <span className="material-symbols-outlined text-4xl">data_object</span>
-                                        </div>
-                                        <span className="bg-jade-vibrant text-white text-xs font-black uppercase px-2 py-0.5 border border-black inline-block">
-                                            JEMBATAN LOGIKA
-                                        </span>
-                                        <h4 className="text-xl font-black uppercase">3. Software</h4>
-                                        <p className="text-xs font-bold text-gray-600">
-                                            Program penghubung yang menerjemahkan bahasa manusia ke bahasa mesin.
+                                        <h4 className="font-black text-base uppercase">Penerjemah Bahasa</h4>
+                                        <p className="text-xs font-bold text-black leading-relaxed">
+                                            Mengubah ketukan jarimu di layar sentuh menjadi barisan sinyal biner `0 &amp; 1` agar dimengerti prosesor.
                                         </p>
                                     </div>
                                 </div>
 
-                                {/* Simulasi "Bagaimana Kalau..." */}
-                                <div className="bg-white border-4 border-black p-5 shadow-neo-md space-y-4">
-                                    <p className="text-sm font-black uppercase tracking-wider text-black text-center">
-                                        🎮 Coba Uji: &quot;Apa Jadinya Kalau Salah Satunya Hilang?&quot;
-                                    </p>
-                                    <div className="flex flex-wrap justify-center gap-3">
-                                        <button
-                                            onClick={() => setMissingElement(missingElement === 'brainware' ? null : 'brainware')}
-                                            className={`px-4 py-2 text-xs md:text-sm font-black uppercase border-2 border-black shadow-neo-sm transition-all cursor-pointer ${missingElement === 'brainware' ? 'bg-black text-white' : 'bg-white hover:bg-gray-100'}`}
-                                        >
-                                            {missingElement === 'brainware' ? 'Kembalikan Brainware' : 'Hilangkan Brainware'}
-                                        </button>
-                                        <button
-                                            onClick={() => setMissingElement(missingElement === 'software' ? null : 'software')}
-                                            className={`px-4 py-2 text-xs md:text-sm font-black uppercase border-2 border-black shadow-neo-sm transition-all cursor-pointer ${missingElement === 'software' ? 'bg-black text-white' : 'bg-white hover:bg-gray-100'}`}
-                                        >
-                                            {missingElement === 'software' ? 'Kembalikan Software' : 'Hilangkan Software'}
-                                        </button>
-                                        <button
-                                            onClick={() => setMissingElement(missingElement === 'hardware' ? null : 'hardware')}
-                                            className={`px-4 py-2 text-xs md:text-sm font-black uppercase border-2 border-black shadow-neo-sm transition-all cursor-pointer ${missingElement === 'hardware' ? 'bg-black text-white' : 'bg-white hover:bg-gray-100'}`}
-                                        >
-                                            {missingElement === 'hardware' ? 'Kembalikan Hardware' : 'Hilangkan Hardware'}
-                                        </button>
-                                    </div>
-
-                                    {missingElement && (
-                                        <div className="bg-black text-mint-soft p-4 border-2 border-black font-mono text-xs md:text-sm text-center">
-                                            {missingElement === 'brainware' && (
-                                                <span>❌ <strong>Tanpa Brainware:</strong> Laptop mahal seharga 30 juta hanya akan diam di atas meja berdebu karena tidak ada manusia yang menyalakannya atau mengetik tugas di sana!</span>
-                                            )}
-                                            {missingElement === 'software' && (
-                                                <span>❌ <strong>Tanpa Software:</strong> Komputer menyala dengan kipas berputar kencang, tapi layarnya tetap gelap atau blank biru karena tidak tahu harus menjalankan perintah apa!</span>
-                                            )}
-                                            {missingElement === 'hardware' && (
-                                                <span>❌ <strong>Tanpa Hardware:</strong> Kamu punya ide cemerlang dan aplikasi hebat, tapi tidak punya alat fisik nyata untuk menjalankannya. Semuanya hanya ada di angan-angan!</span>
-                                            )}
+                                <div className="bg-[#12544F] text-white border-4 border-black shadow-[4px_4px_0px_0px_#000] p-4 flex flex-col justify-between hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_#000] transition-all">
+                                    <div className="space-y-2">
+                                        <div className="flex items-center justify-between">
+                                            <span className="bg-[#092328] text-white font-mono text-xs font-black px-2 py-0.5 border border-black">
+                                                02
+                                            </span>
+                                            <span className="material-symbols-outlined text-2xl">account_tree</span>
                                         </div>
-                                    )}
+                                        <h4 className="font-black text-base uppercase">Manajer Perangkat</h4>
+                                        <p className="text-xs font-bold text-[#EAF4ED] leading-relaxed">
+                                            Sistem Operasi (Windows/Android) membagi porsi baterai, RAM, &amp; memori agar aplikasi tidak berebut dan bikin HP *freeze*.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="bg-[#EAF4ED] text-black border-4 border-black shadow-[4px_4px_0px_0px_#000] p-4 flex flex-col justify-between hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_#000] transition-all">
+                                    <div className="space-y-2">
+                                        <div className="flex items-center justify-between">
+                                            <span className="bg-[#092328] text-[#8BBB92] font-mono text-xs font-black px-2 py-0.5 border border-black">
+                                                03
+                                            </span>
+                                            <span className="material-symbols-outlined text-2xl">apps</span>
+                                        </div>
+                                        <h4 className="font-black text-base uppercase">Penyedia Solusi</h4>
+                                        <p className="text-xs font-bold text-black leading-relaxed">
+                                            Aplikasi dibuat untuk kebutuhan manusia: mengetik tugas (Word), edit video (CapCut), atau cari info (Google).
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="bg-white text-black border-4 border-black shadow-[4px_4px_0px_0px_#000] p-4 flex flex-col justify-between hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_#000] transition-all">
+                                    <div className="space-y-2">
+                                        <div className="flex items-center justify-between">
+                                            <span className="bg-[#092328] text-white font-mono text-xs font-black px-2 py-0.5 border border-black">
+                                                04
+                                            </span>
+                                            <span className="material-symbols-outlined text-2xl">shield_lock</span>
+                                        </div>
+                                        <h4 className="font-black text-base uppercase">Satpam Keamanan</h4>
+                                        <p className="text-xs font-bold text-black leading-relaxed">
+                                            Memeriksa sidik jari, PIN sandi, dan enkripsi data agar foto pribadi dan pesanmu tidak bisa dicuri orang lain.
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
 
-                            {/* Simulasi Interaktif: Alur Mengetik Huruf 'A' */}
-                            <div className="border-4 border-black p-6 md:p-10 bg-white shadow-neo-xl space-y-6">
-                                <div className="border-b-4 border-black pb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-                                    <div>
-                                        <span className="bg-jade-vibrant text-white text-xs font-black uppercase px-2.5 py-0.5 border-2 border-black inline-block">
-                                            SIMULASI INTERAKTIF
+                            {/* STUDI KASUS KAMERA HP */}
+                            <div className="bg-white border-4 border-black shadow-[6px_6px_0px_0px_#000] p-5 sm:p-6 text-black space-y-4">
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b-2 border-black pb-2">
+                                    <div className="flex items-center gap-2">
+                                        <span className="bg-[#092328] text-white text-xs font-black uppercase px-2 py-0.5 border border-black">
+                                            STUDI KASUS INTERAKTIF
                                         </span>
-                                        <h3 className="text-xl sm:text-3xl font-black uppercase text-black tracking-tight mt-1">
-                                            Studi Kasus: Apa yang Terjadi Saat Kamu Menekan Huruf &quot;A&quot;?
+                                        <h3 className="font-black text-base sm:text-lg uppercase">
+                                            Kenapa Kamera HP Sekarang Jauh Lebih Bagus dari Kamera Jadul?
                                         </h3>
                                     </div>
-                                    <span className="text-xs font-black uppercase bg-black text-mint-soft px-3 py-1 border border-black">
-                                        Langkah {activeStep + 1} dari 3
+                                    <span className="text-xs font-mono font-black text-gray-600">
+                                        Klik Tahap 01 - 03:
                                     </span>
                                 </div>
 
-                                <p className="text-sm md:text-base font-bold text-gray-700">
-                                    Ketika kamu mengetik sebuah tugas di laptop dan huruf muncul di layar dalam sekejap mata, di baliknya terjadi koordinasi luar biasa antara ketiganya:
+                                <p className="text-xs sm:text-sm font-bold text-gray-800">
+                                    Banyak orang mengira foto bagus hanya karena lensa kaca yang mahal. Nyatanya, <strong>Software Kamera (AI Computational Photography)</strong> adalah pahlawan terbesarnya!
                                 </p>
 
-                                {/* Progress bar Neo-Brutalism */}
-                                <div className="grid grid-cols-3 gap-2 border-4 border-black p-1 bg-[#EAF4ED]">
-                                    {[0, 1, 2].map((idx) => (
+                                <div className="grid grid-cols-3 gap-2">
+                                    {cameraFlow.map((item, idx) => (
                                         <button
                                             key={idx}
-                                            onClick={() => setActiveStep(idx)}
-                                            className={`py-2 text-xs md:text-sm font-black uppercase border-2 border-black transition-all cursor-pointer ${activeStep === idx ? 'bg-jade-vibrant text-white shadow-neo-sm' : 'bg-white hover:bg-mint-soft/30'}`}
+                                            onClick={() => setCameraStep(idx)}
+                                            className={`p-2.5 sm:p-3 text-left border-3 border-black font-black uppercase text-xs transition-all cursor-pointer ${cameraStep === idx ? 'bg-[#2A835F] text-white shadow-[2px_2px_0px_0px_#000] translate-x-[2px] translate-y-[2px]' : 'bg-[#EAF4ED] text-black shadow-[4px_4px_0px_0px_#000] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_#000]'}`}
                                         >
-                                            Langkah #{idx + 1}
+                                            <div className="text-[10px] font-mono opacity-80">TAHAP {item.stage}</div>
+                                            <div className="truncate">{item.title.split(' ')[0]}</div>
                                         </button>
                                     ))}
                                 </div>
 
-                                {/* Detail Box Langkah Aktif */}
-                                <div className="bg-[#EAF4ED] border-4 border-black p-6 md:p-8 shadow-neo-md space-y-4">
-                                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b-2 border-black pb-4">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-12 h-12 bg-black text-white flex items-center justify-center border-2 border-black text-xl font-black">
-                                                <span className="material-symbols-outlined">{simulationSteps[activeStep].icon}</span>
-                                            </div>
-                                            <div>
-                                                <span className={`text-xs font-black uppercase px-2 py-0.5 border border-black inline-block ${simulationSteps[activeStep].badge}`}>
-                                                    {simulationSteps[activeStep].role}
-                                                </span>
-                                                <h4 className="text-lg md:text-2xl font-black uppercase text-black">
-                                                    {simulationSteps[activeStep].action}
-                                                </h4>
-                                            </div>
+                                <div className="bg-[#EAF4ED] border-3 border-black p-4 space-y-3">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 sm:w-12 sm:h-12 bg-black text-[#8BBB92] border-2 border-black flex items-center justify-center font-black shrink-0">
+                                            <span className="material-symbols-outlined text-2xl sm:text-3xl">{cameraFlow[cameraStep].icon}</span>
+                                        </div>
+                                        <div>
+                                            <span className={`text-[10px] font-mono font-black uppercase px-1.5 py-0.2 border border-black inline-block ${cameraFlow[cameraStep].badgeBg}`}>
+                                                PERAN: {cameraFlow[cameraStep].role}
+                                            </span>
+                                            <h4 className="font-black text-sm sm:text-base uppercase text-black mt-0.5">
+                                                {cameraFlow[cameraStep].title}
+                                            </h4>
                                         </div>
                                     </div>
 
-                                    <p className="text-base md:text-lg font-bold text-forest-teal leading-relaxed">
-                                        {simulationSteps[activeStep].desc}
+                                    <p className="text-xs sm:text-sm font-bold text-gray-800 leading-relaxed">
+                                        {cameraFlow[cameraStep].desc}
                                     </p>
 
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-                                        <div className="bg-white border-2 border-black p-3 space-y-1">
-                                            <span className="text-[11px] font-black uppercase text-gray-500">Status Hardware:</span>
-                                            <p className="text-xs md:text-sm font-bold text-black">{simulationSteps[activeStep].hardwareState}</p>
-                                        </div>
-                                        <div className="bg-white border-2 border-black p-3 space-y-1">
-                                            <span className="text-[11px] font-black uppercase text-gray-500">Status Software:</span>
-                                            <p className="text-xs md:text-sm font-bold text-black">{simulationSteps[activeStep].softwareState}</p>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex justify-between items-center pt-2">
-                                        <button
-                                            disabled={activeStep === 0}
-                                            onClick={() => setActiveStep((prev) => Math.max(0, prev - 1))}
-                                            className="px-4 py-2 bg-white text-black font-black uppercase text-xs md:text-sm border-2 border-black shadow-neo-sm disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-                                        >
-                                            ← Sebelumnya
-                                        </button>
-                                        <button
-                                            disabled={activeStep === 2}
-                                            onClick={() => setActiveStep((prev) => Math.min(2, prev + 1))}
-                                            className="px-4 py-2 bg-jade-vibrant text-white font-black uppercase text-xs md:text-sm border-2 border-black shadow-neo-sm disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-                                        >
-                                            Langkah Selanjutnya →
-                                        </button>
+                                    <div className="bg-white border-2 border-black p-2.5 text-[11px] sm:text-xs font-mono font-bold text-black flex items-center gap-2">
+                                        <span className="text-[#2A835F] font-black shrink-0">⚙️ LOG MESIN:</span>
+                                        <span>{cameraFlow[cameraStep].techLog}</span>
                                     </div>
                                 </div>
                             </div>
                         </section>
 
-                        {/* Rangkuman Cepat (Takeaway) */}
-                        <section className="bg-pine-deep text-white border-4 border-black shadow-neo-xl p-6 md:p-10 space-y-4">
-                            <div className="flex items-center gap-3">
-                                <span className="material-symbols-outlined text-3xl font-black text-mint-soft">lightbulb</span>
-                                <h3 className="text-xl sm:text-2xl font-black uppercase tracking-tight">
-                                    Rangkuman Penting untuk Diingat 💡
-                                </h3>
+                        {/* ============================================================== */}
+                        {/* BAGIAN 3: HARDWARE VS SOFTWARE: TUBUH DAN PIKIRAN */}
+                        {/* ============================================================== */}
+                        <section className="bg-white border-4 border-black shadow-[8px_8px_0px_0px_#000] p-5 sm:p-8 md:p-10 space-y-6">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b-4 border-black pb-4">
+                                <div>
+                                    <span className="bg-[#092328] text-[#8BBB92] font-mono text-xs font-black uppercase px-2.5 py-0.5 border-2 border-black inline-block mb-1">
+                                        03 // INTEGRASI SISTEM
+                                    </span>
+                                    <h2 className="text-2xl sm:text-3xl font-black uppercase tracking-tight text-black">
+                                        3. Hardware vs Software: Hubungan Tubuh &amp; Pikiran
+                                    </h2>
+                                </div>
+                                <span className="bg-[#12544F] text-white text-xs font-black uppercase px-3 py-1 border-2 border-black shadow-[2px_2px_0px_0px_#000] self-start sm:self-auto">
+                                    Satu Kesatuan
+                                </span>
                             </div>
-                            <ul className="space-y-2 text-sm md:text-base font-bold text-mint-canvas list-disc list-inside">
-                                <li><strong>Software</strong> adalah data dan perintah kode digital tanpa fisik; <strong>Hardware</strong> adalah mesin fisiknya.</li>
-                                <li><strong>Brainware</strong> adalah manusia pengendali yang memberikan tujuan.</li>
-                                <li>Ketiganya membentuk siklus <strong>Sistem Komputer</strong> yang tidak terpisahkan.</li>
-                            </ul>
+
+                            <p className="text-sm sm:text-base font-bold text-gray-900 leading-relaxed">
+                                Tidak ada analogi di dunia ini yang lebih akurat untuk menggambarkan komputer selain <strong>Diri Manusia</strong> itu sendiri:
+                            </p>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                                <div className="border-4 border-black bg-[#FAF8F5] p-5 shadow-[4px_4px_0px_0px_#000] space-y-3">
+                                    <div className="flex items-center justify-between border-b-2 border-black pb-2">
+                                        <span className="bg-black text-white text-xs font-black uppercase px-2 py-0.5 border border-black">
+                                            FISIK / WADAH
+                                        </span>
+                                        <span className="material-symbols-outlined text-3xl text-gray-800">accessibility_new</span>
+                                    </div>
+                                    <h3 className="text-xl font-black uppercase text-black">Tubuh = Hardware</h3>
+                                    <p className="text-xs sm:text-sm font-bold text-gray-700 leading-relaxed">
+                                        Ibarat tangan, kaki, mata, telinga, dan tulang kita. Wujudnya nyata, punya bobot, dan bertugas melakukan aksi fisik di dunia nyata.
+                                    </p>
+                                    <div className="bg-rose-100 border-2 border-black p-2.5 text-xs font-bold text-rose-900">
+                                        ⚠️ <strong>Kelemahan:</strong> Otot tangan tidak bisa bergerak sendiri mengambil sendok makan jika otak tidak mengirimkan impuls sinyal syaraf!
+                                    </div>
+                                </div>
+
+                                <div className="border-4 border-black bg-[#EAF4ED] p-5 shadow-[4px_4px_0px_0px_#000] space-y-3">
+                                    <div className="flex items-center justify-between border-b-2 border-black pb-2">
+                                        <span className="bg-[#2A835F] text-white text-xs font-black uppercase px-2 py-0.5 border border-black">
+                                            LOGIKA / INTENSI
+                                        </span>
+                                        <span className="material-symbols-outlined text-3xl text-[#2A835F]">psychology</span>
+                                    </div>
+                                    <h3 className="text-xl font-black uppercase text-black">Pikiran = Software</h3>
+                                    <p className="text-xs sm:text-sm font-bold text-gray-700 leading-relaxed">
+                                        Ibarat niat, ingatan, keahlian bahasa, dan ide di kepala kita. Tidak berwujud fisik, tapi dialah komandan tertinggi yang mengatur kapan tubuh harus bergerak.
+                                    </p>
+                                    <div className="bg-[#8BBB92] border-2 border-black p-2.5 text-xs font-bold text-black">
+                                        💡 <strong>Kekuatan:</strong> Memberikan perintah ke tangan: <em>&quot;Ambil pena itu, tulis nama lengkapmu di kertas tugas!&quot;</em>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* TABEL KOMPARASI RIGID HEAD-TO-HEAD */}
+                            <div className="border-4 border-black bg-white shadow-[4px_4px_0px_0px_#000] overflow-x-auto">
+                                <table className="w-full text-left text-xs sm:text-sm font-bold border-collapse">
+                                    <thead>
+                                        <tr className="bg-[#092328] text-white border-b-4 border-black">
+                                            <th className="p-3 border-r-2 border-black uppercase">Aspek Perbandingan</th>
+                                            <th className="p-3 border-r-2 border-black uppercase text-[#8BBB92]">Hardware (Perangkat Keras)</th>
+                                            <th className="p-3 uppercase text-white">Software (Perangkat Lunak)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y-2 divide-black">
+                                        <tr className="hover:bg-[#EAF4ED]">
+                                            <td className="p-3 border-r-2 border-black bg-gray-50 uppercase font-black">Wujud &amp; Sifat</td>
+                                            <td className="p-3 border-r-2 border-black">Nyata, berbobot, punya dimensi panjang &amp; lebar.</td>
+                                            <td className="p-3">Data biner digital tak berwujud di dalam chip memori.</td>
+                                        </tr>
+                                        <tr className="hover:bg-[#EAF4ED]">
+                                            <td className="p-3 border-r-2 border-black bg-gray-50 uppercase font-black">Penyebab Rusak</td>
+                                            <td className="p-3 border-r-2 border-black">Jatuh retak, terkena air, terbakar konsleting, aus.</td>
+                                            <td className="p-3">Kesalahan kode (*bug*), virus malware, sistem macet (*crash*).</td>
+                                        </tr>
+                                        <tr className="hover:bg-[#EAF4ED]">
+                                            <td className="p-3 border-r-2 border-black bg-gray-50 uppercase font-black">Cara Perbaikan</td>
+                                            <td className="p-3 border-r-2 border-black">Diservis dengan obeng/solder, ganti suku cadang baru.</td>
+                                            <td className="p-3">Di-restart, di-install ulang, atau diperbarui (*update patch*).</td>
+                                        </tr>
+                                        <tr className="hover:bg-[#EAF4ED]">
+                                            <td className="p-3 border-r-2 border-black bg-gray-50 uppercase font-black">Ketergantungan</td>
+                                            <td className="p-3 border-r-2 border-black">Diam membisu tanpa ada software yang memberi perintah.</td>
+                                            <td className="p-3">Cuma angan-angan jika tidak ada mesin fisik untuk dieksekusi.</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            {/* SIMULASI INTERAKTIF */}
+                            <div className="bg-[#EAF4ED] border-4 border-black shadow-[4px_4px_0px_0px_#000] p-4 sm:p-5 space-y-4">
+                                <div className="text-xs font-black uppercase tracking-wider text-black text-center font-mono">
+                                    🎮 LABORATORIUM UJI: APA JADINYA JIKA SALAH SATU HILANG?
+                                </div>
+
+                                <div className="flex flex-wrap justify-center gap-2 sm:gap-3">
+                                    <button
+                                        onClick={() => setActiveSim('normal')}
+                                        className={`px-3 py-2 text-xs font-black uppercase border-3 border-black transition-all cursor-pointer ${activeSim === 'normal' ? 'bg-[#2A835F] text-white shadow-[2px_2px_0px_0px_#000] translate-x-[2px] translate-y-[2px]' : 'bg-white text-black shadow-[4px_4px_0px_0px_#000] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_#000]'}`}
+                                    >
+                                        ✓ Tubuh + Pikiran (Normal)
+                                    </button>
+                                    <button
+                                        onClick={() => setActiveSim('noSoftware')}
+                                        className={`px-3 py-2 text-xs font-black uppercase border-3 border-black transition-all cursor-pointer ${activeSim === 'noSoftware' ? 'bg-[#092328] text-white shadow-[2px_2px_0px_0px_#000] translate-x-[2px] translate-y-[2px]' : 'bg-white text-black shadow-[4px_4px_0px_0px_#000] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_#000]'}`}
+                                    >
+                                        ✖ Cuma Hardware (Tanpa Software)
+                                    </button>
+                                    <button
+                                        onClick={() => setActiveSim('noHardware')}
+                                        className={`px-3 py-2 text-xs font-black uppercase border-3 border-black transition-all cursor-pointer ${activeSim === 'noHardware' ? 'bg-[#092328] text-white shadow-[2px_2px_0px_0px_#000] translate-x-[2px] translate-y-[2px]' : 'bg-white text-black shadow-[4px_4px_0px_0px_#000] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_#000]'}`}
+                                    >
+                                        ✖ Cuma Software (Tanpa Hardware)
+                                    </button>
+                                </div>
+
+                                <div className="bg-white border-3 border-black p-4 text-xs sm:text-sm font-bold">
+                                    {activeSim === 'normal' && (
+                                        <div className="text-black space-y-1">
+                                            <div className="flex items-center gap-2 text-[#2A835F] font-black uppercase">
+                                                <span>✓</span> KONDISI NORMAL (LANCAR JAYA)
+                                            </div>
+                                            <p>Otak berniat mengetik, jari menekan tuts keyboard, dan layar monitor langsung mencetak huruf seketika. Semua komponen saling berkoordinasi dalam harmoni sempurna!</p>
+                                        </div>
+                                    )}
+                                    {activeSim === 'noSoftware' && (
+                                        <div className="text-black space-y-1">
+                                            <div className="flex items-center gap-2 text-rose-700 font-black uppercase">
+                                                <span>✕</span> IBARAT PATUNG MATI (KOMPUTER KOMA)
+                                            </div>
+                                            <p>Laptop seharga Rp 25 juta menyala dengan kipas berputar kencang, tapi layarnya hitam kosong (*blank*) karena tidak ada instruksi logika apa pun yang dijalankan!</p>
+                                        </div>
+                                    )}
+                                    {activeSim === 'noHardware' && (
+                                        <div className="text-black space-y-1">
+                                            <div className="flex items-center gap-2 text-rose-700 font-black uppercase">
+                                                <span>✕</span> CUMA KHAYALAN DI FLASHDISK
+                                            </div>
+                                            <p>Kamu punya file game Mobile Legends terkeren di dalam flashdisk, tapi tidak punya HP atau laptop. Game tersebut tidak bisa dimainkan sama sekali!</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
                         </section>
 
-                        {/* Evaluasi / Kuis */}
-                        <section className="bg-white border-4 border-black shadow-neo-xl p-6 md:p-10 space-y-6">
-                            <div className="border-b-4 border-black pb-4">
-                                <span className="bg-black text-white text-xs font-black uppercase px-2.5 py-1 border-2 border-black mb-2 inline-block">
-                                    EVALUASI PEMBELAJARAN
+                        {/* ============================================================== */}
+                        {/* SEKSI 4: 3-CARD BENTO ROW (RANGKUMAN SESUAI DESIGN.MD PART 2.E) */}
+                        {/* ============================================================== */}
+                        <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="bg-[#12544F] text-white border-4 border-black shadow-[6px_6px_0px_0px_#000] p-5 space-y-2">
+                                <span className="bg-[#8BBB92] text-black font-mono text-[11px] font-black px-2 py-0.5 border-2 border-black inline-block uppercase">
+                                    01 // HARDWARE
                                 </span>
-                                <h2 className="text-2xl md:text-3xl font-black uppercase text-black tracking-tight">
-                                    Uji Pemahaman: Hakikat Perangkat Lunak
+                                <h3 className="font-black text-lg uppercase">Wadah Fisik (Raga)</h3>
+                                <p className="text-xs font-bold text-[#EAF4ED] leading-relaxed">
+                                    Komponen kasat mata yang bisa kamu pegang dan raba, bertugas menyediakan tenaga dan eksekusi mekanik.
+                                </p>
+                            </div>
+
+                            <div className="bg-[#2A835F] text-white border-4 border-black shadow-[6px_6px_0px_0px_#000] p-5 space-y-2">
+                                <span className="bg-[#092328] text-white font-mono text-[11px] font-black px-2 py-0.5 border-2 border-black inline-block uppercase">
+                                    02 // SOFTWARE
+                                </span>
+                                <h3 className="font-black text-lg uppercase">Instruksi Logika (Pikiran)</h3>
+                                <p className="text-xs font-bold text-[#EAF4ED] leading-relaxed">
+                                    Aturan digital tak kasat mata di dalam memori yang memberi nyawa, arahan, dan kecerdasan pada perangkat.
+                                </p>
+                            </div>
+
+                            <div className="bg-white text-black border-4 border-black shadow-[6px_6px_0px_0px_#000] p-5 space-y-2">
+                                <span className="bg-[#8BBB92] text-black font-mono text-[11px] font-black px-2 py-0.5 border-2 border-black inline-block uppercase">
+                                    03 // BRAINWARE
+                                </span>
+                                <h3 className="font-black text-lg uppercase">Pengendali Niat (Manusia)</h3>
+                                <p className="text-xs font-bold text-gray-800 leading-relaxed">
+                                    Kamu sebagai pengguna yang memiliki tujuan hidup dan memberikan perintah pada seluruh ekosistem komputasi.
+                                </p>
+                            </div>
+                        </section>
+
+                        {/* ============================================================== */}
+                        {/* SEKSI 5: KUIS EVALUASI */}
+                        {/* ============================================================== */}
+                        <section className="bg-white border-4 border-black shadow-[8px_8px_0px_0px_#000] p-5 sm:p-8 space-y-4">
+                            <div className="border-b-4 border-black pb-3">
+                                <span className="bg-[#092328] text-white text-xs font-mono font-black uppercase px-2.5 py-1 border-2 border-black inline-block mb-1">
+                                    EVALUASI // BAB 01
+                                </span>
+                                <h2 className="text-2xl sm:text-3xl font-black uppercase text-black tracking-tight">
+                                    Kuis Pemahaman: Hakikat Perangkat Lunak
                                 </h2>
-                                <p className="text-sm font-bold text-gray-700 mt-1">
-                                    Kerjakan kuis singkat berikut untuk menguji pemahaman Anda mengenai perbedaan software, hardware, dan brainware!
+                                <p className="text-xs sm:text-sm font-bold text-gray-700 mt-1">
+                                    Uji pemahamanmu tentang hakikat Software, Hardware, dan Brainware. Klik tombol di bawah untuk memulai kuis!
                                 </p>
                             </div>
 
                             <QuizTrigger pageSlug="hakikat-perangkat-lunak" />
                         </section>
 
-                        {/* Bottom Navigasi */}
-                        <nav className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-6 border-t-4 border-black">
+                        {/* ============================================================== */}
+                        {/* JEMBATAN KE MATERI BAB BERIKUTNYA */}
+                        {/* ============================================================== */}
+                        <section className="bg-[#092328] text-white border-4 border-black p-5 sm:p-8 shadow-[8px_8px_0px_0px_#000] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+                            <div className="space-y-2 max-w-2xl">
+                                <div className="inline-block bg-[#8BBB92] text-black text-xs font-mono font-black uppercase px-2.5 py-0.5 border-2 border-black">
+                                    MATERI SELANJUTNYA // BAB 02
+                                </div>
+                                <h3 className="text-2xl sm:text-3xl font-black uppercase tracking-tight text-white">
+                                    Jenis &amp; Klasifikasi Perangkat Lunak
+                                </h3>
+                                <p className="text-xs sm:text-sm font-bold text-[#EAF4ED] leading-relaxed">
+                                    Setelah tahu bahwa software adalah pikiran bagi komputer, sekarang saatnya membedah 3 kasta software: Sistem Operasi, Aplikasi, dan Utilitas, serta aturan lisensi software di dunia nyata!
+                                </p>
+                            </div>
+
+                            <Link
+                                href="/course/ddpk-tkj/jenis-jenis-perangkat-lunak"
+                                className="w-full sm:w-auto shrink-0 bg-[#2A835F] text-white font-black uppercase text-sm px-6 py-4 border-4 border-black shadow-[4px_4px_0px_0px_#000] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_#000] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none transition-all flex items-center justify-center gap-3"
+                            >
+                                <span>Lanjut ke Bab 2</span>
+                                <span className="material-symbols-outlined font-black">arrow_forward</span>
+                            </Link>
+                        </section>
+
+                        {/* ============================================================== */}
+                        {/* TACTILE FOOTER */}
+                        {/* ============================================================== */}
+                        <footer className="bg-[#EAF4ED] border-4 border-black shadow-[6px_6px_0px_0px_#000] p-5 flex flex-col sm:flex-row justify-between items-center gap-4">
                             <Link
                                 href="/course/ddpk-tkj"
-                                className="w-full sm:w-auto bg-white text-black font-black uppercase text-sm md:text-base px-6 py-4 border-4 border-black shadow-neo-md hover:-translate-y-1 hover:-translate-x-1 hover:shadow-neo-lg active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all flex items-center justify-center gap-3"
+                                className="w-full sm:w-auto bg-white text-black font-black uppercase text-xs sm:text-sm px-6 py-3 border-4 border-black shadow-[4px_4px_0px_0px_#000] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_#000] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none transition-all flex items-center justify-center gap-2"
                             >
-                                <span className="material-symbols-outlined font-black">arrow_back</span>
-                                <span>Kembali ke Silabus DDPK</span>
+                                <span className="material-symbols-outlined text-lg font-black">arrow_back</span>
+                                <span>Menu Utama DDPK TKJ</span>
                             </Link>
-                        </nav>
 
-                        {/* Footer Tag */}
-                        <div className="flex justify-between items-center text-xs font-black uppercase tracking-wider text-forest-teal border-t-4 border-black pt-6 pb-8">
-                            <span>Mata Pelajaran: DDPK TKJ</span>
-                            <span>SMK Mandiri © 2026</span>
-                        </div>
-
+                            <div className="flex flex-wrap items-center justify-center gap-2 text-[10px] font-mono font-black uppercase">
+                                <span className="bg-[#092328] text-white px-2 py-1 border-2 border-black shadow-[2px_2px_0px_0px_#000]">
+                                    DDPK TKJ KELAS 10
+                                </span>
+                                <span className="bg-[#2A835F] text-white px-2 py-1 border-2 border-black shadow-[2px_2px_0px_0px_#000]">
+                                    SMK MANDIRI
+                                </span>
+                                <span className="bg-[#8BBB92] text-black px-2 py-1 border-2 border-black shadow-[2px_2px_0px_0px_#000]">
+                                    NEOBRUTAL.UI
+                                </span>
+                            </div>
+                        </footer>
                     </div>
                 </main>
             </div>

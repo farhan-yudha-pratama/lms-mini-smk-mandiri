@@ -168,14 +168,15 @@ export default function QuizArchivesClient({
         const existingNames = new Set<string>();
 
         // 1. Cover / Overview Sheet (Ringkasan Kelas)
+        const totalQuizzesInExport = exportData.quizzes.length;
         const coverRows = exportData.students.map((s, index) => ({
           'No': index + 1,
           'Nama Siswa': s.name,
           'Email': s.email,
-          'Total Kuis Selesai': s.totalCompleted,
+          'Total Kuis Selesai': totalQuizzesInExport > 0 ? `${s.totalCompleted} / ${totalQuizzesInExport}` : s.totalCompleted,
           'Total Kuis Lulus': s.totalPassed,
           'Total Nilai': s.totalScore,
-          'Rata-rata Nilai': s.averageScore,
+          'Rata-rata Nilai Akhir': s.averageScore,
           'Status': s.totalCompleted === 0 ? 'Belum Ada Nilai' : s.averageScore >= 70 ? 'LULUS' : 'REMEDIAL'
         }));
 
@@ -261,7 +262,7 @@ export default function QuizArchivesClient({
           'Total Kuis Selesai': item.totalCompleted,
           'Total Kuis Lulus': item.totalPassed,
           'Total Penjumlahan Nilai': item.totalPoints,
-          'Rata-rata Nilai': item.averageScore,
+          'Rata-rata Nilai Akhir': item.averageScore,
           'Keterangan': item.status
         }));
 
