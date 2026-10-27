@@ -131,9 +131,50 @@ export default function CodeChallengeModal({
   const [fullscreenSupported, setFullscreenSupported] = useState(true);
   const [modalConfig, setModalConfig] = useState<ModalConfig | null>(null);
 
+  // Mobile responsiveness & Preview Overlay
+  const [isMobile, setIsMobile] = useState(false);
+  const [mobilePreviewOpen, setMobilePreviewOpen] = useState(false);
+
+  useEffect(() => {
+    const updateSize = () => setIsMobile(window.innerWidth < 768);
+    updateSize();
+    window.addEventListener('resize', updateSize);
+    return () => window.removeEventListener('resize', updateSize);
+  }, []);
+
   // Editor Customization & Workspace Controls
   const [isProblemCollapsed, setIsProblemCollapsed] = useState(false);
   const [showFileExplorer, setShowFileExplorer] = useState(true);
+
+  // Set initial mobile preferences on first mount
+  useEffect(() => {
+    if (window.innerWidth < 768) {
+      setIsProblemCollapsed(true);
+      setShowFileExplorer(false);
+      setFontSize(12);
+    }
+  }, []);
+
+  // Autosave Draft to localStorage (B4)
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(`cc-draft-${attemptId}`);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === 'object') {
+          setAnswers(prev => ({ ...parsed, ...prev }));
+        }
+      }
+    } catch (e) {}
+  }, [attemptId]);
+
+  useEffect(() => {
+    if (Object.keys(answers).length > 0) {
+      try {
+        localStorage.setItem(`cc-draft-${attemptId}`, JSON.stringify(answers));
+      } catch (e) {}
+    }
+  }, [answers, attemptId]);
   const [editorTheme, setEditorTheme] = useState<'vs-dark' | 'vs-light'>('vs-dark');
   const [fontSize, setFontSize] = useState<number>(14);
   const [wordWrap, setWordWrap] = useState<'on' | 'off'>('on');
@@ -459,10 +500,10 @@ export default function CodeChallengeModal({
     const handleContextMenu = (e: MouseEvent) => e.preventDefault();
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Allow Ctrl+Enter for Run Preview shortcut
+      // Allow Ctrl+Enter for Run Preview shortcut (using ref to avoid stale closure B2)
       if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
         e.preventDefault();
-        handleRunPreview();
+        handleRunPreviewRef.current?.();
         return;
       }
 
@@ -620,12 +661,20 @@ export default function CodeChallengeModal({
   };
 
   // Run Web Preview (Isolated per question)
-  const handleRunPreview = () => {
+  const handleRunPreview = useCallback(() => {
     if (!currentQ || !isHtmlMode) return;
     setConsoleLogsByQuestion(prev => ({ ...prev, [currentQ.id]: [] }));
     const bundled = bundleVirtualProject(currentFiles);
     setPreviewOutputs(prev => ({ ...prev, [currentQ.id]: bundled }));
-  };
+
+    // On mobile (< 768px), open full-screen popup overlay to view result
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      setMobilePreviewOpen(true);
+    }
+  }, [currentQ, isHtmlMode, currentFiles]);
+
+  const handleRunPreviewRef = useRef(handleRunPreview);
+  handleRunPreviewRef.current = handleRunPreview;
 
   // Create Virtual File in Current Question
   const handleCreateFile = (filename: string) => {
@@ -699,41 +748,62 @@ export default function CodeChallengeModal({
     }
   };
 
-  // Run JS Unit Tests (Isolated per question)
+  // Run JS Unit Tests (Isolated in Web Worker with timeout protection B1)
   const handleRunJSTests = () => {
     if (!currentQ?.testCases) return;
     try {
       const parsedCases = JSON.parse(currentQ.testCases);
       if (!Array.isArray(parsedCases)) return;
 
-      const code = answers[currentQ.id] || currentQ.initialCode || '';
-      let passedCount = 0;
-      const results = parsedCases.map((tc: any, idx: number) => {
-        try {
-          const runner = new Function('code', `
-            try {
-              ${code}
-              return { success: true };
-            } catch(e) {
-              return { success: false, error: e.message };
-            }
-          `);
-          const res = runner(code);
-          if (res.success) {
-            passedCount++;
-            return { testCase: idx + 1, passed: true };
-          }
-          return { testCase: idx + 1, passed: false, error: res.error };
-        } catch (e: any) {
-          return { testCase: idx + 1, passed: false, error: e.message };
-        }
-      });
+      const userCode = answers[currentQ.id] || currentQ.initialCode || '';
 
-      setTestResultsByQuestion(prev => ({
-        ...prev,
-        [currentQ.id]: { passed: passedCount, total: parsedCases.length, results }
-      }));
-      setActiveRightTab('tests');
+      const workerScript = `
+        self.onmessage = function(e) {
+          const { code, testCases } = e.data;
+          let passedCount = 0;
+          const results = testCases.map((tc, idx) => {
+            try {
+              const fn = new Function('input', code + '; if (typeof solution === "function") return solution(input);');
+              const res = fn(tc.input);
+              const isMatch = tc.expected !== undefined ? String(res) === String(tc.expected) : true;
+              if (isMatch) passedCount++;
+              return { testCase: idx + 1, passed: isMatch, error: isMatch ? null : 'Hasil: ' + res + ', Harapan: ' + tc.expected };
+            } catch (err) {
+              return { testCase: idx + 1, passed: false, error: err.message };
+            }
+          });
+          self.postMessage({ passedCount, total: testCases.length, results });
+        };
+      `;
+
+      const blob = new Blob([workerScript], { type: 'application/javascript' });
+      const worker = new Worker(URL.createObjectURL(blob));
+
+      const timer = setTimeout(() => {
+        worker.terminate();
+        setTestResultsByQuestion(prev => ({
+          ...prev,
+          [currentQ.id]: {
+            passed: 0,
+            total: parsedCases.length,
+            results: [{ testCase: 1, passed: false, error: 'Eksekusi time out (melebihi 2 detik). Periksa kemungkinan infinite loop.' }]
+          }
+        }));
+        setActiveRightTab('tests');
+      }, 2000);
+
+      worker.onmessage = (e) => {
+        clearTimeout(timer);
+        worker.terminate();
+        const { passedCount, total, results } = e.data;
+        setTestResultsByQuestion(prev => ({
+          ...prev,
+          [currentQ.id]: { passed: passedCount, total, results }
+        }));
+        setActiveRightTab('tests');
+      };
+
+      worker.postMessage({ code: userCode, testCases: parsedCases });
     } catch (e) {
       console.error('Invalid test cases', e);
     }
@@ -809,6 +879,7 @@ export default function CodeChallengeModal({
     await exitFullscreen();
 
     if (res.success) {
+      try { localStorage.removeItem(`cc-draft-${attemptId}`); } catch (e) {}
       onComplete(
         (res as any).score,
         (res as any).passed,
@@ -977,7 +1048,7 @@ export default function CodeChallengeModal({
   const isLast = currentIdx === (data?.questions?.length || 1) - 1;
 
   return (
-    <div className="fixed inset-0 z-[100] w-screen h-screen bg-[#121214] text-zinc-100 flex flex-col overflow-hidden select-none font-sans">
+    <div className="fixed inset-0 z-[100] w-screen h-screen h-[100dvh] bg-[#121214] text-zinc-100 flex flex-col overflow-hidden select-none font-sans">
       {/* TOP APPLICATION BAR */}
       <header className="h-14 bg-[#18181b] border-b-2 border-black flex items-center justify-between px-3 md:px-4 shrink-0 shadow-sm z-20">
         {/* Left: Brand, Title, and Question Tabs */}
@@ -1092,9 +1163,9 @@ export default function CodeChallengeModal({
           <div className="flex-1 flex overflow-hidden">
             {/* 1. LEFT PANE: PROBLEM STATEMENT */}
             <div
-              style={!isProblemCollapsed ? { width: `${problemPanelWidth}px` } : undefined}
+              style={!isProblemCollapsed && !isMobile ? { width: `${problemPanelWidth}px` } : undefined}
               className={`transition-all duration-200 border-r-2 border-black bg-[#18181b] flex flex-col shrink-0 overflow-hidden ${
-                isProblemCollapsed ? 'w-12' : ''
+                isProblemCollapsed ? 'w-12' : 'fixed inset-0 z-40 md:relative md:inset-auto md:z-auto w-full md:w-auto'
               }`}
             >
               {/* Header Panel Soal */}
@@ -1127,9 +1198,10 @@ export default function CodeChallengeModal({
                     type="button"
                     onClick={() => setIsProblemCollapsed(true)}
                     title="Sembunyikan Panel Soal"
-                    className="p-1 hover:bg-zinc-800 text-zinc-400 hover:text-white rounded transition-colors flex items-center justify-center"
+                    className="px-2 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white rounded text-xs transition-colors flex items-center gap-1 font-bold"
                   >
-                    <span className="material-symbols-outlined text-[20px]">chevron_left</span>
+                    <span className="material-symbols-outlined text-[18px]">close</span>
+                    <span className="md:hidden">Mulai Ngoding</span>
                   </button>
                 </div>
               )}
@@ -1394,21 +1466,26 @@ export default function CodeChallengeModal({
                 {/* Monaco Editor Instance (Strictly isolated by key and path per question & file) */}
                 <div className="flex-1 h-full overflow-hidden relative">
                   <Editor
-                    key={`editor-${currentQ.id}-${activeFile}`}
                     path={`question_${currentQ.id}/${activeFile}`}
                     height="100%"
                     language={isHtmlMode ? getFileLanguage(activeFile) : currentQ.codeLanguage || 'javascript'}
                     theme={editorTheme}
                     value={isHtmlMode ? (currentFiles[activeFile] ?? '') : (answers[currentQ.id] ?? currentQ.initialCode ?? '')}
                     onChange={(val) => handleEditorChange(val || '')}
-                    onMount={(editor) => {
+                    onMount={(editor, monaco) => {
                       editorInstanceRef.current = editor;
+                      editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => {
+                        handleRunPreviewRef.current?.();
+                      });
                     }}
                     options={{
                       minimap: { enabled: false },
                       fontSize: fontSize,
                       wordWrap: wordWrap,
                       lineNumbers: 'on',
+                      lineNumbersMinChars: isMobile ? 2 : 3,
+                      glyphMargin: !isMobile,
+                      folding: !isMobile,
                       automaticLayout: true,
                       tabSize: 2,
                       scrollBeyondLastLine: false,
@@ -1427,17 +1504,17 @@ export default function CodeChallengeModal({
               onPointerCancel={stopResizing}
               onDoubleClick={() => setPreviewWidthPercent(45)}
               title="Geser untuk mengubah perbandingan editor & preview (Double click untuk reset)"
-              className={`w-2.5 -ml-1 z-20 cursor-col-resize flex items-center justify-center group select-none transition-colors shrink-0 touch-none ${
+              className={`hidden md:flex w-2.5 -ml-1 z-20 cursor-col-resize items-center justify-center group select-none transition-colors shrink-0 touch-none ${
                 activeResizer === 'preview' ? 'bg-[#00E599]' : 'hover:bg-[#00E599] bg-[#18181b] border-x border-black'
               }`}
             >
               <div className={`w-0.5 h-10 rounded-full transition-colors ${activeResizer === 'preview' ? 'bg-black' : 'bg-zinc-500 group-hover:bg-black'}`} />
             </div>
 
-            {/* 3. RIGHT PANE: LIVE PREVIEW & CONSOLE */}
+            {/* 3. RIGHT PANE: LIVE PREVIEW & CONSOLE (Desktop only, mobile uses popup overlay) */}
             <div 
               style={{ width: `${previewWidthPercent}%` }}
-              className="flex flex-col bg-[#141416] overflow-hidden shrink-0"
+              className="hidden md:flex flex-col bg-[#141416] overflow-hidden shrink-0"
             >
               {/* Right Panel Tabs & Device Switcher */}
               <div className="h-10 bg-[#18181b] border-b border-black px-3 flex items-center justify-between shrink-0">
@@ -1708,6 +1785,120 @@ export default function CodeChallengeModal({
           onPointerUp={() => stopResizing()}
           onPointerCancel={() => stopResizing()}
         />
+      )}
+
+      {/* MOBILE PREVIEW FULLSCREEN OVERLAY */}
+      {mobilePreviewOpen && isHtmlMode && (
+        <div className="fixed inset-0 z-50 flex flex-col bg-[#141416] md:hidden">
+          {/* Header */}
+          <div className="h-12 bg-[#18181b] border-b border-black px-3 flex items-center justify-between shrink-0">
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setActiveRightTab('preview')}
+                className={`h-7 px-2.5 text-xs font-bold rounded flex items-center gap-1 ${
+                  activeRightTab === 'preview'
+                    ? 'bg-[#00E599] text-black shadow-xs'
+                    : 'text-zinc-400 hover:text-white'
+                }`}
+              >
+                <span className="material-symbols-outlined text-[15px]">visibility</span>
+                <span>Preview</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveRightTab('console')}
+                className={`h-7 px-2.5 text-xs font-bold rounded flex items-center gap-1 ${
+                  activeRightTab === 'console'
+                    ? 'bg-[#00E599] text-black shadow-xs'
+                    : 'text-zinc-400 hover:text-white'
+                }`}
+              >
+                <span className="material-symbols-outlined text-[15px]">terminal</span>
+                <span>Console</span>
+                {currentConsoleLogs.length > 0 && (
+                  <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.2 rounded-full font-mono">
+                    {currentConsoleLogs.length}
+                  </span>
+                )}
+              </button>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleRunPreview}
+                className="px-2.5 py-1 bg-zinc-800 hover:bg-zinc-700 text-[#00E599] rounded text-xs flex items-center gap-1 font-bold"
+                title="Refresh Tampilan Web"
+              >
+                <span className="material-symbols-outlined text-[15px]">refresh</span>
+                <span className="text-[11px]">Run</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setMobilePreviewOpen(false)}
+                className="px-3 py-1 bg-[#FF6B6B] hover:bg-red-500 text-white text-xs font-black uppercase rounded flex items-center gap-1 shadow-sm active:scale-95"
+              >
+                <span className="material-symbols-outlined text-[16px]">close</span>
+                <span>Tutup</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Body */}
+          <div className="flex-1 overflow-hidden relative bg-[#0e0e10]">
+            {activeRightTab === 'preview' ? (
+              <div className="w-full h-full flex items-center justify-center p-2 overflow-auto bg-zinc-900/60">
+                <div className="h-full w-full bg-white rounded shadow-md overflow-hidden">
+                  {currentPreviewOutput ? (
+                    <iframe
+                      key={`mobile-preview-${currentQ.id}`}
+                      srcDoc={currentPreviewOutput}
+                      sandbox="allow-scripts"
+                      className="w-full h-full border-none bg-white"
+                      title={`Mobile Web Preview Soal ${currentIdx + 1}`}
+                    />
+                  ) : (
+                    <div className="w-full h-full flex flex-col items-center justify-center text-zinc-400 text-xs font-semibold p-4 text-center">
+                      <span className="material-symbols-outlined text-4xl mb-2 text-zinc-300">play_circle</span>
+                      <span>Belum ada hasil preview. Klik "Run" untuk melihat tampilan web.</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="h-full bg-[#0a0a0c] text-zinc-200 font-mono text-xs p-3 overflow-y-auto">
+                {currentConsoleLogs.length === 0 ? (
+                  <div className="text-zinc-500 text-center py-12 flex flex-col items-center gap-2">
+                    <span className="material-symbols-outlined text-3xl">terminal</span>
+                    <span>Belum ada log console. Output `console.log(...)` atau error akan muncul di sini.</span>
+                  </div>
+                ) : (
+                  currentConsoleLogs.map((log, idx) => (
+                    <div
+                      key={idx}
+                      className={`py-1.5 border-b border-zinc-800 flex items-start gap-2 ${
+                        log.type === 'error'
+                          ? 'text-red-400 bg-red-950/20'
+                          : log.type === 'warn'
+                          ? 'text-amber-400'
+                          : 'text-zinc-200'
+                      }`}
+                    >
+                      <span className="text-[10px] text-zinc-500 shrink-0 select-none">[{log.timestamp}]</span>
+                      <span className={`text-[9px] uppercase font-bold px-1 rounded shrink-0 select-none ${
+                        log.type === 'error' ? 'bg-red-900 text-red-200' : log.type === 'warn' ? 'bg-amber-900 text-amber-200' : 'bg-zinc-800 text-zinc-300'
+                      }`}>
+                        {log.type}
+                      </span>
+                      <span className="whitespace-pre-wrap break-all flex-1">{log.message}</span>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+        </div>
       )}
 
       {/* Internal Modal Dialogs (Alerts, Confirms, Warnings) */}
