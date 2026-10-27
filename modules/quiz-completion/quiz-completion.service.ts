@@ -147,33 +147,44 @@ export async function recordQuizCompletion(attemptId: string) {
  * Menghitung ulang dan memperbarui satu baris StudentScoreSummary
  */
 export async function updateStudentScoreSummary(studentId: string) {
-  const [student, records] = await Promise.all([
+  const [student, records, allPackages] = await Promise.all([
     db.orm.public.User.where({ id: studentId }).first(),
-    db.orm.public.QuizCompletionRecord.where({ studentId }).all()
+    db.orm.public.QuizCompletionRecord.where({ studentId }).all(),
+    db.orm.public.QuizPackage.all()
   ]);
 
   if (!student) return;
 
   const classroom = student.classId ? await db.orm.public.Classroom.where({ id: student.classId }).first() : null;
 
+  const materialPackages = allPackages.filter(p => Boolean(p.pageId));
+  const assignmentPackages = allPackages.filter(p => !p.pageId);
+
   const materialRecords = records.filter(r => r.sourceType === 'MATERIAL_QUIZ');
   const assignmentRecords = records.filter(r => r.sourceType === 'ASSIGNMENT');
 
   const totalMaterialQuizCompleted = materialRecords.length;
   const totalMaterialQuizPassed = materialRecords.filter(r => r.isPassed).length;
-  const avgMaterial = totalMaterialQuizCompleted > 0
-    ? Math.round((materialRecords.reduce((acc, r) => acc + r.score, 0) / totalMaterialQuizCompleted) * 10) / 10
+  // Solusi 1: Pembagi menggunakan total kuis materi yang tersedia
+  const materialDenom = materialPackages.length > 0 ? materialPackages.length : totalMaterialQuizCompleted;
+  const avgMaterial = materialDenom > 0
+    ? Math.round((materialRecords.reduce((acc, r) => acc + r.score, 0) / materialDenom) * 10) / 10
     : null;
 
   const totalAssignmentCompleted = assignmentRecords.length;
   const totalAssignmentPassed = assignmentRecords.filter(r => r.isPassed).length;
-  const avgAssignment = totalAssignmentCompleted > 0
-    ? Math.round((assignmentRecords.reduce((acc, r) => acc + r.score, 0) / totalAssignmentCompleted) * 10) / 10
+  // Solusi 1: Pembagi menggunakan total tugas mandiri yang tersedia
+  const assignmentDenom = assignmentPackages.length > 0 ? assignmentPackages.length : totalAssignmentCompleted;
+  const avgAssignment = assignmentDenom > 0
+    ? Math.round((assignmentRecords.reduce((acc, r) => acc + r.score, 0) / assignmentDenom) * 10) / 10
     : null;
 
   const totalCompleted = records.length;
-  const overallAverageScore = totalCompleted > 0
-    ? Math.round((records.reduce((acc, r) => acc + r.score, 0) / totalCompleted) * 10) / 10
+  // Solusi 1: Pembagi kumulatif menggunakan total seluruh paket kuis/tugas yang tersedia
+  const totalAvailable = allPackages.length;
+  const overallDenom = totalAvailable > 0 ? totalAvailable : totalCompleted;
+  const overallAverageScore = overallDenom > 0
+    ? Math.round((records.reduce((acc, r) => acc + r.score, 0) / overallDenom) * 10) / 10
     : null;
 
   const totalPointsEarned = records.reduce((acc, r) => acc + r.score, 0);
@@ -235,7 +246,7 @@ export async function syncClassroomQuizCompletions(classId: string, courseId?: s
 
   const studentIds = new Set(students.map(s => s.id));
   const attempts = await db.orm.public.QuizAttempt.all();
-  const completedAttempts = attempts.filter(a => studentIds.has(a.studentId) && a.status === 'COMPLETED');
+  const completedAttempts = attempts.filter(a => studentIds.has(a.studentId) && (a.status === 'COMPLETED' || a.status === 'GRADED'));
 
   // Filter berdasarkan course jika disediakan
   let targetAttempts = completedAttempts;
@@ -426,6 +437,8 @@ export async function getArchiveExportDetailData(classId: string, courseId: stri
     studentIds.has(r.studentId) && packageTitles.has(r.sourceTitle.toLowerCase().trim())
   );
 
+  const totalQuizzesInCourse = packages.length;
+
   const studentsExport: StudentArchiveDetailExport[] = students.map(student => {
     const studentRecords = relevantRecords.filter(r => r.studentId === student.id);
     
@@ -435,7 +448,10 @@ export async function getArchiveExportDetailData(classId: string, courseId: stri
     const totalCompleted = studentRecords.length;
     const totalPassed = studentRecords.filter(r => r.isPassed).length;
     const totalScore = studentRecords.reduce((acc, r) => acc + r.score, 0);
-    const averageScore = totalCompleted > 0 ? Math.round((totalScore / totalCompleted) * 10) / 10 : 0;
+
+    // Solusi 1: Pembagian berdasarkan total seluruh kuis yang tersedia di mata pelajaran ini
+    const denominator = totalQuizzesInCourse > 0 ? totalQuizzesInCourse : totalCompleted;
+    const averageScore = denominator > 0 ? Math.round((totalScore / denominator) * 10) / 10 : 0;
 
     return {
       studentId: student.id,
@@ -483,10 +499,15 @@ export async function getArchiveExportSummaryData(classId: string, courseId?: st
   const courseName = course?.name || 'Semua Mata Pelajaran';
 
   let relevantRecords = allRecords;
+  let totalAvailableQuizzes = 0;
   if (courseId) {
     const packages = await db.orm.public.QuizPackage.where({ courseId }).all();
+    totalAvailableQuizzes = packages.length;
     const packageTitles = new Set(packages.map(p => p.title.toLowerCase().trim()));
     relevantRecords = allRecords.filter(r => packageTitles.has(r.sourceTitle.toLowerCase().trim()));
+  } else {
+    const packages = await db.orm.public.QuizPackage.all();
+    totalAvailableQuizzes = packages.length;
   }
 
   const items: StudentArchiveSummaryItem[] = students.map((student, index) => {
@@ -494,7 +515,10 @@ export async function getArchiveExportSummaryData(classId: string, courseId?: st
     const totalCompleted = studentRecords.length;
     const totalPassed = studentRecords.filter(r => r.isPassed).length;
     const totalPoints = studentRecords.reduce((acc, r) => acc + r.score, 0);
-    const averageScore = totalCompleted > 0 ? Math.round((totalPoints / totalCompleted) * 10) / 10 : 0;
+
+    // Solusi 1: Pembagian berdasarkan total kuis yang tersedia (kuis tidak dikerjakan = 0)
+    const denominator = totalAvailableQuizzes > 0 ? totalAvailableQuizzes : totalCompleted;
+    const averageScore = denominator > 0 ? Math.round((totalPoints / denominator) * 10) / 10 : 0;
     const status = totalCompleted === 0 ? 'Belum Ada Nilai' : averageScore >= 70 ? 'LULUS' : 'REMEDIAL';
 
     return {
