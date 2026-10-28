@@ -120,7 +120,7 @@ export default function InstalasiWindowsPage() {
                                         Praktik Instalasi Windows
                                     </h1>
                                     <p className="text-sm sm:text-base font-bold text-[#EAF4ED] leading-relaxed">
-                                        Tidak perlu software virtual yang berat atau rumit! Inilah panduan standar industri teknik komputer: <strong>Clean Install Windows langsung di laptop atau PC fisik</strong>. Kuasai cara membuat Flashdisk Bootable dengan Rufus, menembus Boot Menu, hingga masuk ke Desktop Windows dengan aman tanpa kehilangan data tugas di Drive D!
+                                        Inilah panduan praktik langsung berstandar industri teknik komputer: <strong>Clean Install Windows pada laptop atau PC fisik</strong>. Kuasai langkah pembuatan Flashdisk Bootable menggunakan Rufus, mengakses menu booting (Boot Menu), membagi partisi penyimpanan dengan aman tanpa menghapus data di Drive D, hingga konfigurasi awal sistem pasca-instalasi!
                                     </p>
                                 </div>
 
@@ -145,14 +145,14 @@ export default function InstalasiWindowsPage() {
                             <div className="border-b-4 border-black pb-4">
                                 <div className="flex items-center gap-2 mb-2">
                                     <span className="bg-[#092328] text-white text-xs font-mono font-black uppercase px-2.5 py-1 border-2 border-black">
-                                        TAHAP 01 // SENJATA TEKNISI
+                                        TAHAP 01 // PERSIAPAN MEDIA BOOTABLE
                                     </span>
                                 </div>
                                 <h2 className="text-2xl sm:text-3xl font-black uppercase text-black tracking-tight">
-                                    1. Senjata Utama &amp; Membuat Flashdisk Bootable (Rufus)
+                                    1. Persiapan Alat &amp; Membuat Flashdisk Bootable (Rufus)
                                 </h2>
                                 <p className="text-xs sm:text-sm font-bold text-gray-700 mt-1">
-                                    Flashdisk biasa tidak bisa langsung dipakai menginstal Windows jika cuma diisi file copy-paste. Kita butuh &quot;menyuntikkan&quot; sektor booting menggunakan software <strong>Rufus</strong>.
+                                    Flashdisk biasa tidak dapat digunakan untuk menginstal Windows jika hanya diisi file hasil salin-tempel biasa. Media penyimpanan memerlukan sektor booting khusus (<em>Boot Sector</em>) yang disuntikkan secara tepat menggunakan software <strong>Rufus</strong>.
                                 </p>
                             </div>
 
@@ -162,23 +162,23 @@ export default function InstalasiWindowsPage() {
                                     <div className="text-2xl">🔌</div>
                                     <h4 className="font-black text-sm uppercase">1. Flashdisk Minimal 8 GB / 16 GB</h4>
                                     <p className="text-xs font-bold text-gray-700 leading-relaxed">
-                                        Pastikan flashdisk kosong atau sudah di-backup, karena seluruh isinya akan diformat habis oleh Rufus.
+                                        Pastikan data penting di dalam flashdisk sudah dicadangkan, karena Rufus akan memformat ulang seluruh partisi flashdisk hingga bersih.
                                     </p>
                                 </div>
 
                                 <div className="bg-[#EAF4ED] border-3 border-black p-4 space-y-2 shadow-[2px_2px_0px_0px_#000]">
                                     <div className="text-2xl">💿</div>
-                                    <h4 className="font-black text-sm uppercase">2. File ISO Windows 10/11</h4>
+                                    <h4 className="font-black text-sm uppercase">2. File ISO Master Windows</h4>
                                     <p className="text-xs font-bold text-gray-700 leading-relaxed">
-                                        Download langsung dari website resmi Microsoft (gratis) berukuran sekitar 5 s.d 6 GB.
+                                        Dapat diunduh secara resmi dan gratis melalui portal Microsoft dengan ukuran berkas sekitar 5 hingga 6 GB.
                                     </p>
                                 </div>
 
                                 <div className="bg-[#8BBB92] border-3 border-black p-4 space-y-2 shadow-[2px_2px_0px_0px_#000]">
                                     <div className="text-2xl">⚡</div>
-                                    <h4 className="font-black text-sm uppercase">3. Software Rufus (Portable)</h4>
+                                    <h4 className="font-black text-sm uppercase">3. Software Rufus (Portabel)</h4>
                                     <p className="text-xs font-bold text-black leading-relaxed">
-                                        Aplikasi pembuat bootable nomor 1 di dunia teknisi: sangat ringan (hanya 1.5 MB), cepat, dan gratis.
+                                        Aplikasi pembuat bootable USB standar industri teknisi: berukuran sangat ringan (1.5 MB), portabel tanpa instalasi, dan proses penulisan cepat.
                                     </p>
                                 </div>
                             </div>
@@ -249,10 +249,10 @@ export default function InstalasiWindowsPage() {
                                             </div>
                                         </div>
 
-                                        {/* Tweak Sakti Windows 11 */}
+                                        {/* Opsi Kustomisasi Rufus Windows 11 */}
                                         <div className="bg-amber-50 border-2 border-black p-2.5 space-y-1.5">
                                             <div className="font-black text-amber-900 flex items-center gap-1.5 text-[11px]">
-                                                <span>🛠️</span> Tweak Sakti Teknisi (Bypass Windows 11):
+                                                <span>🛠️</span> Opsi Konfigurasi Khusus (Bypass Syarat Windows 11):
                                             </div>
                                             <label className="flex items-center gap-2 cursor-pointer font-bold text-[11px] text-gray-800">
                                                 <input
@@ -263,6 +263,9 @@ export default function InstalasiWindowsPage() {
                                                 />
                                                 <span>Bypass TPM 2.0, Secure Boot, &amp; Akun Online Microsoft</span>
                                             </label>
+                                            <p className="text-[10px] text-gray-600 font-bold leading-tight">
+                                                💡 Memungkinkan instalasi Windows 11 di PC/laptop lab yang belum mendukung chip TPM 2.0 serta memperbolehkan pembuatan akun lokal tanpa koneksi internet.
+                                            </p>
                                         </div>
 
                                         {/* Progress Bar Burning */}
@@ -316,14 +319,14 @@ export default function InstalasiWindowsPage() {
                             <div className="border-b-4 border-black pb-4">
                                 <div className="flex items-center gap-2 mb-2">
                                     <span className="bg-[#2A835F] text-white text-xs font-mono font-black uppercase px-2.5 py-1 border-2 border-black">
-                                        TAHAP 02 // RITUAL BOOT MENU
+                                        TAHAP 02 // PROSEDUR BOOT MENU
                                     </span>
                                 </div>
                                 <h2 className="text-2xl sm:text-3xl font-black uppercase text-black tracking-tight">
-                                    2. Colok Flashdisk &amp; Menekan Tombol Sakti Boot Menu
+                                    2. Menghubungkan Flashdisk &amp; Mengakses Menu Booting (Boot Menu Key)
                                 </h2>
                                 <p className="text-xs sm:text-sm font-bold text-gray-700 mt-1">
-                                    Saat laptop dinyalakan dari posisi mati, kamu hanya punya waktu <strong>1 sampai 2 detik</strong> untuk menekan tombol Boot Menu sebelum laptop masuk ke Windows lama!
+                                    Saat laptop dinyalakan dari posisi mati, terdapat jeda waktu singkat (1 sampai 2 detik) untuk menekan tombol Boot Menu sebelum komputer otomatis masuk ke sistem operasi bawaan harddisk!
                                 </p>
                             </div>
 
@@ -331,10 +334,10 @@ export default function InstalasiWindowsPage() {
                             <div className="bg-[#FAF8F5] border-4 border-black p-5 shadow-[4px_4px_0px_0px_#000] space-y-3">
                                 <h3 className="font-black text-base uppercase text-black flex items-center gap-2">
                                     <span>⏱️</span>
-                                    <span>Trik Spam-Press Teknisi Komputer:</span>
+                                    <span>Teknik Penekanan Cepat (Rapid-Press) Saat Startup:</span>
                                 </h3>
                                 <p className="text-xs sm:text-sm font-bold text-gray-800 leading-relaxed">
-                                    Jangan tekan tombolnya sekali lalu ditunggu. <strong>Triknya adalah:</strong> Colok Flashdisk saat laptop masih mati total. Tekan tombol <strong>Power</strong> sekali, lalu <strong>SEKETIKA ITU JUGA tekan tombol Boot Menu berkali-kali secara cepat (spam-press)</strong> seperti memencet bel pintu sampai layar menampilkan menu daftar perangkat booting!
+                                    Jangan menekan tombol sekali lalu menunggu. <strong>Prosedur yang benar:</strong> Tancapkan flashdisk bootable saat laptop dalam keadaan mati. Tekan tombol <strong>Power</strong> sekali, lalu <strong>segera tekan tombol Boot Menu secara berulang-ulang dengan cepat</strong> hingga layar menampilkan daftar perangkat booting yang terpasang!
                                 </p>
                             </div>
 
@@ -366,7 +369,7 @@ export default function InstalasiWindowsPage() {
                                     ))}
                                 </div>
 
-                                {/* Box Hasil Tombol Sakti */}
+                                {/* Box Panduan Tombol Boot Menu */}
                                 <div className="bg-[#092328] text-white border-4 border-black p-5 shadow-[6px_6px_0px_0px_#000] flex flex-col sm:flex-row items-center justify-between gap-4">
                                     <div className="space-y-1 text-center sm:text-left">
                                         <div className="text-[11px] font-mono font-bold text-[#8BBB92] uppercase">
@@ -499,7 +502,7 @@ export default function InstalasiWindowsPage() {
 
                                             <div className="bg-white border-3 border-black p-5 text-center space-y-4 shadow-[2px_2px_0px_0px_#000]">
                                                 <div className="text-xs font-bold text-gray-800 leading-relaxed">
-                                                    Jika diminta memasukkan Product Key 25 karakter, klik tombol sakti di pojok bawah:
+                                                    Jika belum memiliki Product Key lisensi saat instalasi, kamu dapat memilih opsi di bagian bawah:
                                                 </div>
 
                                                 <div className="inline-block bg-[#EAF4ED] border-2 border-black px-4 py-2 font-mono text-xs font-black text-[#12544F]">
@@ -697,10 +700,10 @@ export default function InstalasiWindowsPage() {
                                                 {installingProgress === 100 && (
                                                     <div className="bg-amber-400 text-black p-3 border-2 border-black font-sans space-y-2 animate-bounce">
                                                         <div className="font-black text-xs uppercase flex items-center gap-1.5">
-                                                            <span className="text-lg">🚨</span> RITUAL PENTING TEKNISI: CABUT FLASHDISK SEKARANG!
+                                                            <span className="text-lg">🚨</span> PROSEDUR PENTING TEKNISI: CABUT FLASHDISK SEKARANG!
                                                         </div>
                                                         <p className="text-[11px] font-bold leading-tight">
-                                                            Komputer akan me-restart otomatis dalam 10 detik. Jika Flashdisk tidak dicabut, laptop akan kembali masuk ke menu awal instalasi (looping)!
+                                                            Komputer akan me-restart otomatis dalam 10 detik. Jika Flashdisk tidak dicabut, beberapa motherboard akan membaca flashdisk kembali dan proses instalasi berputar mengulang dari awal (<em>boot looping</em>)!
                                                         </p>
                                                         <button
                                                             onClick={() => setIsUsbRemoved(true)}
@@ -769,53 +772,53 @@ export default function InstalasiWindowsPage() {
                         </section>
 
                         {/* ============================================================== */}
-                        {/* SEKSI 4: 4 DOSA BESAR / KESALAHAN FATAL PEMULA */}
+                        {/* SEKSI 4: 4 KESALAHAN UMUM YANG WAJIB DIHINDARI PEMULA */}
                         {/* ============================================================== */}
                         <section className="space-y-4">
                             <div className="border-b-4 border-black pb-2">
                                 <h3 className="font-black text-xl sm:text-2xl uppercase tracking-tight text-black flex items-center gap-2">
                                     <span>⚠️</span>
-                                    <span>4 Kesalahan Fatal Pemula Saat Menginstal Windows</span>
+                                    <span>4 Kesalahan Umum yang Harus Dihindari Saat Instalasi Windows</span>
                                 </h3>
                                 <p className="text-xs sm:text-sm font-bold text-gray-700">
-                                    Hindari hal-hal berikut agar tidak diomeli guru pembimbing atau kehilangan data berharga!
+                                    Pahami dan hindari kekeliruan berikut agar proses instalasi berjalan lancar tanpa risiko kehilangan data penting pengguna:
                                 </p>
                             </div>
 
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div className="bg-rose-100 border-4 border-black p-4 space-y-2 shadow-[4px_4px_0px_0px_#000]">
                                     <div className="flex items-center gap-2 text-rose-900 font-black text-sm uppercase">
-                                        <span>💀</span> 01 // Salah Klik Delete di Drive D
+                                        <span>⚠️</span> 01 // Salah Memformat Drive D (Data Pribadi)
                                     </div>
                                     <p className="text-xs font-bold text-rose-950 leading-relaxed">
-                                        Karena terburu-buru, pemula sering menghapus semua partisi termasuk partisi data. Ingat: <strong>HANYA format Drive C yang berisi sistem lama!</strong>
+                                        Karena terburu-buru, pemula sering menghapus semua partisi tanpa membaca labelnya. Ingat aturan baku teknisi: <strong>HANYA format Drive C yang berisi sistem operasi lama!</strong>
                                     </p>
                                 </div>
 
                                 <div className="bg-amber-100 border-4 border-black p-4 space-y-2 shadow-[4px_4px_0px_0px_#000]">
                                     <div className="flex items-center gap-2 text-amber-900 font-black text-sm uppercase">
-                                        <span>📁</span> 02 // Lupa Backup Desktop &amp; Downloads
+                                        <span>📁</span> 02 // Tidak Mencadangkan Folder Desktop &amp; Downloads
                                     </div>
                                     <p className="text-xs font-bold text-amber-950 leading-relaxed">
-                                        Banyak siswa menaruh tugas di layar Desktop. Karena Desktop menumpang di Drive C, semua file itu akan musnah saat Drive C diformat! Pindahkan dulu ke Flashdisk lain atau Drive D.
+                                        Banyak pengguna menaruh file tugas di folder Desktop dan Downloads. Karena kedua folder ini berada di dalam Drive C, seluruh file tersebut akan terhapus saat instalasi bersih! Selalu pindahkan data ke Drive D terlebih dahulu.
                                     </p>
                                 </div>
 
                                 <div className="bg-rose-100 border-4 border-black p-4 space-y-2 shadow-[4px_4px_0px_0px_#000]">
                                     <div className="flex items-center gap-2 text-rose-900 font-black text-sm uppercase">
-                                        <span>🔄</span> 03 // Lupa Cabut USB Saat Restart
+                                        <span>🔄</span> 03 // Lupa Mencabut Flashdisk Saat Restart Pertama
                                     </div>
                                     <p className="text-xs font-bold text-rose-950 leading-relaxed">
-                                        Saat layar padam untuk restart pertama, Flashdisk harus segera dicabut. Jika dibiarkan menancap, laptop akan membaca installer lagi dari awal (looping instalasi tiada akhir).
+                                        Saat layar mati untuk reboot pertama, cabut flashdisk instalasi. Jika dibiarkan menancap, BIOS dapat membaca flashdisk kembali dan proses instalasi berputar mengulang dari langkah 1 (*boot looping*).
                                     </p>
                                 </div>
 
                                 <div className="bg-amber-100 border-4 border-black p-4 space-y-2 shadow-[4px_4px_0px_0px_#000]">
                                     <div className="flex items-center gap-2 text-amber-900 font-black text-sm uppercase">
-                                        <span>⚡</span> 04 // Menginstal Tanpa Colok Charger Laptop
+                                        <span>⚡</span> 04 // Menginstal Tanpa Terhubung ke Pengisi Daya (Charger)
                                     </div>
                                     <p className="text-xs font-bold text-amber-950 leading-relaxed">
-                                        Jika baterai laptop habis saat proses penulisan file Windows sedang berjalan di 60%, partisi SSD bisa korup dan harddisk tidak bisa booting sama sekali!
+                                        Jika baterai laptop habis saat proses penulisan file sistem sedang berlangsung, struktur partisi SSD dapat rusak (*corrupt*) dan komputer gagal booting. Selalu pastikan laptop tersambung ke adaptor daya.
                                     </p>
                                 </div>
                             </div>
@@ -865,7 +868,42 @@ export default function InstalasiWindowsPage() {
                         </section>
 
                         {/* ============================================================== */}
-                        {/* SEKSI 6: KUIS EVALUASI PEMBELAJARAN */}
+                        {/* SEKSI 6: 3-CARD BENTO ROW (RANGKUMAN PRAKTIK TEKNISI) */}
+                        {/* ============================================================== */}
+                        <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="bg-[#12544F] text-white border-4 border-black shadow-[6px_6px_0px_0px_#000] p-5 space-y-2">
+                                <span className="bg-[#8BBB92] text-black font-mono text-[11px] font-black px-2 py-0.5 border-2 border-black inline-block uppercase">
+                                    01 // MEDIA BOOTABLE
+                                </span>
+                                <h3 className="font-black text-lg uppercase">Rufus &amp; Skema Disk</h3>
+                                <p className="text-xs font-bold text-[#EAF4ED] leading-relaxed">
+                                    Menyalin file ISO ke flashdisk USB menggunakan skema partisi yang tepat (GPT untuk UEFI modern, MBR untuk laptop klasik).
+                                </p>
+                            </div>
+
+                            <div className="bg-[#2A835F] text-white border-4 border-black shadow-[6px_6px_0px_0px_#000] p-5 space-y-2">
+                                <span className="bg-[#092328] text-white font-mono text-[11px] font-black px-2 py-0.5 border-2 border-black inline-block uppercase">
+                                    02 // INSTALASI BERSIH
+                                </span>
+                                <h3 className="font-black text-lg uppercase">Custom Clean Install</h3>
+                                <p className="text-xs font-bold text-[#EAF4ED] leading-relaxed">
+                                    Memilih opsi Custom untuk memformat partisi sistem di Drive C tanpa mengganggu partisi data pengguna di Drive D.
+                                </p>
+                            </div>
+
+                            <div className="bg-white text-black border-4 border-black shadow-[6px_6px_0px_0px_#000] p-5 space-y-2">
+                                <span className="bg-[#8BBB92] text-black font-mono text-[11px] font-black px-2 py-0.5 border-2 border-black inline-block uppercase">
+                                    03 // PENYELESAIAN
+                                </span>
+                                <h3 className="font-black text-lg uppercase">Checklist Pasca-Instalasi</h3>
+                                <p className="text-xs font-bold text-gray-800 leading-relaxed">
+                                    Memeriksa Device Manager, menjalankan Windows Update untuk melengkapi driver resmi, serta memasang aplikasi penunjang kerja harian.
+                                </p>
+                            </div>
+                        </section>
+
+                        {/* ============================================================== */}
+                        {/* SEKSI 7: KUIS EVALUASI PEMBELAJARAN */}
                         {/* ============================================================== */}
                         <section className="bg-white border-4 border-black shadow-[8px_8px_0px_0px_#000] p-5 sm:p-8 space-y-4">
                             <div className="border-b-4 border-black pb-3">
@@ -876,7 +914,7 @@ export default function InstalasiWindowsPage() {
                                     Kuis Singkat: Praktik Instalasi Windows
                                 </h2>
                                 <p className="text-xs sm:text-sm font-bold text-gray-700 mt-1">
-                                    Uji pemahamanmu tentang pembuatan bootable Rufus, tombol Boot Menu, pemilihan opsi Custom, dan trik mencabut USB flashdisk!
+                                    Uji pemahamanmu tentang pembuatan bootable Rufus, tombol Boot Menu, pemilihan opsi Custom, dan prosedur mencabut USB flashdisk!
                                 </p>
                             </div>
 

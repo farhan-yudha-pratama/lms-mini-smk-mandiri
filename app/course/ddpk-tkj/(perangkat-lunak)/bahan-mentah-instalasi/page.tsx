@@ -74,7 +74,7 @@ export default function BahanMentahInstalasiPage() {
                         ★ DDPK TKJ KELAS 10
                     </span>
                     <span className="flex items-center gap-1.5 md:gap-2">
-                        <span className="text-[#8BBB92]">▲</span> TIKET MENUJU PRAKTIK VIRTUALBOX
+                        <span className="text-[#8BBB92]">▲</span> TIKET MENUJU PRAKTIK INSTALASI OS
                     </span>
                     <span className="flex items-center gap-1.5 md:gap-2">
                         <span className="text-white">■</span> SMK MANDIRI
@@ -109,7 +109,7 @@ export default function BahanMentahInstalasiPage() {
                                         Bahan Mentah Instalasi OS
                                     </h1>
                                     <p className="text-sm sm:text-base font-bold text-[#EAF4ED] leading-relaxed">
-                                        Sebelum memasukkan sistem operasi ke komputer atau VirtualBox, teknisi TKJ wajib menyiapkan 3 bahan mentah: <strong>File ISO Master</strong>, menyetel kompas <strong>BIOS/UEFI Booting</strong>, dan membagi kapling <strong>Partisi Harddisk (MBR/GPT &amp; NTFS)</strong>. Tanpa ketiga ini, komputer hanyalah besi rongsokan bisu!
+                                        Sebelum memasang sistem operasi ke komputer atau laptop, seorang teknisi TKJ wajib menyiapkan 3 bahan mentah utama: <strong>File ISO Master</strong>, menyetel kompas booting pada <strong>Firmware BIOS/UEFI</strong>, dan mengatur kapling <strong>Partisi Harddisk (MBR/GPT &amp; NTFS)</strong>. Tanpa ketiga fondasi ini, komputer tidak akan dapat memuat sistem operasi secara benar!
                                     </p>
                                 </div>
 
@@ -175,9 +175,23 @@ export default function BahanMentahInstalasiPage() {
                                         <strong>File ISO adalah salinan kloning 100% sempurna</strong> dari sebuah DVD fisik menjadi satu berkas digital tunggal. Setiap sektor byte, struktur folder tersembunyi, hingga kode *boot sector* tersimpan rapi di dalamnya.
                                     </p>
                                     <div className="bg-white border-2 border-black p-2.5 text-xs font-bold text-black">
-                                        💡 <strong>Analogi Praktis:</strong> File ISO ibarat <strong>Cetakan Kue Silikon</strong>. Kamu cukup mendownload cetakan ini, lalu bisa kamu &quot;cetak&quot; berkali-kali ke Flashdisk USB atau diselipkan langsung ke VirtualBox.
+                                        💡 <strong>Analogi Praktis:</strong> File ISO ibarat <strong>Master Cetakan Silikon</strong>. Kamu cukup mendownload satu file master ini, lalu isinya dapat kamu &quot;cetak&quot; berkali-kali ke Flashdisk USB bootable ataupun dipasang langsung ke media instalasi.
                                     </div>
                                 </div>
+                            </div>
+
+                            {/* PENJELASAN KUNCI: KENAPA BUKAN FILE .EXE? */}
+                            <div className="bg-[#FAF8F5] border-3 border-black p-4 space-y-2 text-xs sm:text-sm font-bold text-gray-800 shadow-[2px_2px_0px_0px_#000]">
+                                <div className="flex items-center gap-2 text-black font-black uppercase text-sm">
+                                    <span className="material-symbols-outlined text-amber-600">help</span>
+                                    <span>Mengapa Installer Sistem Operasi Tidak Berformat .EXE Biasa?</span>
+                                </div>
+                                <p className="leading-relaxed">
+                                    File executable (<code>.exe</code>) hanya dapat dijalankan jika sudah ada Sistem Operasi Windows yang aktif di dalam komputer. Jika harddisk/SSD komputermu masih baru atau kosong tanpa OS, komputer belum memiliki program dasar apapun untuk mengeksekusi file <code>.exe</code> tersebut!
+                                </p>
+                                <p className="leading-relaxed text-gray-700">
+                                    Sebaliknya, file <strong>.ISO</strong> memuat sektor booting mandiri (<em>Boot Sector</em>). Ketika disalin ke flashdisk menggunakan alat pembuat bootable, komputer dapat langsung memuat installer sistem operasi sejak tombol power ditekan, tanpa bergantung pada sistem operasi lain.
+                                </p>
                             </div>
 
                             {/* SIMULATOR INTERAKTIF: ISO MOUNT LAB */}
@@ -211,8 +225,8 @@ export default function BahanMentahInstalasiPage() {
                                         <button
                                             onClick={() => setIsIsoMounted(!isIsoMounted)}
                                             className={`w-full py-2.5 px-3 border-2 border-black font-black uppercase text-xs transition-all shadow-[2px_2px_0px_0px_#000] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none flex items-center justify-center gap-2 ${isIsoMounted
-                                                    ? 'bg-rose-500 text-white hover:bg-rose-600'
-                                                    : 'bg-[#2A835F] text-white hover:bg-[#12544F]'
+                                                ? 'bg-rose-500 text-white hover:bg-rose-600'
+                                                : 'bg-[#2A835F] text-white hover:bg-[#12544F]'
                                                 }`}
                                         >
                                             <span className="material-symbols-outlined text-base">
@@ -293,17 +307,17 @@ export default function BahanMentahInstalasiPage() {
                                 </p>
                             </div>
 
-                            {/* PENJELASAN KONSEP: MANDOR PENGURUS GUDANG */}
+                            {/* PENJELASAN KONSEP: PROSEDUR STANDAR BOOTING */}
                             <div className="bg-[#EAF4ED] border-4 border-black p-5 shadow-[4px_4px_0px_0px_#000] space-y-3">
                                 <h3 className="text-lg font-black uppercase text-black flex items-center gap-2">
-                                    <span className="text-2xl">👷‍♂️</span>
-                                    <span>Analogi Mandor Pagi (BIOS / UEFI)</span>
+                                    <span className="text-2xl">📋</span>
+                                    <span>Analogi Prosedur Pembukaan Kantor (BIOS / UEFI &amp; Boot Order)</span>
                                 </h3>
                                 <p className="text-xs sm:text-sm font-bold text-gray-800 leading-relaxed">
-                                    Bayangkan kamu bangun tidur dalam keadaan lupa ingatan (*amnesia total*). Di samping kasurmu ada seorang mandor yang memberi catatan tugas: <em>&quot;Buka laci 1, kalau kosong buka laci 2, kalau kosong buka laci 3!&quot;</em>.
+                                    Bayangkan sebuah kantor yang baru saja dibuka setiap pagi hari. Petugas keamanan memiliki lembar SOP (<em>Standard Operating Procedure</em>) yang tertulis urutan pemeriksaan pintu: <em>&quot;Pertama, periksa Pintu 1 (Flashdisk USB). Jika tidak ada installer di sana, periksa Pintu 2 (Harddisk internal). Jika kosong juga, periksa Pintu 3 (Kabel Jaringan)!&quot;</em>.
                                 </p>
                                 <p className="text-xs sm:text-sm font-bold text-gray-800 leading-relaxed">
-                                    Mandor itu bernama <strong>Firmware (BIOS / UEFI)</strong> yang tertanam pada chip motherboard. Dan catatan daftar laci yang harus dibuka lebih dulu disebut <strong>Boot Priority Order (Urutan Prioritas Booting)</strong>!
+                                    SOP tertulis permanen di motherboard itu adalah <strong>Firmware (BIOS / UEFI)</strong>. Dan daftar urutan pintu mana yang harus dicek lebih dulu disebut <strong>Boot Priority Order (Urutan Prioritas Booting)</strong>!
                                 </p>
                             </div>
 
@@ -324,8 +338,8 @@ export default function BahanMentahInstalasiPage() {
                                         <thead>
                                             <tr className="bg-[#092328] text-white border-b-4 border-black">
                                                 <th className="p-3 border-r-2 border-black uppercase">Fitur Pembanding</th>
-                                                <th className="p-3 border-r-2 border-black uppercase text-amber-300">BIOS Legacy (Jadul / Kuno)</th>
-                                                <th className="p-3 uppercase text-[#8BBB92]">UEFI Modern (Standar Masa Kini)</th>
+                                                <th className="p-3 border-r-2 border-black uppercase text-amber-300">BIOS Legacy (Generasi Klasik)</th>
+                                                <th className="p-3 uppercase text-[#8BBB92]">UEFI Modern (Standar Industri Terkini)</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y-2 divide-black">
@@ -373,8 +387,8 @@ export default function BahanMentahInstalasiPage() {
                                                 setBootTestResult("idle");
                                             }}
                                             className={`px-2 py-0.5 font-mono text-[11px] font-black border-2 border-black transition-all ${bootMode === "uefi"
-                                                    ? 'bg-[#2A835F] text-white'
-                                                    : 'bg-amber-400 text-black'
+                                                ? 'bg-[#2A835F] text-white'
+                                                : 'bg-amber-400 text-black'
                                                 }`}
                                         >
                                             {bootMode === "uefi" ? 'UEFI (MODERN)' : 'BIOS (LEGACY)'}
@@ -389,8 +403,8 @@ export default function BahanMentahInstalasiPage() {
                                             <div
                                                 key={device}
                                                 className={`border-3 border-black p-3 flex items-center justify-between transition-all ${idx === 0
-                                                        ? 'bg-[#8BBB92] shadow-[3px_3px_0px_0px_#000]'
-                                                        : 'bg-white shadow-[2px_2px_0px_0px_#000]'
+                                                    ? 'bg-[#8BBB92] shadow-[3px_3px_0px_0px_#000]'
+                                                    : 'bg-white shadow-[2px_2px_0px_0px_#000]'
                                                     }`}
                                             >
                                                 <div className="flex items-center gap-2.5 overflow-hidden">
@@ -643,7 +657,7 @@ export default function BahanMentahInstalasiPage() {
                                             <span className="bg-[#092328] text-white font-mono text-xs font-black uppercase px-2 py-0.5 border border-black">
                                                 MBR (MASTER BOOT RECORD)
                                             </span>
-                                            <span className="text-xs font-mono font-bold text-rose-700">Era 1983 (Jadul)</span>
+                                            <span className="text-xs font-mono font-bold text-rose-700">Era 1983 (Standar Klasik)</span>
                                         </div>
                                         <div className="space-y-2">
                                             <p className="text-xs sm:text-sm font-bold text-gray-800 leading-relaxed">
@@ -733,15 +747,15 @@ export default function BahanMentahInstalasiPage() {
                                             <span className="bg-[#092328] text-white font-mono text-xs font-black uppercase px-2 py-0.5 border border-black">
                                                 FAT32 (FILE ALLOCATION TABLE 32)
                                             </span>
-                                            <span className="text-xs font-mono font-bold text-amber-700">Era Windows 95</span>
+                                            <span className="text-xs font-mono font-bold text-amber-700">Kompatibilitas Universal</span>
                                         </div>
                                         <div className="space-y-2">
                                             <p className="text-xs sm:text-sm font-bold text-gray-800 leading-relaxed">
                                                 <strong>Karakteristik:</strong> Format sistem berkas generasi lawas yang sangat sederhana, ringan, dan didukung oleh hampir semua perangkat elektronik di dunia.
                                             </p>
                                             <div className="bg-[#EAF4ED] border-2 border-black p-3 text-xs font-bold text-gray-800 space-y-1">
-                                                <div className="font-black text-[#092328]">📦 Analogi: Kardus Indomie Universal</div>
-                                                <div>Kardus ini bisa dibuka siapa saja: TV LED Polytron, tape mobil, speaker portable, HP Android lewat kabel OTG, hingga PlayStation jadul.</div>
+                                                <div className="font-black text-[#092328]">📦 Analogi: Kotak Paket Universal (Kompatibilitas Luas)</div>
+                                                <div>Format ini dapat dibaca oleh hampir semua perangkat: Smart TV LED, tape audio mobil, speaker portabel, HP Android via OTG, hingga proyektor lab.</div>
                                             </div>
                                             <div className="bg-rose-100 border-2 border-black p-3 text-xs font-bold text-rose-950 space-y-1">
                                                 <div className="font-black">⛔ Pantangan Terbesar FAT32:</div>
@@ -865,8 +879,8 @@ export default function BahanMentahInstalasiPage() {
                                                 <button
                                                     onClick={() => setSelectedPartitionTable("GPT")}
                                                     className={`flex-1 py-1.5 px-2 font-mono text-xs font-black border-2 border-black transition-all ${selectedPartitionTable === "GPT"
-                                                            ? 'bg-[#2A835F] text-white shadow-[2px_2px_0px_0px_#000]'
-                                                            : 'bg-white text-black hover:bg-gray-200'
+                                                        ? 'bg-[#2A835F] text-white shadow-[2px_2px_0px_0px_#000]'
+                                                        : 'bg-white text-black hover:bg-gray-200'
                                                         }`}
                                                 >
                                                     GPT (UEFI Modern)
@@ -874,8 +888,8 @@ export default function BahanMentahInstalasiPage() {
                                                 <button
                                                     onClick={() => setSelectedPartitionTable("MBR")}
                                                     className={`flex-1 py-1.5 px-2 font-mono text-xs font-black border-2 border-black transition-all ${selectedPartitionTable === "MBR"
-                                                            ? 'bg-amber-500 text-black shadow-[2px_2px_0px_0px_#000]'
-                                                            : 'bg-white text-black hover:bg-gray-200'
+                                                        ? 'bg-amber-500 text-black shadow-[2px_2px_0px_0px_#000]'
+                                                        : 'bg-white text-black hover:bg-gray-200'
                                                         }`}
                                                 >
                                                     MBR (Legacy)
@@ -897,8 +911,8 @@ export default function BahanMentahInstalasiPage() {
                                                 <button
                                                     onClick={() => setSelectedFs("NTFS")}
                                                     className={`flex-1 py-1.5 px-2 font-mono text-xs font-black border-2 border-black transition-all ${selectedFs === "NTFS"
-                                                            ? 'bg-[#2A835F] text-white shadow-[2px_2px_0px_0px_#000]'
-                                                            : 'bg-white text-black hover:bg-gray-200'
+                                                        ? 'bg-[#2A835F] text-white shadow-[2px_2px_0px_0px_#000]'
+                                                        : 'bg-white text-black hover:bg-gray-200'
                                                         }`}
                                                 >
                                                     NTFS (Windows)
@@ -906,8 +920,8 @@ export default function BahanMentahInstalasiPage() {
                                                 <button
                                                     onClick={() => setSelectedFs("FAT32")}
                                                     className={`flex-1 py-1.5 px-2 font-mono text-xs font-black border-2 border-black transition-all ${selectedFs === "FAT32"
-                                                            ? 'bg-rose-500 text-white shadow-[2px_2px_0px_0px_#000]'
-                                                            : 'bg-white text-black hover:bg-gray-200'
+                                                        ? 'bg-rose-500 text-white shadow-[2px_2px_0px_0px_#000]'
+                                                        : 'bg-white text-black hover:bg-gray-200'
                                                         }`}
                                                 >
                                                     FAT32 (Legacy)
@@ -934,7 +948,7 @@ export default function BahanMentahInstalasiPage() {
                                 </span>
                                 <h3 className="font-black text-lg uppercase">Kloning DVD Digital</h3>
                                 <p className="text-xs font-bold text-[#EAF4ED] leading-relaxed">
-                                    File berkas utuh berisi seluruh instalasi OS yang siap dipasang ke Flashdisk (Bootable) atau dimasukkan langsung ke VirtualBox.
+                                    File berkas utuh berisi seluruh instalasi OS yang siap dipasang ke Flashdisk (Bootable) atau digunakan langsung pada media instalasi.
                                 </p>
                             </div>
 
@@ -979,32 +993,7 @@ export default function BahanMentahInstalasiPage() {
                         </section>
 
                         {/* ============================================================== */}
-                        {/* JEMBATAN KE MATERI BAB BERIKUTNYA (BAB 6: INSTALASI WINDOWS) */}
-                        {/* ============================================================== */}
-                        <section className="bg-[#092328] text-white border-4 border-black p-5 sm:p-8 shadow-[8px_8px_0px_0px_#000] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
-                            <div className="space-y-2 max-w-2xl">
-                                <div className="inline-block bg-[#8BBB92] text-black text-xs font-mono font-black uppercase px-2.5 py-0.5 border-2 border-black">
-                                    LANGKAH SELANJUTNYA // BAB 06
-                                </div>
-                                <h3 className="text-2xl sm:text-3xl font-black uppercase tracking-tight text-white">
-                                    Praktik Bersih: Instalasi Windows Langkah demi Langkah
-                                </h3>
-                                <p className="text-xs sm:text-sm font-bold text-[#EAF4ED] leading-relaxed">
-                                    Bahan mentah sudah siap! Sekarang mari kita colok Flashdisk Bootable, tekan tombol Boot Menu di laptop, dan lakukan instalasi Windows sungguhan dari awal sampai masuk ke Desktop!
-                                </p>
-                            </div>
-
-                            <Link
-                                href="/course/ddpk-tkj/instalasi-windows"
-                                className="w-full sm:w-auto shrink-0 bg-[#2A835F] text-white font-black uppercase text-sm px-6 py-4 border-4 border-black shadow-[4px_4px_0px_0px_#000] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_#000] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none transition-all flex items-center justify-center gap-3"
-                            >
-                                <span>Lanjut ke Bab 6</span>
-                                <span className="material-symbols-outlined font-black">arrow_forward</span>
-                            </Link>
-                        </section>
-
-                        {/* ============================================================== */}
-                        {/* TACTILE FOOTER */}
+                        {/* TACTILE FOOTER NAVIGASI */}
                         {/* ============================================================== */}
                         <footer className="bg-[#EAF4ED] border-4 border-black shadow-[6px_6px_0px_0px_#000] p-5 flex flex-col sm:flex-row justify-between items-center gap-4">
                             <Link
@@ -1015,17 +1004,13 @@ export default function BahanMentahInstalasiPage() {
                                 <span>Kembali ke Bab 4: Driver &amp; Utilitas</span>
                             </Link>
 
-                            <div className="flex flex-wrap items-center justify-center gap-2 text-[10px] font-mono font-black uppercase">
-                                <span className="bg-[#092328] text-white px-2 py-1 border-2 border-black shadow-[2px_2px_0px_0px_#000]">
-                                    DDPK TKJ KELAS 10
-                                </span>
-                                <span className="bg-[#2A835F] text-white px-2 py-1 border-2 border-black shadow-[2px_2px_0px_0px_#000]">
-                                    SMK MANDIRI
-                                </span>
-                                <span className="bg-[#8BBB92] text-black px-2 py-1 border-2 border-black shadow-[2px_2px_0px_0px_#000]">
-                                    NEOBRUTAL.UI
-                                </span>
-                            </div>
+                            <Link
+                                href="/course/ddpk-tkj/instalasi-windows"
+                                className="w-full sm:w-auto bg-[#2A835F] text-white font-black uppercase text-xs sm:text-sm px-6 py-3 border-4 border-black shadow-[4px_4px_0px_0px_#000] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_#000] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none transition-all flex items-center justify-center gap-2"
+                            >
+                                <span>Lanjut ke Bab 6: Praktik Instalasi Windows</span>
+                                <span className="material-symbols-outlined text-lg font-black">arrow_forward</span>
+                            </Link>
                         </footer>
 
                     </div>
