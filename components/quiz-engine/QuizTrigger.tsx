@@ -107,6 +107,14 @@ export default function QuizTrigger({ pageSlug }: { pageSlug: string }) {
         <div className="bg-gray-200 border-4 border-black p-4 text-center font-bold">
           🔒 Kuis Terkunci (Buka pada {new Date(status.openAt).toLocaleString('id-ID')})
         </div>
+      ) : status.status === 'VARIANT_SUSPENDED' ? (
+        <div className="bg-amber-100 border-4 border-black p-6 text-center font-bold">
+          <div className="text-3xl mb-2">⏸️</div>
+          <h4 className="text-xl font-black uppercase text-amber-950 mb-1">Soal Ujian Sedang Dinonaktifkan</h4>
+          <p className="text-sm text-amber-900 max-w-md mx-auto font-medium">
+            {status.message || 'Varian kuis ini sedang disuspend oleh Guru. Silakan tunggu Guru menugaskan varian soal yang aktif.'}
+          </p>
+        </div>
       ) : status.status === 'NOT_ASSIGNED' ? (
         <div className="bg-yellow-100 border-4 border-black p-4 text-center font-bold">
           ⚠️ Kuis ini belum ditugaskan kepada Anda oleh Guru.

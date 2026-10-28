@@ -7,6 +7,7 @@ import {
   deleteQuizPackage,
   createQuizVariant,
   updateQuizVariant,
+  toggleQuizVariantStatus,
   deleteQuizVariant,
   updateAntiCheatConfig
 } from './quiz.service';
@@ -183,6 +184,16 @@ export async function deleteQuizVariantAction(id: string, packageId: string) {
     return { success: true };
   } catch (error) {
     return { success: false, message: error instanceof Error ? error.message : 'Gagal menghapus varian' };
+  }
+}
+
+export async function toggleQuizVariantStatusAction(id: string, packageId: string) {
+  try {
+    const res = await toggleQuizVariantStatus(id);
+    revalidatePath(`/dashboard/quizzes/${packageId}/edit`);
+    return { success: true, isActive: res.isActive };
+  } catch (error) {
+    return { success: false, message: error instanceof Error ? error.message : 'Gagal mengubah status varian' };
   }
 }
 

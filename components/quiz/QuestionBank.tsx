@@ -2,28 +2,46 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { 
-  createQuestionAction, 
-  updateQuestionAction, 
-  deleteQuestionAction, 
-  reorderQuestionsAction 
+import AiQuestionGeneratorModal from '@/components/quiz/AiQuestionGeneratorModal';
+import {
+  createQuestionAction,
+  updateQuestionAction,
+  deleteQuestionAction,
+  reorderQuestionsAction
 } from '@/modules/quiz/quiz.action';
 import AdminModal, { AdminModalType } from '@/components/quiz/AdminModal';
 import { DEFAULT_WEB_PROJECT, serializeProjectFiles } from '@/lib/virtual-fs';
 
 type QuestionBankProps = {
   quizVariantId: string;
+  variantName?: string;
   initialQuestions: any[];
+  initialSummaryText?: string;
+  hasStudentAttempts?: boolean;
+  hasAiSummary?: boolean;
+  summariesCount?: number;
+  pageTitle?: string;
+  pageId?: string;
 };
 
-export default function QuestionBank({ quizVariantId, initialQuestions }: QuestionBankProps) {
+export default function QuestionBank({
+  quizVariantId,
+  variantName,
+  initialQuestions,
+  initialSummaryText = '',
+  hasStudentAttempts = false,
+  hasAiSummary = false,
+  summariesCount = 0,
+  pageTitle = '',
+  pageId = '',
+}: QuestionBankProps) {
   const router = useRouter();
   const [questions, setQuestions] = useState(initialQuestions);
 
   useEffect(() => {
     setQuestions(initialQuestions);
   }, [initialQuestions]);
-  
+
   const [showForm, setShowForm] = useState(false);
   const [editingQuestionId, setEditingQuestionId] = useState<string | null>(null);
   const [formType, setFormType] = useState<'PILIHAN_GANDA' | 'ESSAY' | 'CODE_CHALLENGE'>('PILIHAN_GANDA');
@@ -34,7 +52,8 @@ export default function QuestionBank({ quizVariantId, initialQuestions }: Questi
   const [initialCode, setInitialCode] = useState('');
   const [testCases, setTestCases] = useState('');
   const [loading, setLoading] = useState(false);
-  
+  const [showAiModal, setShowAiModal] = useState(false);
+
   const [modalState, setModalState] = useState<{
     isOpen: boolean;
     title: string;
@@ -120,7 +139,7 @@ export default function QuestionBank({ quizVariantId, initialQuestions }: Questi
     setFormType(q.questionType);
     setQuestionText(q.questionText);
     setPoints(Number(q.points) || 1);
-    
+
     if (q.questionType === 'PILIHAN_GANDA' && q.options && q.options.length > 0) {
       setOptions(q.options.map((o: any) => ({
         text: o.optionText,
@@ -242,7 +261,7 @@ export default function QuestionBank({ quizVariantId, initialQuestions }: Questi
 
     const newQuestions = [...questions];
     const targetIndex = direction === 'up' ? index - 1 : index + 1;
-    
+
     // Swap
     [newQuestions[index], newQuestions[targetIndex]] = [newQuestions[targetIndex], newQuestions[index]];
     setQuestions(newQuestions);
@@ -253,24 +272,34 @@ export default function QuestionBank({ quizVariantId, initialQuestions }: Questi
 
   return (
     <div className="space-y-6">
-      {/* STATS BAR */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-gray-50 p-4 rounded-xl border border-gray-200">
-        <div>
-          <div className="text-xs text-gray-500 font-medium">Total Soal</div>
-          <div className="text-xl font-bold text-gray-900">{questions.length}</div>
+      {/* STATS & AI SHORTCUT BAR */}
+      <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3 bg-gray-50 p-3 sm:p-4 rounded-xl border border-gray-200 flex-1">
+          <div>
+            <div className="text-xs text-gray-500 font-medium">Total Soal</div>
+            <div className="text-xl font-bold text-gray-900">{questions.length}</div>
+          </div>
+          <div>
+            <div className="text-xs text-gray-500 font-medium">Pilihan Ganda</div>
+            <div className="text-xl font-bold text-blue-600">{pgCount}</div>
+          </div>
+          <div>
+            <div className="text-xs text-gray-500 font-medium">Essay (Manual)</div>
+            <div className="text-xl font-bold text-purple-600">{essayCount}</div>
+          </div>
+          <div>
+            <div className="text-xs text-gray-500 font-medium">Total Poin</div>
+            <div className="text-xl font-bold text-emerald-600">{totalPoints}</div>
+          </div>
         </div>
-        <div>
-          <div className="text-xs text-gray-500 font-medium">Pilihan Ganda</div>
-          <div className="text-xl font-bold text-blue-600">{pgCount}</div>
-        </div>
-        <div>
-          <div className="text-xs text-gray-500 font-medium">Essay (Manual)</div>
-          <div className="text-xl font-bold text-purple-600">{essayCount}</div>
-        </div>
-        <div>
-          <div className="text-xs text-gray-500 font-medium">Total Poin</div>
-          <div className="text-xl font-bold text-emerald-600">{totalPoints}</div>
-        </div>
+        <button
+          type="button"
+          onClick={() => setShowAiModal(true)}
+          className="px-4 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-xl text-xs sm:text-sm font-semibold shadow-2xs transition-all flex items-center justify-center gap-2 shrink-0 min-h-[44px]"
+          title="Buat soal secara otomatis menggunakan AI"
+        >
+          <span>Generate Soal AI</span>
+        </button>
       </div>
 
       {/* QUESTION LIST */}
@@ -285,9 +314,9 @@ export default function QuestionBank({ quizVariantId, initialQuestions }: Questi
             <div className="flex justify-between items-start mb-3">
               <div className="flex gap-4">
                 <div className="flex flex-col items-center gap-1 shrink-0 pt-0.5">
-                  <button 
-                    onClick={() => handleMove(index, 'up')} 
-                    disabled={index === 0} 
+                  <button
+                    onClick={() => handleMove(index, 'up')}
+                    disabled={index === 0}
                     className="text-gray-400 hover:text-blue-600 disabled:opacity-20 transition-colors text-xs"
                     title="Pindah ke atas"
                   >
@@ -296,9 +325,9 @@ export default function QuestionBank({ quizVariantId, initialQuestions }: Questi
                   <span className="text-xs font-bold text-gray-700 bg-gray-100 rounded-full w-6 h-6 flex items-center justify-center">
                     {index + 1}
                   </span>
-                  <button 
-                    onClick={() => handleMove(index, 'down')} 
-                    disabled={index === questions.length - 1} 
+                  <button
+                    onClick={() => handleMove(index, 'down')}
+                    disabled={index === questions.length - 1}
                     className="text-gray-400 hover:text-blue-600 disabled:opacity-20 transition-colors text-xs"
                     title="Pindah ke bawah"
                   >
@@ -333,16 +362,16 @@ export default function QuestionBank({ quizVariantId, initialQuestions }: Questi
 
               {/* ACTION BUTTONS (EDIT & HAPUS) */}
               <div className="flex items-center gap-2 shrink-0 ml-3">
-                <button 
+                <button
                   type="button"
-                  onClick={() => handleStartEdit(q)} 
+                  onClick={() => handleStartEdit(q)}
                   className="px-2.5 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50 rounded border border-blue-200 transition-colors"
                 >
                   Edit
                 </button>
-                <button 
+                <button
                   type="button"
-                  onClick={() => handleDelete(q.id)} 
+                  onClick={() => handleDelete(q.id)}
                   className="px-2.5 py-1 text-xs font-medium text-red-600 hover:bg-red-50 rounded border border-red-200 transition-colors"
                 >
                   Hapus
@@ -354,13 +383,12 @@ export default function QuestionBank({ quizVariantId, initialQuestions }: Questi
             {q.questionType === 'PILIHAN_GANDA' && (
               <div className="ml-10 mt-3 space-y-2">
                 {q.options?.map((opt: any, i: number) => (
-                  <div 
-                    key={opt.id || i} 
-                    className={`p-2.5 rounded-lg border text-sm flex items-center justify-between ${
-                      opt.isCorrect 
-                        ? 'bg-emerald-50 border-emerald-300 text-emerald-900 font-medium' 
-                        : 'bg-gray-50 border-gray-200 text-gray-700'
-                    }`}
+                  <div
+                    key={opt.id || i}
+                    className={`p-2.5 rounded-lg border text-sm flex items-center justify-between ${opt.isCorrect
+                      ? 'bg-emerald-50 border-emerald-300 text-emerald-900 font-medium'
+                      : 'bg-gray-50 border-gray-200 text-gray-700'
+                      }`}
                   >
                     <div>
                       <span className="font-bold mr-2">{String.fromCharCode(65 + i)}.</span>
@@ -391,24 +419,31 @@ export default function QuestionBank({ quizVariantId, initialQuestions }: Questi
 
       {/* ADD BUTTONS (WHEN NOT SHOWING FORM) */}
       {!showForm ? (
-        <div className="flex flex-wrap gap-3 justify-center py-4 border-t border-gray-100">
-          <button 
+        <div className="flex flex-wrap gap-2.5 sm:gap-3 justify-center py-4 border-t border-gray-100">
+          <button
             type="button"
-            onClick={() => handleOpenAdd('PILIHAN_GANDA')} 
+            onClick={() => setShowAiModal(true)}
+            className="px-4 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-xl text-xs sm:text-sm font-semibold shadow-2xs transition-colors flex items-center gap-1.5"
+          >
+            <span>Generate Soal AI</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => handleOpenAdd('PILIHAN_GANDA')}
             className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold shadow-sm transition-colors flex items-center gap-1.5"
           >
             <span>+</span> Tambah Pilihan Ganda
           </button>
-          <button 
+          <button
             type="button"
-            onClick={() => handleOpenAdd('CODE_CHALLENGE')} 
+            onClick={() => handleOpenAdd('CODE_CHALLENGE')}
             className="px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-semibold shadow-sm transition-colors flex items-center gap-1.5"
           >
             <span>+</span> Tambah Soal Code
           </button>
-          <button 
+          <button
             type="button"
-            onClick={() => handleOpenAdd('ESSAY')} 
+            onClick={() => handleOpenAdd('ESSAY')}
             className="px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-semibold shadow-sm transition-colors flex items-center gap-1.5"
           >
             <span>+</span> Tambah Soal Essay
@@ -427,68 +462,65 @@ export default function QuestionBank({ quizVariantId, initialQuestions }: Questi
               <button
                 type="button"
                 onClick={() => setFormType('PILIHAN_GANDA')}
-                className={`px-3 py-1.5 rounded-md transition-colors ${
-                  formType === 'PILIHAN_GANDA' 
-                    ? 'bg-white text-blue-700 shadow-sm' 
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
+                className={`px-3 py-1.5 rounded-md transition-colors ${formType === 'PILIHAN_GANDA'
+                  ? 'bg-white text-blue-700 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+                  }`}
               >
                 Pilihan Ganda
               </button>
               <button
                 type="button"
                 onClick={() => setFormType('CODE_CHALLENGE')}
-                className={`px-3 py-1.5 rounded-md transition-colors ${
-                  formType === 'CODE_CHALLENGE' 
-                    ? 'bg-white text-green-700 shadow-sm' 
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
+                className={`px-3 py-1.5 rounded-md transition-colors ${formType === 'CODE_CHALLENGE'
+                  ? 'bg-white text-green-700 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+                  }`}
               >
                 Code Challenge
               </button>
               <button
                 type="button"
                 onClick={() => setFormType('ESSAY')}
-                className={`px-3 py-1.5 rounded-md transition-colors ${
-                  formType === 'ESSAY' 
-                    ? 'bg-white text-purple-700 shadow-sm' 
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
+                className={`px-3 py-1.5 rounded-md transition-colors ${formType === 'ESSAY'
+                  ? 'bg-white text-purple-700 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+                  }`}
               >
                 Essay (Review Manual)
               </button>
             </div>
           </div>
-          
+
           <div className="space-y-4">
             {/* Question Text */}
             <div>
               <label className="block text-sm font-bold text-gray-700 mb-1">
                 Teks Pertanyaan <span className="text-red-500">*</span>
               </label>
-              <textarea 
+              <textarea
                 value={questionText}
                 onChange={(e) => setQuestionText(e.target.value)}
-                required 
-                rows={3} 
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm transition-colors" 
+                required
+                rows={3}
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm transition-colors"
                 placeholder={formType === 'PILIHAN_GANDA' ? "Tuliskan pertanyaan pilihan ganda..." : "Tuliskan instruksi atau pertanyaan essay..."}
               />
             </div>
-            
+
             {/* Bobot Poin */}
             <div>
               <label className="block text-sm font-bold text-gray-700 mb-1">
                 Bobot Poin Maksimal <span className="text-red-500">*</span>
               </label>
               <div className="flex items-center gap-2">
-                <input 
-                  type="number" 
+                <input
+                  type="number"
                   value={points}
                   onChange={(e) => setPoints(Number(e.target.value))}
-                  required 
-                  min="1" 
-                  className="w-32 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm font-semibold" 
+                  required
+                  min="1"
+                  className="w-32 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm font-semibold"
                 />
                 <span className="text-xs text-gray-500">
                   {formType === 'ESSAY' ? 'Poin maksimal yang dapat diberikan guru saat review' : 'Poin jika siswa menjawab benar'}
@@ -577,9 +609,9 @@ export default function QuestionBank({ quizVariantId, initialQuestions }: Questi
                   <label className="block text-sm font-bold text-gray-700">
                     Pilihan Jawaban <span className="text-xs font-normal text-gray-500">(Pilih salah satu lingkaran untuk jawaban yang benar)</span>
                   </label>
-                  <button 
-                    type="button" 
-                    onClick={handleAddOption} 
+                  <button
+                    type="button"
+                    onClick={handleAddOption}
                     className="text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline"
                   >
                     + Tambah Opsi
@@ -590,10 +622,10 @@ export default function QuestionBank({ quizVariantId, initialQuestions }: Questi
                   {options.map((opt, index) => (
                     <div key={index} className="flex items-center gap-3">
                       <label className="flex items-center gap-1 cursor-pointer shrink-0" title="Tandai sebagai jawaban benar">
-                        <input 
-                          type="radio" 
-                          name="correctAnswer" 
-                          checked={opt.isCorrect} 
+                        <input
+                          type="radio"
+                          name="correctAnswer"
+                          checked={opt.isCorrect}
                           onChange={() => handleCorrectChange(index)}
                           className="w-4 h-4 text-blue-600 focus:ring-blue-500 cursor-pointer"
                         />
@@ -601,18 +633,17 @@ export default function QuestionBank({ quizVariantId, initialQuestions }: Questi
                           {String.fromCharCode(65 + index)}.
                         </span>
                       </label>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         value={opt.text}
                         onChange={(e) => handleOptionChange(index, e.target.value)}
                         required
                         placeholder={`Teks pilihan ${String.fromCharCode(65 + index)}...`}
-                        className={`flex-1 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm ${
-                          opt.isCorrect ? 'border-emerald-400 bg-emerald-50/40' : 'border-gray-300'
-                        }`}
+                        className={`flex-1 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm ${opt.isCorrect ? 'border-emerald-400 bg-emerald-50/40' : 'border-gray-300'
+                          }`}
                       />
-                      <button 
-                        type="button" 
+                      <button
+                        type="button"
                         onClick={() => handleRemoveOption(index)}
                         disabled={options.length <= 2}
                         className="text-red-500 hover:text-red-700 disabled:opacity-20 p-2 text-sm"
@@ -628,25 +659,39 @@ export default function QuestionBank({ quizVariantId, initialQuestions }: Questi
           </div>
 
           <div className="mt-6 flex justify-end gap-3 pt-4 border-t border-gray-100">
-            <button 
-              type="button" 
-              onClick={handleCancelForm} 
+            <button
+              type="button"
+              onClick={handleCancelForm}
               className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg border border-gray-300 transition-colors"
             >
               Batal
             </button>
-            <button 
-              type="submit" 
-              disabled={loading} 
-              className={`px-5 py-2 text-sm font-bold text-white rounded-lg transition-colors disabled:opacity-50 ${
-                formType === 'CODE_CHALLENGE' ? 'bg-green-600 hover:bg-green-700' : formType === 'ESSAY' ? 'bg-purple-600 hover:bg-purple-700' : 'bg-blue-600 hover:bg-blue-700'
-              }`}
+            <button
+              type="submit"
+              disabled={loading}
+              className={`px-5 py-2 text-sm font-bold text-white rounded-lg transition-colors disabled:opacity-50 ${formType === 'CODE_CHALLENGE' ? 'bg-green-600 hover:bg-green-700' : formType === 'ESSAY' ? 'bg-purple-600 hover:bg-purple-700' : 'bg-blue-600 hover:bg-blue-700'
+                }`}
             >
               {loading ? 'Menyimpan...' : editingQuestionId ? 'Perbarui Soal' : 'Simpan Soal'}
             </button>
           </div>
         </form>
       )}
+      {/* AI QUESTION GENERATOR MODAL */}
+      <AiQuestionGeneratorModal
+        isOpen={showAiModal}
+        onClose={() => setShowAiModal(false)}
+        quizVariantId={quizVariantId}
+        variantName={variantName || 'Varian Kuis'}
+        initialSummaryText={initialSummaryText}
+        hasStudentAttempts={hasStudentAttempts}
+        hasAiSummary={hasAiSummary}
+        summariesCount={summariesCount}
+        pageTitle={pageTitle}
+        pageId={pageId}
+        existingQuestionsCount={questions.length}
+      />
+
       {/* ADMIN POP-UP MODAL */}
       <AdminModal
         isOpen={modalState.isOpen}
