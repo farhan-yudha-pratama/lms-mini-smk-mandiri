@@ -180,6 +180,7 @@ model QuizVariant {
   id             String   @id @default(uuid())
   quizPackageId  String
   name           String
+  isActive       Boolean  @default(true)
   createdAt      TimestamptzString @default(now())
   updatedAt      temporal.updatedAtString()
 

@@ -18,11 +18,25 @@ export async function getQuizStatus(pageSlug: string, studentId: string) {
 
   if (!assignment) return { status: 'NOT_ASSIGNED', packageTitle: pkg.title };
 
+  // Check assigned variant status
+  const variant = await db.orm.public.QuizVariant.where({ id: assignment.quizVariantId }).first();
+  if (!variant) return { status: 'NO_QUIZ' };
+
   // Check attempt
   const attempt = await db.orm.public.QuizAttempt.where({ 
     studentId,
     quizVariantId: assignment.quizVariantId
   }).first();
+
+  // Jika varian disuspend dan murid belum menyelesaikan ujian
+  if (variant.isActive === false && (!attempt || attempt.status === 'IN_PROGRESS')) {
+    return {
+      status: 'VARIANT_SUSPENDED',
+      packageTitle: pkg.title,
+      variantName: variant.name,
+      message: `Varian kuis (${variant.name}) saat ini sedang dinonaktifkan oleh Guru. Silakan hubungi Guru Anda untuk mendapatkan penugasan varian yang aktif.`
+    };
+  }
 
   const rawQuestions = await db.orm.public.Question.where({ quizVariantId: assignment.quizVariantId }).all();
   const hasEssay = rawQuestions.some(q => q.questionType === 'ESSAY' || q.questionType === 'CODE_CHALLENGE');
@@ -99,6 +113,11 @@ export async function startQuiz(assignmentId: string, studentId: string) {
   const pkg = await db.orm.public.QuizPackage.where({ id: assignment.quizPackageId }).first();
   if (!pkg || !pkg.isActive) throw new Error('Kuis tidak aktif atau tidak ditemukan');
 
+  const variant = await db.orm.public.QuizVariant.where({ id: assignment.quizVariantId }).first();
+  if (!variant || variant.isActive === false) {
+    throw new Error('Varian kuis ini sedang dinonaktifkan oleh Guru. Tidak dapat memulai ujian.');
+  }
+
   if (pkg.pageId) {
     const unlockedPageIds = await getUnlockedPageIdsForStudent(studentId);
     if (!unlockedPageIds.has(pkg.pageId)) {
@@ -123,7 +142,7 @@ export async function getQuizEngineData(attemptId: string, studentId: string) {
   if (attempt.status !== 'IN_PROGRESS') throw new Error('Kuis sudah selesai');
 
   const variant = await db.orm.public.QuizVariant.where({ id: attempt.quizVariantId }).first();
-  if (!variant) throw new Error('Variant tidak valid');
+  if (!variant || variant.isActive === false) throw new Error('Varian kuis ini sedang dinonaktifkan oleh Guru');
 
   const pkg = await db.orm.public.QuizPackage.where({ id: variant.quizPackageId }).first();
   if (!pkg) throw new Error('Package tidak valid');
@@ -192,6 +211,9 @@ export async function submitQuiz(
     if (attempt.status !== 'IN_PROGRESS') throw new Error('Status kuis tidak valid');
 
     const variant = await tx.orm.public.QuizVariant.where({ id: attempt.quizVariantId }).first();
+    if (!variant || variant.isActive === false) {
+      throw new Error('Varian kuis ini sedang dinonaktifkan oleh Guru');
+    }
     const pkg = await tx.orm.public.QuizPackage.where({ id: variant!.quizPackageId }).first();
     
     // Fetch slugs for revalidation (only if tied to a page)

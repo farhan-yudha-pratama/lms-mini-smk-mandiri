@@ -105,8 +105,8 @@ export default function QuizListTable({ packages }: { packages: MappedPackage[] 
 
   const handleDelete = (id: string, title: string) => {
     showModal(
-      'Hapus / Arsipkan Kuis',
-      <p>Apakah Anda yakin ingin menghapus kuis <strong>{title}</strong>? Jika kuis sudah pernah dikerjakan oleh siswa, kuis akan diarsipkan secara aman dan seluruh riwayat nilai siswa tetap tersimpan permanen.</p>,
+      'Hapus Kuis',
+      <p>Apakah Anda yakin ingin menghapus kuis <strong>{title}</strong>? Seluruh riwayat nilai dan kelulusan siswa yang sudah mengerjakan tetap tersimpan permanen di Buku Nilai & Arsip Kuis.</p>,
       'confirm',
       {
         confirmText: 'Lanjutkan',

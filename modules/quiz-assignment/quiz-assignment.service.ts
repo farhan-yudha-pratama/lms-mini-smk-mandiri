@@ -34,6 +34,11 @@ export async function getAssignmentsByPackageAndClass(packageId: string, classId
 
 // Assign manually
 export async function assignManual(packageId: string, variantId: string, studentIds: string[]) {
+  const targetVariant = await db.orm.public.QuizVariant.where({ id: variantId }).first();
+  if (!targetVariant || targetVariant.isActive === false) {
+    throw new Error('Tidak dapat menugaskan varian yang sedang disuspend. Silakan pilih varian yang aktif.');
+  }
+
   // Only assign to students who haven't attempted the quiz yet
   const attempts = await db.orm.public.QuizAttempt.all();
   const variants = await db.orm.public.QuizVariant.where({ quizPackageId: packageId }).all();
@@ -76,8 +81,9 @@ export async function distributeRandomlyByClass(packageId: string, classId: stri
   const unlockedStudents = studentsData.filter(s => !s.isLocked).map(s => s.student.id);
   if (unlockedStudents.length === 0) return 0;
 
-  const variants = await db.orm.public.QuizVariant.where({ quizPackageId: packageId }).all();
-  if (variants.length === 0) throw new Error('Tidak ada varian kuis yang tersedia untuk paket ini');
+  const allVariants = await db.orm.public.QuizVariant.where({ quizPackageId: packageId }).all();
+  const variants = allVariants.filter(v => v.isActive !== false);
+  if (variants.length === 0) throw new Error('Tidak ada varian kuis yang aktif untuk paket ini. Silakan aktifkan minimal satu varian terlebih dahulu.');
 
   // Shuffle students
   const shuffledStudents = [...unlockedStudents].sort(() => Math.random() - 0.5);

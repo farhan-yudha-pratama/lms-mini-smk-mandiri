@@ -116,6 +116,22 @@ export async function getGradebookMatrix(classId: string, courseId: string): Pro
     };
   }
 
+  // Fallback: Untuk kuis/varian yang sudah dihapus secara permanen (decoupled),
+  // ambil data nilai & kelulusan siswa dari snapshot QuizCompletionRecord
+  const allCompletionRecords = await db.orm.public.QuizCompletionRecord.all();
+  for (const record of allCompletionRecords) {
+    if (!matrix[record.studentId]) continue;
+    const pkg = quizzes.find(q => q.title.toLowerCase().trim() === record.sourceTitle.toLowerCase().trim());
+    if (pkg && matrix[record.studentId][pkg.id]?.score === null) {
+      matrix[record.studentId][pkg.id] = {
+        score: record.score,
+        status: record.isPassed ? 'COMPLETED' : 'FAILED',
+        attemptId: record.sourceId,
+        needsReview: false
+      };
+    }
+  }
+
   return {
     students: students.map(s => ({ id: s.id, name: s.name, email: s.email })),
     quizzes,
