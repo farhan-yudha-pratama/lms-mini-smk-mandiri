@@ -25,6 +25,9 @@ export default function StudentDashboardShell({
     router.push('/login');
   };
 
+  const isSuperAdmin = roleLabel.toUpperCase() === 'SUPERADMIN';
+  const isTeacher = roleLabel.toUpperCase() === 'GURU';
+  const canAccessAdmin = isSuperAdmin || isTeacher;
 
   return (
     <div className="h-screen bg-[#EAF4ED] font-sans selection:bg-[#2A835F] selection:text-white flex flex-col overflow-hidden">
@@ -63,14 +66,32 @@ export default function StudentDashboardShell({
             </div>
           </div>
 
-          <div className="flex items-center gap-3 md:gap-4 shrink-0">
-            {roleLabel.toUpperCase() === 'SUPERADMIN' ? (
-              <Link href="/dashboard" className="hidden md:flex items-center gap-3 bg-[#EAF4ED] border-4 border-black px-3 py-1.5 shadow-[4px_4px_0px_0px_#000] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_#000] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none transition-all cursor-pointer">
-                <div className="w-8 h-8 bg-[#2A835F] border-2 border-black rounded-full flex items-center justify-center">
-                  <span className="material-symbols-outlined text-white text-base">admin_panel_settings</span>
-                </div>
-                <span className="font-black uppercase text-sm tracking-tight max-w-[160px] truncate">{userName} (Admin)</span>
-              </Link>
+          <div className="flex items-center gap-2 md:gap-4 shrink-0">
+            {/* Admin navigation for Superadmin and Guru */}
+            {canAccessAdmin ? (
+              <>
+                {/* Desktop view */}
+                <Link
+                  href="/dashboard"
+                  className="hidden md:flex items-center gap-3 bg-[#EAF4ED] border-4 border-black px-3 py-1.5 shadow-[4px_4px_0px_0px_#000] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_#000] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none transition-all cursor-pointer"
+                >
+                  <div className="w-8 h-8 bg-[#2A835F] border-2 border-black rounded-full flex items-center justify-center">
+                    <span className="material-symbols-outlined text-white text-base">admin_panel_settings</span>
+                  </div>
+                  <span className="font-black uppercase text-sm tracking-tight max-w-[160px] truncate">
+                    {userName} ({roleLabel})
+                  </span>
+                </Link>
+
+                {/* Mobile top-bar shortcut */}
+                <Link
+                  href="/dashboard"
+                  title={`Dashboard ${roleLabel}`}
+                  className="md:hidden w-11 h-11 shrink-0 bg-[#092328] text-[#8BBB92] border-4 border-black flex items-center justify-center shadow-[4px_4px_0px_0px_#000] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_#000] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none transition-all"
+                >
+                  <span className="material-symbols-outlined font-black text-xl">admin_panel_settings</span>
+                </Link>
+              </>
             ) : (
               <div className="hidden md:flex items-center gap-3 bg-white border-2 border-black px-3 py-1.5 shadow-[2px_2px_0px_0px_#000]">
                 <div className="w-8 h-8 bg-[#092328] border-2 border-black rounded-full flex items-center justify-center">
@@ -99,6 +120,7 @@ export default function StudentDashboardShell({
           onClose={() => setIsSidebarOpen(false)}
           userName={userName}
           userClass={userClass}
+          roleLabel={roleLabel}
         />
 
         <div className="flex-1 min-w-0 overflow-y-auto flex flex-col">

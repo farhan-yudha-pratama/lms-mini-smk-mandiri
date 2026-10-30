@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition, useMemo } from 'react';
+import { useState, useTransition, useMemo, useEffect } from 'react';
 import { 
   getQuizReportsAction, 
   resetQuizAttemptAction,
@@ -12,6 +12,7 @@ import { QuizReportItem, QuizReportsResponse, UnfinishedStudentsResponse } from 
 import UnfinishedStudentsView from './UnfinishedStudentsView';
 import TaskRecapView from './TaskRecapView';
 import CodeAnswerPreview from '@/components/quiz/CodeAnswerPreview';
+import { getSocket } from '@/lib/socket/client';
 
 type Package = { id: string; title: string; pageTitle: string; categoryName: string; };
 type ClassType = { id: string; name: string; };
@@ -142,6 +143,88 @@ export default function QuizReportView({
       }
     });
   };
+
+  // Realtime WebSocket Alert State
+  const [realtimeAlert, setRealtimeAlert] = useState<{
+    type: 'STARTED' | 'COMPLETED';
+    studentName: string;
+    quizTitle?: string;
+    score?: number;
+    isPassed?: boolean;
+    needsReview?: boolean;
+    timestamp: string;
+  } | null>(null);
+  const [isSocketConnected, setIsSocketConnected] = useState(false);
+
+  // Real-time synchronization via Socket.io
+  useEffect(() => {
+    const socket = getSocket();
+    if (!socket) return;
+
+    if (socket.connected) {
+      setIsSocketConnected(true);
+      socket.emit('join:reports');
+    }
+
+    const onConnect = () => {
+      setIsSocketConnected(true);
+      socket.emit('join:reports');
+    };
+
+    const onDisconnect = () => {
+      setIsSocketConnected(false);
+    };
+
+    const handleQuizStarted = (payload: any) => {
+      // 1. Show notification banner for started quiz
+      setRealtimeAlert({
+        type: 'STARTED',
+        studentName: payload.studentName || 'Murid',
+        quizTitle: payload.quizTitle || 'Kuis',
+        timestamp: payload.startedAt || new Date().toISOString(),
+      });
+
+      // 2. Refresh report data automatically (status updates to IN_PROGRESS)
+      loadReports();
+    };
+
+    const handleQuizCompleted = (payload: any) => {
+      // 1. Show notification banner for completed quiz
+      setRealtimeAlert({
+        type: 'COMPLETED',
+        studentName: payload.studentName || 'Murid',
+        quizTitle: payload.quizTitle || 'Kuis',
+        score: payload.score ?? 0,
+        isPassed: Boolean(payload.isPassed),
+        needsReview: Boolean(payload.needsReview),
+        timestamp: payload.completedAt || new Date().toISOString(),
+      });
+
+      // 2. Refresh report data automatically (status updates to COMPLETED)
+      loadReports();
+    };
+
+    socket.on('connect', onConnect);
+    socket.on('disconnect', onDisconnect);
+    socket.on('quiz:started', handleQuizStarted);
+    socket.on('quiz:completed', handleQuizCompleted);
+
+    return () => {
+      socket.off('connect', onConnect);
+      socket.off('disconnect', onDisconnect);
+      socket.off('quiz:started', handleQuizStarted);
+      socket.off('quiz:completed', handleQuizCompleted);
+    };
+  }, [selectedClassId, selectedPackageId, selectedCourseId, searchQuery, page, limit, reviewFilter]);
+
+  // Auto-dismiss real-time banner after 8 seconds
+  useEffect(() => {
+    if (!realtimeAlert) return;
+    const timer = setTimeout(() => {
+      setRealtimeAlert(null);
+    }, 8000);
+    return () => clearTimeout(timer);
+  }, [realtimeAlert]);
 
   // Filter Handlers
   const handleCourseChange = (newCourseId: string) => {
@@ -468,56 +551,126 @@ export default function QuizReportView({
 
   return (
     <div className="space-y-6">
-      {/* TOP TAB NAVIGATION */}
-      <div className="flex border-b border-gray-200 gap-2 overflow-x-auto pb-px">
-        <button
-          type="button"
-          onClick={() => setActiveTab('REPORTS')}
-          className={`flex items-center gap-2 px-5 py-3 font-semibold text-sm border-b-2 transition-all cursor-pointer whitespace-nowrap ${
-            activeTab === 'REPORTS'
-              ? 'border-blue-600 text-blue-600 bg-blue-50/50 rounded-t-lg'
-              : 'border-transparent text-gray-500 hover:text-gray-900 hover:border-gray-300'
-          }`}
-        >
-          <span className="material-symbols-outlined text-lg">assessment</span>
-          <span>Rekap Nilai & Review Jawaban</span>
-          {data.stats.pendingReviewCount > 0 && (
-            <span className="ml-1.5 px-2 py-0.5 text-xs font-bold bg-amber-100 text-amber-800 rounded-full">
-              {data.stats.pendingReviewCount} perlu review
+      {/* REAL-TIME NOTIFICATION BANNER */}
+      {realtimeAlert && (
+        <div className={`flex items-center justify-between p-4 border rounded-xl shadow-sm transition-all animate-in fade-in slide-in-from-top-2 ${
+          realtimeAlert.type === 'STARTED'
+            ? 'bg-amber-50 border-amber-300 text-amber-900'
+            : 'bg-emerald-50 border-emerald-300 text-emerald-900'
+        }`}>
+          <div className="flex items-center gap-3">
+            <span className="flex h-3 w-3 relative">
+              <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
+                realtimeAlert.type === 'STARTED' ? 'bg-amber-400' : 'bg-emerald-400'
+              }`}></span>
+              <span className={`relative inline-flex rounded-full h-3 w-3 ${
+                realtimeAlert.type === 'STARTED' ? 'bg-amber-500' : 'bg-emerald-500'
+              }`}></span>
             </span>
-          )}
-        </button>
+            <div>
+              {realtimeAlert.type === 'STARTED' ? (
+                <>
+                  <p className="text-sm font-semibold">
+                    📝 <strong>{realtimeAlert.studentName}</strong> sedang mulai mengerjakan kuis <strong>{realtimeAlert.quizTitle}</strong>!
+                  </p>
+                  <p className="text-xs text-amber-700">
+                    Status murid otomatis berubah menjadi <strong>Sedang Mengerjakan</strong> secara real-time.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm font-semibold">
+                    ⚡ <strong>{realtimeAlert.studentName}</strong> baru saja menyelesaikan kuis <strong>{realtimeAlert.quizTitle}</strong>!
+                  </p>
+                  <p className="text-xs text-emerald-700">
+                    Nilai: <span className="font-bold">{realtimeAlert.score}</span> • Status:{' '}
+                    {realtimeAlert.needsReview
+                      ? 'Memerlukan Review Essay'
+                      : realtimeAlert.isPassed
+                      ? 'Lulus 🎉'
+                      : 'Belum Lulus'} • Status murid otomatis berubah menjadi <strong>Selesai</strong> secara real-time.
+                  </p>
+                </>
+              )}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setRealtimeAlert(null)}
+            className={`text-xs font-semibold px-2.5 py-1 rounded-lg transition-colors ${
+              realtimeAlert.type === 'STARTED'
+                ? 'text-amber-700 hover:text-amber-900 hover:bg-amber-100'
+                : 'text-emerald-700 hover:text-emerald-900 hover:bg-emerald-100'
+            }`}
+          >
+            ✕ Tutup
+          </button>
+        </div>
+      )}
 
-        <button
-          type="button"
-          onClick={() => setActiveTab('UNFINISHED')}
-          className={`flex items-center gap-2 px-5 py-3 font-semibold text-sm border-b-2 transition-all cursor-pointer whitespace-nowrap ${
-            activeTab === 'UNFINISHED'
-              ? 'border-blue-600 text-blue-600 bg-blue-50/50 rounded-t-lg'
-              : 'border-transparent text-gray-500 hover:text-gray-900 hover:border-gray-300'
-          }`}
-        >
-          <span className="material-symbols-outlined text-lg">person_search</span>
-          <span>Pantau Siswa Belum Selesai (Materi & Kuis)</span>
-          {initialUnfinishedReports && (initialUnfinishedReports.stats.studentsWithLockedPages + initialUnfinishedReports.stats.studentsWithIncompleteQuiz > 0) && (
-            <span className="ml-1.5 px-2 py-0.5 text-xs font-bold bg-rose-100 text-rose-700 rounded-full">
-              {initialUnfinishedReports.pagination.totalItems} siswa
-            </span>
-          )}
-        </button>
+      {/* TOP TAB NAVIGATION & REAL-TIME STATUS */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-gray-200 gap-2 pb-px">
+        <div className="flex gap-2 overflow-x-auto">
+          <button
+            type="button"
+            onClick={() => setActiveTab('REPORTS')}
+            className={`flex items-center gap-2 px-5 py-3 font-semibold text-sm border-b-2 transition-all cursor-pointer whitespace-nowrap ${
+              activeTab === 'REPORTS'
+                ? 'border-blue-600 text-blue-600 bg-blue-50/50 rounded-t-lg'
+                : 'border-transparent text-gray-500 hover:text-gray-900 hover:border-gray-300'
+            }`}
+          >
+            <span className="material-symbols-outlined text-lg">assessment</span>
+            <span>Rekap Nilai & Review Jawaban</span>
+            {data.stats.pendingReviewCount > 0 && (
+              <span className="ml-1.5 px-2 py-0.5 text-xs font-bold bg-amber-100 text-amber-800 rounded-full">
+                {data.stats.pendingReviewCount} perlu review
+              </span>
+            )}
+          </button>
 
-        <button
-          type="button"
-          onClick={() => setActiveTab('TASK_RECAP')}
-          className={`flex items-center gap-2 px-5 py-3 font-semibold text-sm border-b-2 transition-all cursor-pointer whitespace-nowrap ${
-            activeTab === 'TASK_RECAP'
-              ? 'border-blue-600 text-blue-600 bg-blue-50/50 rounded-t-lg'
-              : 'border-transparent text-gray-500 hover:text-gray-900 hover:border-gray-300'
-          }`}
-        >
-          <span className="material-symbols-outlined text-lg">view_list</span>
-          <span>Rekapan Berdasarkan Tugas</span>
-        </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('UNFINISHED')}
+            className={`flex items-center gap-2 px-5 py-3 font-semibold text-sm border-b-2 transition-all cursor-pointer whitespace-nowrap ${
+              activeTab === 'UNFINISHED'
+                ? 'border-blue-600 text-blue-600 bg-blue-50/50 rounded-t-lg'
+                : 'border-transparent text-gray-500 hover:text-gray-900 hover:border-gray-300'
+            }`}
+          >
+            <span className="material-symbols-outlined text-lg">person_search</span>
+            <span>Pantau Siswa Belum Selesai (Materi & Kuis)</span>
+            {initialUnfinishedReports && (initialUnfinishedReports.stats.studentsWithLockedPages + initialUnfinishedReports.stats.studentsWithIncompleteQuiz > 0) && (
+              <span className="ml-1.5 px-2 py-0.5 text-xs font-bold bg-rose-100 text-rose-700 rounded-full">
+                {initialUnfinishedReports.pagination.totalItems} siswa
+              </span>
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('TASK_RECAP')}
+            className={`flex items-center gap-2 px-5 py-3 font-semibold text-sm border-b-2 transition-all cursor-pointer whitespace-nowrap ${
+              activeTab === 'TASK_RECAP'
+                ? 'border-blue-600 text-blue-600 bg-blue-50/50 rounded-t-lg'
+                : 'border-transparent text-gray-500 hover:text-gray-900 hover:border-gray-300'
+            }`}
+          >
+            <span className="material-symbols-outlined text-lg">view_list</span>
+            <span>Rekapan Berdasarkan Tugas</span>
+          </button>
+        </div>
+
+        {/* Real-time status indicator */}
+        <div className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-gray-500 self-end sm:self-center">
+          <span className="flex h-2 w-2 relative">
+            {isSocketConnected && (
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            )}
+            <span className={`relative inline-flex rounded-full h-2 w-2 ${isSocketConnected ? 'bg-emerald-500' : 'bg-gray-300'}`}></span>
+          </span>
+          <span>{isSocketConnected ? 'Real-Time Sync Aktif' : 'Menghubungkan WebSocket...'}</span>
+        </div>
       </div>
 
       {activeTab === 'TASK_RECAP' ? (
@@ -881,20 +1034,20 @@ export default function QuizReportView({
 
                       {/* 5. Status Badge */}
                       <td className="px-4 py-3.5 text-center">
-                        {isGraded ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-bold bg-blue-100 text-blue-800 border border-blue-300">
+                        {(row.status === 'COMPLETED' || (row.status === 'GRADED' && row.isPassed)) ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-bold bg-green-100 text-green-800 border border-green-300">
+                            <span className="material-symbols-outlined text-xs">check_circle</span>
+                            Sukses
+                          </span>
+                        ) : isGraded ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300">
                             <span className="material-symbols-outlined text-xs">verified</span>
-                            Dinilai
+                            Dinilai (Belum Lulus)
                           </span>
                         ) : row.needsReview ? (
                           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300 animate-pulse">
                             <span className="material-symbols-outlined text-xs">pending_actions</span>
                             Perlu Review Essay
-                          </span>
-                        ) : isDone ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-bold bg-green-100 text-green-800 border border-green-300">
-                            <span className="material-symbols-outlined text-xs">check_circle</span>
-                            Selesai
                           </span>
                         ) : isInProgress ? (
                           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-bold bg-yellow-100 text-yellow-800 border border-yellow-300">
@@ -1127,17 +1280,21 @@ export default function QuizReportView({
                     <div>
                       <div className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Status Attempt</div>
                       <div className="mt-1">
-                        {attemptDetail.attempt.status === 'GRADED' ? (
-                          <span className="px-2 py-0.5 rounded text-xs font-bold bg-blue-100 text-blue-800 border border-blue-300">
-                            Sudah Dinilai
+                        {(attemptDetail.attempt.status === 'COMPLETED' || (attemptDetail.attempt.status === 'GRADED' && (attemptDetail.attempt.score ?? 0) >= (attemptDetail.package.passingScore || 70))) ? (
+                          <span className="px-2 py-0.5 rounded text-xs font-bold bg-green-100 text-green-800 border border-green-300">
+                            Sukses
+                          </span>
+                        ) : attemptDetail.attempt.status === 'GRADED' ? (
+                          <span className="px-2 py-0.5 rounded text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                            Dinilai (Belum Lulus)
                           </span>
                         ) : attemptDetail.needsReview ? (
                           <span className="px-2 py-0.5 rounded text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300">
                             Perlu Review Essay
                           </span>
                         ) : (
-                          <span className="px-2 py-0.5 rounded text-xs font-bold bg-green-100 text-green-800 border border-green-300">
-                            Selesai
+                          <span className="px-2 py-0.5 rounded text-xs font-bold bg-gray-100 text-gray-700 border border-gray-300">
+                            {attemptDetail.attempt.status}
                           </span>
                         )}
                       </div>

@@ -4,9 +4,11 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "node server.js",
+    "dev:next": "next dev",
     "build": "next build",
-    "start": "next start",
+    "start": "node server.js",
+    "start:next": "next start",
     "lint": "eslint",
     "contract:emit": "prisma contract emit",
     "postinstall": "prisma skills sync || exit 0"
@@ -25,6 +27,8 @@
     "react-dom": "19.2.4",
     "react-markdown": "^10.1.0",
     "react-syntax-highlighter": "^16.1.1",
+    "socket.io": "^4.8.4",
+    "socket.io-client": "^4.8.4",
     "xlsx": "^0.18.5",
     "z": "^1.0.9",
     "zod": "^4.6.5"

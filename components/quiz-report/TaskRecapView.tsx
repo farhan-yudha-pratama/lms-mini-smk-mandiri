@@ -4,6 +4,7 @@ import { useState, useTransition, useEffect, useMemo } from 'react';
 import { getTaskRecapAction } from '@/modules/quiz-report/quiz-report.action';
 import { TaskRecapResponse, TaskRecapItem } from '@/modules/quiz-report/quiz-report.service';
 import * as XLSX from 'xlsx';
+import { getSocket } from '@/lib/socket/client';
 
 type ClassType = { id: string; name: string; };
 
@@ -46,6 +47,26 @@ export default function TaskRecapView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Real-time synchronization via Socket.io
+  useEffect(() => {
+    const socket = getSocket();
+    if (!socket) return;
+
+    socket.emit('join:reports');
+
+    const handleSync = () => {
+      loadData();
+    };
+
+    socket.on('quiz:started', handleSync);
+    socket.on('quiz:completed', handleSync);
+
+    return () => {
+      socket.off('quiz:started', handleSync);
+      socket.off('quiz:completed', handleSync);
+    };
+  }, [selectedClassId, selectedCourseId]);
+
   // Reset category when course changes
   useEffect(() => {
     setSelectedCategory('');
@@ -79,8 +100,8 @@ export default function TaskRecapView({
     // 1. Siapkan data baris untuk Excel
     const excelData = pkg.studentAttempts.map((s, index) => {
       const statusIndo = 
-        s.status === 'GRADED' ? 'Sudah Dinilai' :
-        s.status === 'COMPLETED' ? 'Selesai' :
+        (s.status === 'COMPLETED' || (s.status === 'GRADED' && s.isPassed)) ? 'Sukses' :
+        s.status === 'GRADED' ? 'Sudah Dinilai (Belum Lulus)' :
         s.status === 'IN_PROGRESS' ? 'Sedang Mengerjakan' : 'Belum Mulai';
       
       const keterangan = 
@@ -447,9 +468,15 @@ export default function TaskRecapView({
                                             <span className="material-symbols-outlined text-[13px]">pending_actions</span>
                                             Review
                                           </span>
-                                        ) : isDone ? (
+                                        ) : isDone && s.isPassed ? (
                                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold bg-green-100 text-green-800 border border-green-300">
-                                            Selesai
+                                            <span className="material-symbols-outlined text-[13px]">check_circle</span>
+                                            Sukses
+                                          </span>
+                                        ) : isDone && !s.isPassed ? (
+                                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                                            <span className="material-symbols-outlined text-[13px]">verified</span>
+                                            Dinilai (Belum Lulus)
                                           </span>
                                         ) : s.status === 'IN_PROGRESS' ? (
                                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold bg-yellow-100 text-yellow-800 border border-yellow-300">

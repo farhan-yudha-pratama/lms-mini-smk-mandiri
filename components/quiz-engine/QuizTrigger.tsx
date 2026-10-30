@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { checkQuizStatusAction, startQuizAction } from '@/modules/quiz-engine/quiz-engine.action';
 import QuizEngineModal from './QuizEngineModal';
 import QuizModal from './QuizModal';
 import { useRouter } from 'next/navigation';
+import { getSocket } from '@/lib/socket/client';
 
 export default function QuizTrigger({ pageSlug }: { pageSlug: string }) {
   const [status, setStatus] = useState<any>(null);
@@ -13,23 +14,88 @@ export default function QuizTrigger({ pageSlug }: { pageSlug: string }) {
   const [attemptId, setAttemptId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [completionNotice, setCompletionNotice] = useState(false);
+  const [toastNotification, setToastNotification] = useState<{
+    type: 'ASSIGNED' | 'RESET' | 'GRADED';
+    message: string;
+  } | null>(null);
   const router = useRouter();
 
-  useEffect(() => {
-    let isMounted = true;
-    async function loadStatus() {
+  const loadStatus = useCallback(async () => {
+    try {
       const res = await checkQuizStatusAction(pageSlug);
-      if (!isMounted) return;
       if (res.success) {
         setStatus((res as any).data);
       }
+    } catch (e) {
+      console.error('Failed to load quiz status:', e);
+    } finally {
       setLoading(false);
     }
-    loadStatus();
-    return () => {
-      isMounted = false;
-    };
   }, [pageSlug]);
+
+  useEffect(() => {
+    loadStatus();
+  }, [loadStatus]);
+
+  // Real-time listener via WebSocket
+  useEffect(() => {
+    const socket = getSocket();
+    if (!socket) return;
+
+    const handleQuizAssigned = (data: any) => {
+      if (!data.pageSlug || data.pageSlug === pageSlug) {
+        loadStatus();
+        setToastNotification({
+          type: 'ASSIGNED',
+          message: '🔔 Kuis evaluasi baru telah ditugaskan untuk materi ini!'
+        });
+      }
+    };
+
+    const handleQuizReset = (data: any) => {
+      if (!data.pageSlug || data.pageSlug === pageSlug) {
+        // Active In-flight Exam Handling: close modal and alert student
+        setShowModal(false);
+        setAttemptId(null);
+        setErrorMessage('⚠️ Ujian Anda telah direset oleh Guru/Pengawas. Pengerjaan dibatalkan dan Anda dapat memulai kembali dari awal.');
+        loadStatus();
+        setToastNotification({
+          type: 'RESET',
+          message: '🔄 Riwayat kuis Anda telah direset oleh Guru. Anda dapat mengulang kuis sekarang.'
+        });
+        window.dispatchEvent(new Event('sidebar:refresh'));
+      }
+    };
+
+    const handleQuizGraded = (data: any) => {
+      if (!data.pageSlug || data.pageSlug === pageSlug) {
+        loadStatus();
+        setCompletionNotice(false);
+        setToastNotification({
+          type: 'GRADED',
+          message: '🎉 Hasil penilaian essay Anda telah diperbarui oleh Guru!'
+        });
+        window.dispatchEvent(new Event('sidebar:refresh'));
+      }
+    };
+
+    socket.on('quiz:assigned', handleQuizAssigned);
+    socket.on('quiz:reset', handleQuizReset);
+    socket.on('quiz:graded', handleQuizGraded);
+
+    return () => {
+      socket.off('quiz:assigned', handleQuizAssigned);
+      socket.off('quiz:reset', handleQuizReset);
+      socket.off('quiz:graded', handleQuizGraded);
+    };
+  }, [pageSlug, loadStatus]);
+
+  // Auto-dismiss toast notification after 7 seconds
+  useEffect(() => {
+    if (!toastNotification) return;
+    const timer = setTimeout(() => setToastNotification(null), 7000);
+    return () => clearTimeout(timer);
+  }, [toastNotification]);
 
   const handleStart = async () => {
     if (status.status === 'IN_PROGRESS' && status.attemptId) {
@@ -205,11 +271,32 @@ export default function QuizTrigger({ pageSlug }: { pageSlug: string }) {
       <QuizModal
         isOpen={Boolean(errorMessage)}
         type="error"
-        title="Gagal Memulai Kuis"
+        title="Pemberitahuan Ujian"
         message={errorMessage || ''}
         confirmText="Tutup"
         onConfirm={() => setErrorMessage(null)}
       />
+
+      {/* Floating Responsive Toast Notification (Tactile Neo Brutalism) */}
+      {toastNotification && (
+        <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:bottom-6 sm:max-w-md z-50 bg-[#FFFDF8] border-4 border-black shadow-[4px_4px_0px_0px_#000] p-4 flex items-center justify-between gap-3 animate-in fade-in slide-in-from-bottom-4">
+          <div className="flex items-center gap-2.5">
+            <span className="text-2xl shrink-0">
+              {toastNotification.type === 'ASSIGNED' ? '🔔' : toastNotification.type === 'RESET' ? '🔄' : '🎉'}
+            </span>
+            <p className="text-xs sm:text-sm font-black text-black leading-snug">
+              {toastNotification.message}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setToastNotification(null)}
+            className="px-2.5 py-1.5 bg-black text-white text-xs font-black uppercase tracking-wider hover:bg-gray-800 active:translate-x-[2px] active:translate-y-[2px] transition-transform shrink-0 cursor-pointer border-2 border-black"
+          >
+            Tutup
+          </button>
+        </div>
+      )}
     </div>
   );
 }
