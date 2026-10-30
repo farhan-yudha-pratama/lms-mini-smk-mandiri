@@ -1,5 +1,6 @@
 import { db } from '@/prisma/db';
 import { randomUUID } from 'crypto';
+import { getUnlockedPageIdsForStudent } from '@/modules/student-access/student-access.service';
 
 // Get all assignments for a class and package
 export async function getAssignmentsByPackageAndClass(packageId: string, classId: string) {
@@ -70,6 +71,25 @@ export async function assignManual(packageId: string, variantId: string, student
     }
   }
 
+  // ponytail: Dispatch real-time quiz assignment event
+  try {
+    const pkg = await db.orm.public.QuizPackage.where({ id: packageId }).first();
+    let pageSlug: string | null = null;
+    if (pkg?.pageId) {
+      const page = await db.orm.public.Page.where({ id: pkg.pageId }).first();
+      pageSlug = page?.slug || null;
+    }
+    const { emitQuizAssigned } = await import('@/lib/socket/emitter');
+    emitQuizAssigned({
+      packageId,
+      pageSlug,
+      studentIds: validStudentIds,
+      assignedAt: new Date().toISOString()
+    });
+  } catch (socketErr) {
+    console.error('Socket emit error in assignManual:', socketErr);
+  }
+
   return validStudentIds.length;
 }
 
@@ -116,5 +136,115 @@ export async function distributeRandomlyByClass(packageId: string, classId: stri
     assignedCount++;
   }
 
+  // ponytail: Dispatch real-time quiz assignment event for class
+  try {
+    const pkg = await db.orm.public.QuizPackage.where({ id: packageId }).first();
+    let pageSlug: string | null = null;
+    if (pkg?.pageId) {
+      const page = await db.orm.public.Page.where({ id: pkg.pageId }).first();
+      pageSlug = page?.slug || null;
+    }
+    const { emitQuizAssigned } = await import('@/lib/socket/emitter');
+    emitQuizAssigned({
+      packageId,
+      pageSlug,
+      studentIds: unlockedStudents,
+      classId,
+      assignedAt: new Date().toISOString()
+    });
+  } catch (socketErr) {
+    console.error('Socket emit error in distributeRandomlyByClass:', socketErr);
+  }
+
   return assignedCount;
+}
+
+export interface StudentTaskItem {
+  assignment: any;
+  pkg: any;
+  attempt: any | null;
+  status: 'IN_PROGRESS' | 'READY' | 'LOCKED' | 'COMPLETED' | 'GRADED';
+  courseName: string;
+  courseSlug: string | null;
+  page: any | null;
+  isLinkedToMaterial: boolean;
+}
+
+/**
+ * Mengambil seluruh tugas & kuis aktif yang ditugaskan kepada siswa tertentu.
+ * Memvalidasi batas waktu dan keterbukaan halaman materi berurutan.
+ */
+export async function getStudentTasks(studentId: string): Promise<StudentTaskItem[]> {
+  const assignments = await db.orm.public.QuizAssignment.where({ studentId }).all();
+  if (assignments.length === 0) return [];
+
+  const unlockedPageIds = await getUnlockedPageIdsForStudent(studentId);
+
+  const packageIds = assignments.map(a => a.quizPackageId);
+  const allPackages = await db.orm.public.QuizPackage.all();
+  const packages = allPackages.filter(p => packageIds.includes(p.id));
+  const pkgMap = new Map(packages.map(p => [p.id, p]));
+
+  const allAttempts = await db.orm.public.QuizAttempt.where({ studentId }).all();
+  const attemptMap = new Map(allAttempts.map(a => [a.quizVariantId, a]));
+
+  const courseIds = packages.map(p => p.courseId).filter(Boolean) as string[];
+  const allCourses = courseIds.length > 0 ? await db.orm.public.Course.all() : [];
+  const courses = allCourses.filter(c => courseIds.includes(c.id));
+  const courseMap = new Map(courses.map((c: any) => [c.id, c.name]));
+  const courseSlugMap = new Map(courses.map((c: any) => [c.id, c.slug]));
+
+  const pageIds = packages.map(p => p.pageId).filter(Boolean) as string[];
+  const allPages = pageIds.length > 0 ? await db.orm.public.Page.all() : [];
+  const pages = allPages.filter(p => pageIds.includes(p.id));
+  const pageMap = new Map(pages.map((p: any) => [p.id, p]));
+
+  const now = new Date();
+
+  const tasks: StudentTaskItem[] = assignments.map(a => {
+    const pkg = pkgMap.get(a.quizPackageId);
+    if (!pkg || !pkg.isActive || pkg.isHidden) return null;
+
+    // Filter halaman materi: jika kuis terikat pada halaman tertentu,
+    // sembunyikan jika halamannya belum terbuka untuk murid ini.
+    if (pkg.pageId && !unlockedPageIds.has(pkg.pageId)) {
+      return null;
+    }
+
+    const attempt = attemptMap.get(a.quizVariantId) || null;
+    
+    let status: 'IN_PROGRESS' | 'READY' | 'LOCKED' | 'COMPLETED' | 'GRADED' = 'READY';
+    if (pkg.openAt && now < new Date(pkg.openAt)) status = 'LOCKED';
+    if (pkg.closeAt && now > new Date(pkg.closeAt)) {
+      if (!attempt || attempt.status === 'IN_PROGRESS') {
+        return null; // EXPIRED & NO_ATTEMPT -> HILANG DARI TAMPILAN
+      }
+    }
+
+    if (attempt) {
+      status = attempt.status as any;
+    }
+
+    const courseName = pkg.courseId ? courseMap.get(pkg.courseId) || 'Kuis Mandiri' : 'Kuis Mandiri';
+    const courseSlug = pkg.courseId ? courseSlugMap.get(pkg.courseId) || null : null;
+    const page = pkg.pageId ? pageMap.get(pkg.pageId) || null : null;
+
+    return {
+      assignment: a,
+      pkg,
+      attempt,
+      status,
+      courseName,
+      courseSlug,
+      page,
+      isLinkedToMaterial: Boolean(pkg.pageId && page),
+    };
+  }).filter(Boolean) as StudentTaskItem[];
+
+  tasks.sort((a, b) => {
+    const order: Record<string, number> = { 'IN_PROGRESS': 1, 'READY': 2, 'LOCKED': 3, 'COMPLETED': 4, 'GRADED': 5 };
+    return (order[a.status] || 99) - (order[b.status] || 99);
+  });
+
+  return tasks;
 }

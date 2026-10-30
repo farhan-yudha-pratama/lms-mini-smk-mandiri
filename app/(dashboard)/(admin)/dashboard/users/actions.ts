@@ -79,6 +79,31 @@ export async function bulkToggleActive(userIds: string[], isActive: boolean): Pr
     // Proses Logika
     await userService.bulkUpdateActiveStatus(validatedData.userIds, validatedData.isActive);
 
+    // Jika akun dimatikan, otomatis revoke sesi aktif di database
+    if (!validatedData.isActive) {
+      await userService.bulkRevokeSessions(validatedData.userIds);
+    }
+
+    // ponytail: Dispatch WebSocket events untuk real-time sync & auto-kick
+    try {
+      const { emitUserStatusChanged, emitUserRevoked } = await import('@/lib/socket/emitter');
+      emitUserStatusChanged({
+        userIds: validatedData.userIds,
+        isActive: validatedData.isActive,
+        updatedAt: new Date().toISOString()
+      });
+
+      if (!validatedData.isActive) {
+        emitUserRevoked({
+          userIds: validatedData.userIds,
+          reason: 'DEACTIVATED',
+          revokedAt: new Date().toISOString()
+        });
+      }
+    } catch (socketErr) {
+      console.error('Socket emit error in bulkToggleActive:', socketErr);
+    }
+
     revalidatePath('/dashboard/users');
     return { success: true, message: `Status pengguna berhasil di${isActive ? 'aktifkan' : 'nonaktifkan'}.` };
   } catch (error) {
@@ -124,6 +149,18 @@ export async function bulkDeleteUsersAction(userIds: string[]): Promise<ActionRe
     // Proses Logika
     await userService.bulkDeleteUsers(validatedData.userIds);
 
+    // ponytail: Dispatch WebSocket event auto-kick pengguna yang dihapus
+    try {
+      const { emitUserRevoked } = await import('@/lib/socket/emitter');
+      emitUserRevoked({
+        userIds: validatedData.userIds,
+        reason: 'DELETED',
+        revokedAt: new Date().toISOString()
+      });
+    } catch (socketErr) {
+      console.error('Socket emit error in bulkDeleteUsersAction:', socketErr);
+    }
+
     revalidatePath('/dashboard/users');
     return { success: true, message: 'Pengguna berhasil dihapus.' };
   } catch (error) {
@@ -144,6 +181,18 @@ export async function bulkRevokeUserTokenAction(userIds: string[]): Promise<Acti
     
     // Proses Logika
     await userService.bulkRevokeSessions(validatedData.userIds);
+
+    // ponytail: Dispatch WebSocket event auto-kick sesi pengguna
+    try {
+      const { emitUserRevoked } = await import('@/lib/socket/emitter');
+      emitUserRevoked({
+        userIds: validatedData.userIds,
+        reason: 'REVOKED',
+        revokedAt: new Date().toISOString()
+      });
+    } catch (socketErr) {
+      console.error('Socket emit error in bulkRevokeUserTokenAction:', socketErr);
+    }
 
     revalidatePath('/dashboard/users');
     return { success: true, message: 'Token pengguna berhasil di-revoke secara paksa.' };

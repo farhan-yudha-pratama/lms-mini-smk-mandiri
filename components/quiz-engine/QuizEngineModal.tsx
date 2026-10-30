@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { getQuizQuestionsAction, submitQuizAction } from '@/modules/quiz-engine/quiz-engine.action';
 import QuizModal from './QuizModal';
 import CodeChallengeModal from './CodeChallengeModal';
+import { useQuizTimer } from './useQuizTimer';
 
 interface QuizEngineModalProps {
   attemptId: string;
@@ -197,6 +198,100 @@ export default function QuizEngineModal({
       }
     });
   }, [attemptId, onComplete]);
+
+  // Auto-Submit on Timeout
+  const handleTimeout = useCallback(async () => {
+    if (submittingRef.current || cheatingRef.current) return;
+    submittingRef.current = true;
+    isArmedRef.current = false;
+    setSubmitting(true);
+
+    // Close any internal modal (e.g. submit confirm dialog)
+    setModalConfig(null);
+    isInternalModalOpenRef.current = false;
+
+    const answersArray = (data?.questions || []).map((q: any) => ({
+      questionId: q.id,
+      optionId: q.type === 'PILIHAN_GANDA' ? answersRef.current[q.id] || undefined : undefined,
+      essayAnswer: q.type === 'ESSAY' || q.type === 'CODE_CHALLENGE' ? answersRef.current[q.id] || undefined : undefined
+    }));
+
+    isInternalModalOpenRef.current = true;
+    setModalConfig({
+      isOpen: true,
+      type: 'warning',
+      title: '⏱️ Batas Waktu Ujian Telah Habis!',
+      message: (
+        <div className="space-y-3">
+          <p className="font-bold text-gray-800 text-sm">
+            Waktu pengerjaan ({data?.timeLimit} menit) telah berakhir.
+          </p>
+          <p className="text-xs text-gray-600">
+            Seluruh jawaban yang telah Anda kerjakan sedang dikumpulkan secara otomatis ke server...
+          </p>
+        </div>
+      ),
+      confirmText: 'Sedang Mengumpulkan...',
+    });
+
+    try {
+      const res = await submitQuizAction(attemptId, answersArray, false);
+      await exitFullscreen();
+
+      if (res.success) {
+        setModalConfig(null);
+        isInternalModalOpenRef.current = false;
+        onComplete(
+          (res as any).score,
+          (res as any).passed,
+          {
+            hasEssay: Boolean((res as any).hasEssay),
+            needsReview: Boolean((res as any).needsReview)
+          }
+        );
+      } else {
+        const isAlreadyCompleted = (res as any).message === 'Kuis telah diselesaikan' || (res as any).message === 'Status kuis tidak valid';
+        if (isAlreadyCompleted) {
+          setModalConfig(null);
+          isInternalModalOpenRef.current = false;
+          onComplete(0, false);
+        } else {
+          setModalConfig({
+            isOpen: true,
+            type: 'error',
+            title: 'Waktu Habis - Gagal Menyimpan',
+            message: (res as any).message || 'Terjadi kesalahan saat mengumpulkan kuis otomatis. Silakan klik tombol di bawah untuk mencoba kembali.',
+            confirmText: 'Coba Kumpulkan Lagi',
+            onConfirm: async () => {
+              submittingRef.current = false;
+              await handleTimeout();
+            }
+          });
+        }
+      }
+    } catch (e: any) {
+      console.error('Timeout submit error:', e);
+      setModalConfig({
+        isOpen: true,
+        type: 'error',
+        title: 'Koneksi Terputus',
+        message: 'Gagal menghubungi server saat waktu habis. Periksa koneksi dan coba lagi.',
+        confirmText: 'Coba Kumpulkan Lagi',
+        onConfirm: async () => {
+          submittingRef.current = false;
+          await handleTimeout();
+        }
+      });
+    }
+  }, [attemptId, data?.questions, data?.timeLimit, onComplete]);
+
+  // Hook Countdown Timer
+  const { timeRemaining, formattedTime, isWarning, clearTimer } = useQuizTimer({
+    attemptId,
+    timeLimitMinutes: data?.timeLimit,
+    isActive: quizStage === 'ACTIVE',
+    onTimeout: handleTimeout,
+  });
 
   // Anti-Cheat Event Listeners (Armed only when quizStage === 'ACTIVE')
   useEffect(() => {
@@ -462,6 +557,7 @@ export default function QuizEngineModal({
     await exitFullscreen();
 
     if (res.success) {
+      clearTimer();
       onComplete(
         (res as any).score, 
         (res as any).passed, 
@@ -539,6 +635,24 @@ export default function QuizEngineModal({
             </div>
             
             <div className="space-y-3">
+              {/* Batas Waktu / Durasi */}
+              {data.timeLimit && data.timeLimit > 0 ? (
+                <div className="flex items-start justify-between gap-3 bg-[#F4F0EA] border-2 border-black p-3">
+                  <div className="flex items-start gap-2.5">
+                    <span className="material-symbols-outlined text-lg mt-0.5 text-amber-600">timer</span>
+                    <div>
+                      <div className="font-bold text-sm">Batas Waktu Pengerjaan</div>
+                      <div className="text-xs text-gray-600">
+                        Waktu pengerjaan adalah {data.timeLimit} menit. Timer otomatis berjalan saat soal pertama terbuka.
+                      </div>
+                    </div>
+                  </div>
+                  <span className="shrink-0 px-2.5 py-1 text-xs font-black uppercase bg-yellow-300 text-black border border-black font-mono">
+                    {data.timeLimit} Menit
+                  </span>
+                </div>
+              ) : null}
+
               {/* 1. Fullscreen Permission */}
               {data.antiCheatConfig?.enableFullscreen && (
                 <div className="flex items-start justify-between gap-3 bg-[#F4F0EA] border-2 border-black p-3">
@@ -674,8 +788,25 @@ export default function QuizEngineModal({
             </span>
             <h2 className="text-lg md:text-xl font-black uppercase tracking-tight truncate">{data.title}</h2>
           </div>
-          <div className="bg-white border-2 border-black px-4 py-2 font-black text-sm shadow-neo-sm">
-            Terjawab: {answeredCount} / {data.questions.length}
+          <div className="flex items-center gap-3">
+            {timeRemaining !== null && (
+              <div
+                className={`px-3 py-1.5 md:px-4 md:py-2 border-2 border-black font-black text-xs md:text-sm flex items-center gap-2 shadow-neo-sm transition-colors ${
+                  isWarning
+                    ? 'bg-red-500 text-white animate-pulse'
+                    : 'bg-yellow-300 text-black'
+                }`}
+                title="Sisa Waktu Pengerjaan"
+              >
+                <span className="material-symbols-outlined text-base md:text-lg">timer</span>
+                <span className="font-mono text-sm md:text-base tracking-wider font-black">
+                  {formattedTime}
+                </span>
+              </div>
+            )}
+            <div className="bg-white border-2 border-black px-3 py-1.5 md:px-4 md:py-2 font-black text-xs md:text-sm shadow-neo-sm">
+              Terjawab: {answeredCount} / {data.questions.length}
+            </div>
           </div>
         </div>
 

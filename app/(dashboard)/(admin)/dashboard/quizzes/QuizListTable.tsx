@@ -207,6 +207,18 @@ export default function QuizListTable({ packages }: { packages: MappedPackage[] 
                                   </span>
                                 )}
                                 
+                                {pkg.timeLimit && pkg.timeLimit > 0 ? (
+                                  <span className="text-xs px-2 py-0.5 bg-amber-50 text-amber-800 rounded border border-amber-200 font-medium whitespace-nowrap flex items-center gap-1">
+                                    <span className="material-symbols-outlined text-[13px]">timer</span>
+                                    {pkg.timeLimit} Menit
+                                  </span>
+                                ) : (
+                                  <span className="text-xs px-2 py-0.5 bg-gray-50 text-gray-600 rounded border border-gray-200 font-medium whitespace-nowrap flex items-center gap-1">
+                                    <span className="material-symbols-outlined text-[13px]">all_inclusive</span>
+                                    Tanpa Batas
+                                  </span>
+                                )}
+
                                 {pkg.isHidden && (
                                   <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-700 rounded border border-gray-300 font-medium whitespace-nowrap">
                                     Draft (Sembunyi)

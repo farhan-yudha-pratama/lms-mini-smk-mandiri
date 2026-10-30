@@ -12,6 +12,7 @@ export type Course = {
   joinCode?: string;
   description?: string | null;
   isActive?: boolean;
+  firstPageSlug?: string | null;
 };
 
 export type Category = {
@@ -54,7 +55,7 @@ export default function CategoryList({
   const [errorPopup, setErrorPopup] = useState<{ isOpen: boolean; message: string }>({ isOpen: false, message: '' });
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-
+  
   // Drag and Drop desktop states (per course)
   const [draggedInfo, setDraggedInfo] = useState<{ courseId: string; catId: string } | null>(null);
   const [dragOverCatId, setDragOverCatId] = useState<string | null>(null);
@@ -581,6 +582,17 @@ export default function CategoryList({
 
                   {/* Right: Quick "+ Tambah Kategori" button & Status */}
                   <div className="flex items-center gap-2.5 shrink-0 w-full sm:w-auto justify-end pt-2 sm:pt-0 border-t sm:border-t-0 border-gray-100">
+                    <a
+                      href={course.firstPageSlug ? `/course/${course.slug}/${course.firstPageSlug}` : `/course/${course.slug}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="px-3 py-1.5 rounded-lg bg-blue-50 border border-blue-200 hover:bg-blue-100 hover:border-blue-300 text-blue-700 text-xs font-semibold transition-colors flex items-center gap-1.5 shadow-2xs"
+                      title="Buka materi mata pelajaran ini di tampilan siswa (tab baru)"
+                    >
+                      <span className="material-symbols-outlined text-sm">open_in_new</span>
+                      <span>Lihat Materi Siswa</span>
+                    </a>
                     <button
                       type="button"
                       onClick={(e) => {
@@ -793,6 +805,7 @@ export default function CategoryList({
                                                   <th className="px-4 py-2.5">Judul Halaman</th>
                                                   <th className="px-4 py-2.5">Slug</th>
                                                   <th className="px-4 py-2.5">Status</th>
+                                                  <th className="px-4 py-2.5 text-right w-24">Lihat</th>
                                                 </tr>
                                               </thead>
                                               <tbody className="divide-y divide-gray-100">
@@ -812,6 +825,18 @@ export default function CategoryList({
                                                         </span>
                                                       )}
                                                     </td>
+                                                      <td className="px-4 py-2.5 text-right">
+                                                        <a
+                                                          href={`/course/${course.slug}/${p.slug}`}
+                                                          target="_blank"
+                                                          rel="noopener noreferrer"
+                                                          className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 transition-colors"
+                                                          title={`Buka materi "${p.title}" di tampilan siswa (tab baru)`}
+                                                        >
+                                                          <span className="material-symbols-outlined text-xs">open_in_new</span>
+                                                          <span>Lihat</span>
+                                                        </a>
+                                                      </td>
                                                   </tr>
                                                 ))}
                                               </tbody>
@@ -940,9 +965,21 @@ export default function CategoryList({
                                       ) : pagesCache[cat.id]?.length > 0 ? (
                                         <div className="space-y-1.5">
                                           {pagesCache[cat.id].map((p: any) => (
-                                            <div key={p.id} className="p-1.5 bg-white rounded border border-gray-200 flex items-center justify-between">
+                                            <div key={p.id} className="p-1.5 bg-white rounded border border-gray-200 flex items-center justify-between gap-2">
                                               <span className="text-gray-800 font-medium truncate">#{p.orderIndex} {p.title}</span>
-                                              <span className="text-[10px] text-gray-500">{p.isPublished ? 'Publik' : 'Draft'}</span>
+                                              <div className="flex items-center gap-1.5 shrink-0">
+                                                <span className="text-[10px] text-gray-500">{p.isPublished ? 'Publik' : 'Draft'}</span>
+                                                <a
+                                                  href={`/course/${course.slug}/${p.slug}`}
+                                                  target="_blank"
+                                                  rel="noopener noreferrer"
+                                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[11px] font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded hover:bg-blue-100 transition-colors"
+                                                  title={`Buka materi "${p.title}" di tampilan siswa (tab baru)`}
+                                                >
+                                                  <span className="material-symbols-outlined text-[12px]">open_in_new</span>
+                                                  <span>Lihat</span>
+                                                </a>
+                                              </div>
                                             </div>
                                           ))}
                                         </div>
@@ -1251,6 +1288,7 @@ export default function CategoryList({
         </div>
       )}
 
+      
       {/* ERROR FEEDBACK POPUP */}
       {errorPopup.isOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">

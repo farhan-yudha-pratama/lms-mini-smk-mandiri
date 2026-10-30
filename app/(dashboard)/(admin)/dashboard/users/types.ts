@@ -66,6 +66,8 @@ export interface UsersTableProps {
   onEditName?: (user: UserRow) => void;
   onDeleteUser?: (user: UserRow) => void;
   onViewQuizHistory?: (user: UserRow) => void;
+  onToggleActiveUser?: (user: UserRow, isActive: boolean) => void;
+  onRevokeUserSession?: (user: UserRow) => void;
 }
 
 export interface UsersToolbarProps {

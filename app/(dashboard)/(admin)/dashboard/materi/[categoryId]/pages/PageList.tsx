@@ -35,12 +35,14 @@ export default function PageList({
   initialPages, 
   categoryId, 
   categoryName, 
-  allPages 
+  allPages,
+  courseSlug,
 }: { 
   initialPages: PageItem[]; 
   categoryId: string; 
   categoryName: string; 
   allPages: BasicPage[]; 
+  courseSlug?: string | null;
 }) {
   const router = useRouter();
   const [pages, setPages] = useState<PageItem[]>(initialPages);
@@ -498,6 +500,18 @@ export default function PageList({
 
                 {/* Mobile Card Actions Footer */}
                 <div className="p-3 bg-gray-50 border-t border-gray-100 flex items-center justify-end gap-2">
+                  {courseSlug && (
+                    <a
+                      href={`/course/${courseSlug}/${page.slug}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="py-1.5 px-3 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors flex items-center gap-1"
+                      title="Lihat Halaman di Tampilan Siswa (tab baru)"
+                    >
+                      <span className="material-symbols-outlined text-sm">open_in_new</span>
+                      <span>Lihat</span>
+                    </a>
+                  )}
                   <button
                     type="button"
                     onClick={() => openModal(page)}
@@ -615,6 +629,17 @@ export default function PageList({
 
                     <td className="px-6 py-4 text-right">
                       <div className="inline-flex items-center gap-1.5">
+                        {courseSlug && (
+                          <a
+                            href={`/course/${courseSlug}/${page.slug}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-1.5 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 transition-colors"
+                            title="Lihat Halaman di Tampilan Siswa (tab baru)"
+                          >
+                            <span className="material-symbols-outlined text-sm block">open_in_new</span>
+                          </a>
+                        )}
                         <button 
                           type="button"
                           onClick={() => openModal(page)} 

@@ -3,6 +3,7 @@ import { getSession } from "@/lib/session";
 import { getStudentCourses } from "@/app/actions/student-courses";
 import { getCourses } from "@/app/actions/course";
 import StudentDashboardClient from "@/components/student/StudentDashboardClient";
+import Link from "next/link";
 
 export default async function Page() {
   const session = await getSession();
@@ -13,7 +14,9 @@ export default async function Page() {
 
   const role = session?.role || "MURID";
   const isSuperAdmin = role === "SUPERADMIN";
-  const roleLabel = isSuperAdmin ? "Superadmin" : role === "GURU" ? "Guru" : "Siswa";
+  const isTeacher = role === "GURU";
+  const canAccessAdmin = isSuperAdmin || isTeacher;
+  const roleLabel = isSuperAdmin ? "Superadmin" : isTeacher ? "Guru" : "Siswa";
 
   // Fake userId mapping for now since session only has email usually, unless it's properly set
   const userId = session?.userId || "";
@@ -71,6 +74,28 @@ export default async function Page() {
                 Kuis Interaktif
               </span>
             </div>
+
+            {/* Mobile Admin Navigation for Superadmin / Guru */}
+            {canAccessAdmin && (
+              <div className="mt-6 md:hidden">
+                <Link
+                  href="/dashboard"
+                  className="w-full flex items-center justify-between gap-3 bg-[#092328] text-white border-4 border-black p-3.5 font-black uppercase text-sm tracking-wider shadow-[4px_4px_0px_0px_#000] hover:bg-black active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all group"
+                >
+                  <span className="flex items-center gap-3">
+                    <span className="w-8 h-8 bg-[#2A835F] border-2 border-black flex items-center justify-center text-white shrink-0">
+                      <span className="material-symbols-outlined text-lg">admin_panel_settings</span>
+                    </span>
+                    <span className="text-left font-black tracking-tight">
+                      Dashboard {isSuperAdmin ? "Superadmin" : "Guru"}
+                    </span>
+                  </span>
+                  <span className="material-symbols-outlined text-xl text-[#8BBB92] group-hover:translate-x-1 transition-transform">
+                    arrow_forward
+                  </span>
+                </Link>
+              </div>
+            )}
           </div>
         </div>
       </section>

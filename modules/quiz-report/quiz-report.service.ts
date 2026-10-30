@@ -171,6 +171,33 @@ export async function getQuizReports(params: {
     return targetStudentIds.has(a.studentId) && targetVariantIds.has(a.quizVariantId);
   });
 
+  // ponytail: Auto-sync setiap status 'GRADED' yang lulus KKM menjadi 'COMPLETED' (Sukses)
+  for (const a of relevantAttempts) {
+    if (a.status === 'GRADED') {
+      const v = variantMap.get(a.quizVariantId);
+      const p = v ? packageMap.get(v.quizPackageId) : null;
+      const passing = p?.passingScore || 70;
+      if (a.score !== null && a.score !== undefined && a.score >= passing) {
+        a.status = 'COMPLETED';
+        db.orm.public.QuizAttempt.where({ id: a.id }).update({
+          status: 'COMPLETED',
+          finishedAt: a.finishedAt || new Date().toISOString()
+        }).catch(err => console.error('Failed to auto-update attempt status:', err));
+
+        if (p?.pageId) {
+          db.orm.public.PageAccess.where({ pageId: p.pageId, studentId: a.studentId }).update({
+            status: 'COMPLETED',
+            completedAt: new Date().toISOString()
+          }).catch(() => {});
+        }
+
+        import('@/modules/quiz-completion/quiz-completion.service')
+          .then(({ recordQuizCompletion }) => recordQuizCompletion(a.id))
+          .catch(() => {});
+      }
+    }
+  }
+
   let reportItems: QuizReportItem[] = [];
 
   // CASE 1: Both classId and packageId are specified -> show all students in that class for that package
@@ -562,6 +589,27 @@ export async function completeQuizAttempt(attemptId: string) {
     console.error('Gagal mencatat arsip kuis otomatis:', err);
   }
 
+  // ponytail: Dispatch WebSocket event
+  try {
+    const student = await db.orm.public.User.where({ id: attempt.studentId }).first();
+    const classroom = student?.classId ? await db.orm.public.Classroom.where({ id: student.classId }).first() : null;
+    const { emitQuizCompleted } = await import('@/lib/socket/emitter');
+    emitQuizCompleted({
+      attemptId,
+      studentId: attempt.studentId,
+      studentName: student?.name || 'Siswa',
+      quizTitle: pkg?.title || 'Kuis',
+      score,
+      isPassed: score >= passingScore,
+      needsReview: false,
+      classId: student?.classId || null,
+      className: classroom?.name || null,
+      completedAt: new Date().toISOString()
+    });
+  } catch (err) {
+    console.error('Socket emit error in completeQuizAttempt:', err);
+  }
+
   return {
     attemptId,
     studentId: attempt.studentId,
@@ -599,6 +647,87 @@ export async function resetQuizAttempt(studentId: string, packageId: string, att
   }
 
   await db.orm.public.QuizAttempt.where({ id: targetAttempt.id }).delete();
+
+  // Bersihkan arsip permanen dan reset status akses materi (Opsi B: Strict Sequential)
+  const pkg = await db.orm.public.QuizPackage.where({ id: packageId }).first();
+  let pageSlug: string | null = null;
+
+  if (pkg?.pageId) {
+    const page = await db.orm.public.Page.where({ id: pkg.pageId }).first();
+    if (page) {
+      pageSlug = page.slug;
+
+      // 1. Hapus QuizCompletionRecord terkait materi ini agar getQuizStatus tidak membaca nilai lama
+      const records = await db.orm.public.QuizCompletionRecord.where({
+        studentId,
+        pageSlug: page.slug
+      }).all();
+      for (const r of records) {
+        await db.orm.public.QuizCompletionRecord.where({ id: r.id }).delete();
+      }
+
+      // 2. Revert PageAccess materi ini ke UNLOCKED (belum selesai)
+      const thisAccess = await db.orm.public.PageAccess.where({
+        pageId: pkg.pageId,
+        studentId
+      }).first();
+      if (thisAccess) {
+        await db.orm.public.PageAccess.where({ id: thisAccess.id }).update({
+          status: 'UNLOCKED',
+          completedAt: null
+        });
+      }
+
+      // 3. Opsi B (Strict Sequential): Kunci kembali materi berikutnya yang mensyaratkan kelulusan materi ini
+      const sequences = await db.orm.public.PageSequence.where({ prerequisitePageId: pkg.pageId }).all();
+      for (const seq of sequences) {
+        const dependentAccess = await db.orm.public.PageAccess.where({
+          pageId: seq.pageId,
+          studentId
+        }).first();
+        if (dependentAccess && dependentAccess.status !== 'LOCKED') {
+          await db.orm.public.PageAccess.where({ id: dependentAccess.id }).update({
+            status: 'LOCKED',
+            unlockedAt: null,
+            completedAt: null
+          });
+        }
+      }
+    }
+  }
+
+  // Hapus juga QuizCompletionRecord jika ada berdasarkan sourceId target attempt
+  const recordsBySource = await db.orm.public.QuizCompletionRecord.where({
+    sourceId: targetAttempt.id
+  }).all();
+  for (const r of recordsBySource) {
+    await db.orm.public.QuizCompletionRecord.where({ id: r.id }).delete();
+  }
+
+  // ponytail: Dispatch real-time WebSocket reset event
+  try {
+    const { emitQuizReset, emitQuizCompleted } = await import('@/lib/socket/emitter');
+    emitQuizReset({
+      studentId,
+      packageId,
+      pageSlug,
+      resetAt: new Date().toISOString()
+    });
+
+    // Refresh teacher reports dashboard automatically
+    emitQuizCompleted({
+      attemptId: targetAttempt.id,
+      studentId,
+      studentName: '',
+      quizTitle: pkg?.title || 'Kuis',
+      score: 0,
+      isPassed: false,
+      needsReview: false,
+      completedAt: new Date().toISOString()
+    });
+  } catch (socketErr) {
+    console.error('Socket emit error in resetQuizAttempt:', socketErr);
+  }
   
   return { attemptId: targetAttempt.id, studentId, previousScore, previousStatus, answerCount };
 }
@@ -786,16 +915,26 @@ export async function gradeQuizAttempt(
 
   const finalScore = totalPossible > 0 ? (totalEarned / totalPossible) * 100 : 0;
   const roundedScore = Math.round(finalScore * 100) / 100;
+  const passed = roundedScore >= (pkg?.passingScore || 70);
+  const targetStatus = passed ? 'COMPLETED' : 'GRADED';
 
-  // Update QuizAttempt to GRADED and new score
+  // Update QuizAttempt: jika lulus KKM otomatis COMPLETED (Sukses), jika tidak tetap GRADED
   await db.orm.public.QuizAttempt.where({ id: attemptId }).update({
     score: roundedScore,
-    status: 'GRADED'
+    status: targetStatus,
+    finishedAt: attempt.finishedAt || new Date().toISOString()
   });
 
-  // Prerequisite Unlocking Logic
-  const passed = roundedScore >= (pkg?.passingScore || 70);
-  
+  // Catat arsip permanen kelulusan jika lulus KKM
+  if (passed) {
+    try {
+      const { recordQuizCompletion } = await import('@/modules/quiz-completion/quiz-completion.service');
+      await recordQuizCompletion(attemptId);
+    } catch (err) {
+      console.error('Gagal mencatat arsip kuis otomatis:', err);
+    }
+  }
+
   // Previous score
   const beforeScore = attempt.score;
 
@@ -851,11 +990,43 @@ export async function gradeQuizAttempt(
     }
   }
 
+  // ponytail: Dispatch WebSocket event
+  try {
+    const student = await db.orm.public.User.where({ id: attempt.studentId }).first();
+    const classroom = student?.classId ? await db.orm.public.Classroom.where({ id: student.classId }).first() : null;
+    const { emitQuizCompleted, emitQuizGraded } = await import('@/lib/socket/emitter');
+    emitQuizCompleted({
+      attemptId,
+      studentId: attempt.studentId,
+      studentName: student?.name || 'Siswa',
+      quizTitle: pkg?.title || 'Kuis',
+      score: roundedScore,
+      isPassed: passed,
+      needsReview: false,
+      classId: student?.classId || null,
+      className: classroom?.name || null,
+      completedAt: new Date().toISOString()
+    });
+
+    const page = pkg?.pageId ? await db.orm.public.Page.where({ id: pkg.pageId }).first() : null;
+    emitQuizGraded({
+      studentId: attempt.studentId,
+      attemptId,
+      packageId: pkg?.id,
+      pageSlug: page?.slug || null,
+      score: roundedScore,
+      isPassed: passed,
+      gradedAt: new Date().toISOString()
+    });
+  } catch (err) {
+    console.error('Socket emit error in gradeQuizAttempt:', err);
+  }
+
   return {
     success: true,
     score: roundedScore,
     isPassed: passed,
-    status: 'GRADED' as const,
+    status: targetStatus,
     beforeScore,
     gradedCount: essayGrades.length,
     studentId: attempt.studentId

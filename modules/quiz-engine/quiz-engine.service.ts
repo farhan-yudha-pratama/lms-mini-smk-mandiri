@@ -82,11 +82,11 @@ export async function getQuizStatus(pageSlug: string, studentId: string) {
       }
     }
 
-    return { status: 'READY', assignmentId: assignment.id, packageTitle: pkg.title, hasEssay, antiCheatConfig };
+    return { status: 'READY', assignmentId: assignment.id, packageTitle: pkg.title, timeLimit: pkg.timeLimit, passingScore: pkg.passingScore, hasEssay, antiCheatConfig };
   }
 
   if (attempt.status === 'IN_PROGRESS') {
-    return { status: 'IN_PROGRESS', attemptId: attempt.id, packageTitle: pkg.title, hasEssay, antiCheatConfig };
+    return { status: 'IN_PROGRESS', attemptId: attempt.id, packageTitle: pkg.title, timeLimit: pkg.timeLimit, passingScore: pkg.passingScore, hasEssay, antiCheatConfig };
   }
 
   const needsReview = hasEssay && attempt.status === 'COMPLETED';
@@ -97,6 +97,7 @@ export async function getQuizStatus(pageSlug: string, studentId: string) {
     score: attempt.score, 
     passed: attempt.score !== null && attempt.score >= pkg.passingScore,
     passingScore: pkg.passingScore,
+    timeLimit: pkg.timeLimit,
     packageTitle: pkg.title,
     hasEssay,
     needsReview,
@@ -132,6 +133,26 @@ export async function startQuiz(assignmentId: string, studentId: string) {
     status: 'IN_PROGRESS',
     startedAt: new Date().toISOString()
   });
+
+  // ponytail: Dispatch WebSocket event when student starts quiz
+  try {
+    const student = await db.orm.public.User.where({ id: studentId }).first();
+    const classroom = student?.classId ? await db.orm.public.Classroom.where({ id: student.classId }).first() : null;
+    const { emitQuizStarted } = await import('@/lib/socket/emitter');
+    emitQuizStarted({
+      attemptId: attempt.id,
+      studentId,
+      studentName: student?.name || 'Siswa',
+      quizTitle: pkg?.title || 'Kuis',
+      packageId: pkg?.id,
+      classId: student?.classId || null,
+      className: classroom?.name || null,
+      status: 'IN_PROGRESS',
+      startedAt: attempt.startedAt,
+    });
+  } catch (socketErr) {
+    console.error('[startQuiz] Socket emit error:', socketErr);
+  }
 
   return attempt.id;
 }
@@ -202,7 +223,7 @@ export async function submitQuiz(
   answers: { questionId: string; optionId?: string; essayAnswer?: string }[], 
   forcedScoreZero = false
 ) {
-  return await db.transaction(async (tx) => {
+  const result = await db.transaction(async (tx) => {
     const attempt = await tx.orm.public.QuizAttempt.where({ id: attemptId }).first();
     if (!attempt || attempt.studentId !== studentId) throw new Error('Attempt tidak valid');
     if (attempt.status === 'COMPLETED' || attempt.status === 'GRADED') {
@@ -215,6 +236,8 @@ export async function submitQuiz(
       throw new Error('Varian kuis ini sedang dinonaktifkan oleh Guru');
     }
     const pkg = await tx.orm.public.QuizPackage.where({ id: variant!.quizPackageId }).first();
+    const student = await tx.orm.public.User.where({ id: studentId }).first();
+    const classroom = student?.classId ? await tx.orm.public.Classroom.where({ id: student.classId }).first() : null;
     
     // Fetch slugs for revalidation (only if tied to a page)
     let pageSlug: string | undefined = undefined;
@@ -345,13 +368,40 @@ export async function submitQuiz(
     }
 
     return { 
+      attemptId,
       score: roundedScore, 
       passed, 
       hasEssay, 
       needsReview: hasEssay,
       status: 'COMPLETED' as const,
       pageSlug,
-      categorySlug
+      categorySlug,
+      studentId,
+      studentName: student?.name || 'Siswa',
+      quizTitle: pkg?.title || 'Kuis',
+      classId: student?.classId || null,
+      className: classroom?.name || null
     };
   });
+
+  // ponytail: Dispatch WebSocket event immediately after commit
+  try {
+    const { emitQuizCompleted } = await import('@/lib/socket/emitter');
+    emitQuizCompleted({
+      attemptId,
+      studentId: result.studentId,
+      studentName: result.studentName,
+      quizTitle: result.quizTitle,
+      score: result.score,
+      isPassed: result.passed,
+      needsReview: result.needsReview,
+      classId: result.classId,
+      className: result.className,
+      completedAt: new Date().toISOString()
+    });
+  } catch (socketErr) {
+    console.error('[submitQuiz] Socket emit error:', socketErr);
+  }
+
+  return result;
 }

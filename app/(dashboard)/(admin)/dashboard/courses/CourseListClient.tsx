@@ -21,7 +21,7 @@ export default function CourseListClient({ initialCourses }: { initialCourses: a
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
-
+  
   const filteredCourses = courses.filter(c => 
     c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     c.joinCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -239,6 +239,16 @@ export default function CourseListClient({ initialCourses }: { initialCourses: a
 
               {/* Actions Footer */}
               <div className="pt-2 border-t border-gray-100 flex items-center justify-between gap-2">
+                <a
+                  href={course.firstPageSlug ? `/course/${course.slug}/${course.firstPageSlug}` : `/course/${course.slug}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 py-1.5 px-2.5 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors flex items-center justify-center gap-1"
+                  title="Lihat materi mata pelajaran ini di tampilan siswa (tab baru)"
+                >
+                  <span className="material-symbols-outlined text-sm">open_in_new</span>
+                  <span>Lihat Materi Siswa</span>
+                </a>
                 <Link
                   href={`/dashboard/courses/${course.id}/assign`}
                   className="flex-1 py-1.5 px-3 text-xs font-medium text-purple-700 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 transition-colors flex items-center justify-center gap-1.5"
@@ -337,6 +347,16 @@ export default function CourseListClient({ initialCourses }: { initialCourses: a
 
                   <td className="p-4 text-right">
                     <div className="inline-flex items-center gap-2">
+                      <a
+                        href={course.firstPageSlug ? `/course/${course.slug}/${course.firstPageSlug}` : `/course/${course.slug}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-xs font-medium transition-colors flex items-center gap-1"
+                        title="Lihat materi mata pelajaran ini di tampilan siswa (tab baru)"
+                      >
+                        <span className="material-symbols-outlined text-sm">open_in_new</span>
+                        <span>Lihat Materi Siswa</span>
+                      </a>
                       <Link
                         href={`/dashboard/courses/${course.id}/assign`}
                         className="px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-lg text-xs font-medium transition-colors flex items-center gap-1"
@@ -563,6 +583,7 @@ export default function CourseListClient({ initialCourses }: { initialCourses: a
         </div>
       )}
 
+      
       {/* REGENERATE CODE CONFIRMATION MODAL */}
       {courseToRegenerate && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">

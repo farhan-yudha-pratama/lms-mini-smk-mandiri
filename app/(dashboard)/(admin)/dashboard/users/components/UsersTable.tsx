@@ -13,6 +13,8 @@ export default function UsersTable({
   onEditName,
   onDeleteUser,
   onViewQuizHistory,
+  onToggleActiveUser,
+  onRevokeUserSession,
 }: UsersTableProps) {
   const [activeDropdownId, setActiveDropdownId] = useState<string | null>(null);
 
@@ -100,7 +102,7 @@ export default function UsersTable({
                       </button>
 
                       {activeDropdownId === user.id && (
-                        <div className="absolute right-0 top-10 mt-1 w-48 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-20 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+                        <div className="absolute right-0 top-10 mt-1 w-52 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-20 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
                           <button
                             onClick={() => { setActiveDropdownId(null); onViewQuizHistory && onViewQuizHistory(user); }}
                             className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-slate-50 flex items-center gap-2"
@@ -113,6 +115,27 @@ export default function UsersTable({
                           >
                             <span className="material-symbols-outlined text-[18px]">edit</span> Ubah Nama
                           </button>
+                          {onToggleActiveUser && (
+                            <button
+                              onClick={() => { setActiveDropdownId(null); onToggleActiveUser(user, !user.isActive); }}
+                              className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 ${
+                                user.isActive ? 'text-amber-700 hover:bg-amber-50' : 'text-emerald-700 hover:bg-emerald-50'
+                              }`}
+                            >
+                              <span className="material-symbols-outlined text-[18px]">
+                                {user.isActive ? 'block' : 'check_circle'}
+                              </span>
+                              {user.isActive ? 'Nonaktifkan Akun' : 'Aktifkan Akun'}
+                            </button>
+                          )}
+                          {onRevokeUserSession && (
+                            <button
+                              onClick={() => { setActiveDropdownId(null); onRevokeUserSession(user); }}
+                              className="w-full text-left px-4 py-2 text-sm text-amber-700 hover:bg-amber-50 flex items-center gap-2"
+                            >
+                              <span className="material-symbols-outlined text-[18px]">logout</span> Revoke Sesi
+                            </button>
+                          )}
                           <button
                             onClick={() => { setActiveDropdownId(null); onDeleteUser && onDeleteUser(user); }}
                             className="w-full text-left px-4 py-2 text-sm text-rose-600 hover:bg-rose-50 flex items-center gap-2"
@@ -218,7 +241,7 @@ export default function UsersTable({
                     </button>
 
                     {activeDropdownId === user.id && (
-                      <div className="absolute right-6 top-10 mt-1 w-48 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-20 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+                      <div className="absolute right-6 top-10 mt-1 w-52 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-20 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
                         <button
                           onClick={() => { setActiveDropdownId(null); onViewQuizHistory && onViewQuizHistory(user); }}
                           className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-slate-50 flex items-center gap-2"
@@ -231,6 +254,27 @@ export default function UsersTable({
                         >
                           <span className="material-symbols-outlined text-[18px]">edit</span> Ubah Nama
                         </button>
+                        {onToggleActiveUser && (
+                          <button
+                            onClick={() => { setActiveDropdownId(null); onToggleActiveUser(user, !user.isActive); }}
+                            className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 ${
+                              user.isActive ? 'text-amber-700 hover:bg-amber-50' : 'text-emerald-700 hover:bg-emerald-50'
+                            }`}
+                          >
+                            <span className="material-symbols-outlined text-[18px]">
+                              {user.isActive ? 'block' : 'check_circle'}
+                            </span>
+                            {user.isActive ? 'Nonaktifkan Akun' : 'Aktifkan Akun'}
+                          </button>
+                        )}
+                        {onRevokeUserSession && (
+                          <button
+                            onClick={() => { setActiveDropdownId(null); onRevokeUserSession(user); }}
+                            className="w-full text-left px-4 py-2 text-sm text-amber-700 hover:bg-amber-50 flex items-center gap-2"
+                          >
+                            <span className="material-symbols-outlined text-[18px]">logout</span> Revoke Sesi
+                          </button>
+                        )}
                         <button
                           onClick={() => { setActiveDropdownId(null); onDeleteUser && onDeleteUser(user); }}
                           className="w-full text-left px-4 py-2 text-sm text-rose-600 hover:bg-rose-50 flex items-center gap-2"

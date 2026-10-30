@@ -9,6 +9,7 @@ interface StudentSidebarProps {
   onClose: () => void;
   userName?: string;
   userClass?: string;
+  roleLabel?: string;
 }
 
 type MenuItem = {
@@ -78,8 +79,12 @@ function MenuLink({ item, index, onClose, pathname }: { item: MenuItem; index: n
   );
 }
 
-export default function StudentSidebar({ isOpen, onClose, userName, userClass }: StudentSidebarProps) {
+export default function StudentSidebar({ isOpen, onClose, userName, userClass, roleLabel }: StudentSidebarProps) {
   const pathname = usePathname();
+  const isSuperAdmin = roleLabel?.toUpperCase() === 'SUPERADMIN' || userClass?.toUpperCase() === 'SUPERADMIN';
+  const isTeacher = roleLabel?.toUpperCase() === 'GURU' || userClass?.toUpperCase() === 'GURU';
+  const canAccessAdmin = isSuperAdmin || isTeacher;
+
   return (
     <>
       {/* Mobile overlay (solid, no blur) */}
@@ -107,6 +112,26 @@ export default function StudentSidebar({ isOpen, onClose, userName, userClass }:
             <span className="material-symbols-outlined font-black">close</span>
           </button>
         </div>
+
+        {/* Quick Admin Navigation for Superadmin / Guru */}
+        {canAccessAdmin && (
+          <section className="mb-6">
+            <p className="inline-block bg-[#2A835F] text-white text-[11px] font-mono font-bold uppercase tracking-widest px-2 py-0.5 mb-3">
+              Akses Khusus
+            </p>
+            <Link
+              href="/dashboard"
+              onClick={onClose}
+              className={`flex items-center justify-between gap-3 border-4 border-black p-3 bg-[#092328] text-white font-black uppercase text-sm tracking-tight ${PUSH} hover:bg-black`}
+            >
+              <span className="flex items-center gap-3">
+                <span className="material-symbols-outlined text-[#8BBB92]">admin_panel_settings</span>
+                <span>Dashboard {isSuperAdmin ? 'Superadmin' : 'Guru'}</span>
+              </span>
+              <span className="material-symbols-outlined text-sm text-[#8BBB92]">arrow_forward</span>
+            </Link>
+          </section>
+        )}
 
         <section className="mb-8">
           <p className="inline-block bg-black text-[#8BBB92] text-[11px] font-mono font-bold uppercase tracking-widest px-2 py-0.5 mb-4">

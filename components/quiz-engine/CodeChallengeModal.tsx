@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { getQuizQuestionsAction, submitQuizAction } from '@/modules/quiz-engine/quiz-engine.action';
 import QuizModal from './QuizModal';
+import { useQuizTimer } from './useQuizTimer';
 import FileExplorer from './FileExplorer';
 import {
   parseProjectFiles,
@@ -916,6 +917,7 @@ export default function CodeChallengeModal({
 
     const res = await submitQuizAction(attemptId, answersArray, false);
     await exitFullscreen();
+    clearTimer();
 
     if (res.success) {
       try { localStorage.removeItem(`cc-draft-${attemptId}`); } catch (e) {}
@@ -952,72 +954,100 @@ export default function CodeChallengeModal({
     }
   };
 
-  // Timer Countdown State & Logic (Retrieved from Database: data.timeLimit & data.startedAt)
-  const [timeLeftSeconds, setTimeLeftSeconds] = useState<number | null>(null);
-  const autoSubmitTriggeredRef = useRef(false);
+  // Auto-Submit on Timeout
+  const handleTimeout = useCallback(async () => {
+    if (submittingRef.current || cheatingRef.current) return;
+    submittingRef.current = true;
+    isArmedRef.current = false;
+    setSubmitting(true);
 
-  useEffect(() => {
-    if (quizStage !== 'ACTIVE' || !data?.timeLimit || !data?.startedAt) return;
+    setModalConfig(null);
+    isInternalModalOpenRef.current = false;
 
-    const totalSeconds = Number(data.timeLimit) * 60;
-    const startTime = new Date(data.startedAt).getTime();
+    const answersArray = (data?.questions || []).map((q: any) => ({
+      questionId: q.id,
+      optionId: q.type === 'PILIHAN_GANDA' ? answers[q.id] || undefined : undefined,
+      essayAnswer: q.type === 'ESSAY' || q.type === 'CODE_CHALLENGE' ? answers[q.id] || undefined : undefined
+    }));
 
-    const calculateRemaining = () => {
-      const now = Date.now();
-      const elapsed = Math.floor((now - startTime) / 1000);
-      return Math.max(0, totalSeconds - elapsed);
-    };
+    isInternalModalOpenRef.current = true;
+    setModalConfig({
+      isOpen: true,
+      type: 'warning',
+      title: '⏱️ Batas Waktu Ujian Telah Habis!',
+      message: (
+        <div className="space-y-3">
+          <p className="font-bold text-gray-800 text-sm">
+            Waktu pengerjaan (${data?.timeLimit} menit) telah berakhir.
+          </p>
+          <p className="text-xs text-gray-600">
+            Seluruh kode dan jawaban Anda sedang dikumpulkan secara otomatis ke server...
+          </p>
+        </div>
+      ),
+      confirmText: 'Sedang Mengumpulkan...',
+    });
 
-    const initialRemaining = calculateRemaining();
-    setTimeLeftSeconds(initialRemaining);
+    try {
+      const res = await submitQuizAction(attemptId, answersArray, false);
+      await exitFullscreen();
+      clearTimer();
 
-    if (initialRemaining <= 0 && !autoSubmitTriggeredRef.current) {
-      autoSubmitTriggeredRef.current = true;
-      processSubmit();
-      return;
-    }
-
-    const timer = setInterval(() => {
-      const remaining = calculateRemaining();
-      setTimeLeftSeconds(remaining);
-
-      if (remaining <= 0) {
-        clearInterval(timer);
-        if (!autoSubmitTriggeredRef.current) {
-          autoSubmitTriggeredRef.current = true;
-          isInternalModalOpenRef.current = true;
+      if (res.success) {
+        try { localStorage.removeItem(`cc-draft-${attemptId}`); } catch (e) {}
+        setModalConfig(null);
+        isInternalModalOpenRef.current = false;
+        onComplete(
+          (res as any).score,
+          (res as any).passed,
+          {
+            hasEssay: Boolean((res as any).hasEssay),
+            needsReview: Boolean((res as any).needsReview)
+          }
+        );
+      } else {
+        const isAlreadyCompleted = (res as any).message === 'Kuis telah diselesaikan' || (res as any).message === 'Status kuis tidak valid';
+        if (isAlreadyCompleted) {
+          setModalConfig(null);
+          isInternalModalOpenRef.current = false;
+          onComplete(0, false);
+        } else {
           setModalConfig({
             isOpen: true,
-            type: 'warning',
-            title: 'Waktu Ujian Habis!',
-            message: 'Batas waktu pengerjaan telah berakhir. Jawaban Anda dikumpulkan secara otomatis.',
-            confirmText: 'Kumpulkan Sekarang',
+            type: 'error',
+            title: 'Waktu Habis - Gagal Menyimpan',
+            message: (res as any).message || 'Terjadi kesalahan saat mengumpulkan kuis otomatis. Silakan coba lagi.',
+            confirmText: 'Coba Kumpulkan Lagi',
             onConfirm: async () => {
-              setModalConfig(null);
-              isInternalModalOpenRef.current = false;
-              await processSubmit();
+              submittingRef.current = false;
+              await handleTimeout();
             }
           });
-          setTimeout(() => {
-            processSubmit();
-          }, 2500);
         }
       }
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [quizStage, data?.timeLimit, data?.startedAt]);
-
-  const formatTimer = (totalSeconds: number) => {
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const seconds = totalSeconds % 60;
-    const pad = (n: number) => n.toString().padStart(2, '0');
-    if (hours > 0) {
-      return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+    } catch (e: any) {
+      console.error('Timeout submit error:', e);
+      setModalConfig({
+        isOpen: true,
+        type: 'error',
+        title: 'Koneksi Terputus',
+        message: 'Gagal menghubungi server saat waktu habis. Periksa koneksi dan coba lagi.',
+        confirmText: 'Coba Kumpulkan Lagi',
+        onConfirm: async () => {
+          submittingRef.current = false;
+          await handleTimeout();
+        }
+      });
     }
-    return `${pad(minutes)}:${pad(seconds)}`;
-  };
+  }, [attemptId, data?.questions, data?.timeLimit, answers, onComplete]);
+
+  // Hook Countdown Timer
+  const { timeRemaining: timeLeftSeconds, formattedTime, clearTimer } = useQuizTimer({
+    attemptId,
+    timeLimitMinutes: data?.timeLimit,
+    isActive: quizStage === 'ACTIVE',
+    onTimeout: handleTimeout,
+  });
 
   // Run Shortcut Notification Tooltip State & Logic
   const [showRunShortcutTip, setShowRunShortcutTip] = useState(false);
@@ -1255,12 +1285,12 @@ export default function CodeChallengeModal({
                   ? 'bg-amber-400 text-black animate-pulse shadow-[2px_2px_0px_0px_#000]'
                   : 'bg-zinc-900 text-[#00E599] border-zinc-700 shadow-xs'
               }`}
-              title={`Sisa Waktu Pengerjaan: ${formatTimer(timeLeftSeconds)}`}
+              title={`Sisa Waktu Pengerjaan: ${formattedTime}`}
             >
               <span className={`material-symbols-outlined text-[13px] sm:text-[15px] ${timeLeftSeconds <= 60 ? 'animate-spin' : ''}`}>
                 {timeLeftSeconds <= 60 ? 'alarm' : 'timer'}
               </span>
-              <span>{formatTimer(timeLeftSeconds)}</span>
+              <span>{formattedTime}</span>
             </div>
           )}
 

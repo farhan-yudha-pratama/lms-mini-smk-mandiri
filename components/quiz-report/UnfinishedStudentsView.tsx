@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useEffect } from 'react';
 import { getUnfinishedStudentsReportAction } from '@/modules/quiz-report/quiz-report.action';
 import { UnfinishedStudentItem, UnfinishedStudentsResponse } from '@/modules/quiz-report/quiz-report.service';
+import { getSocket } from '@/lib/socket/client';
 
 type Package = { id: string; title: string; pageTitle: string; categoryName: string; };
 type ClassType = { id: string; name: string; };
@@ -76,6 +77,26 @@ export default function UnfinishedStudentsView({
       }
     });
   };
+
+  // Real-time synchronization via Socket.io
+  useEffect(() => {
+    const socket = getSocket();
+    if (!socket) return;
+
+    socket.emit('join:reports');
+
+    const handleSync = () => {
+      loadData();
+    };
+
+    socket.on('quiz:started', handleSync);
+    socket.on('quiz:completed', handleSync);
+
+    return () => {
+      socket.off('quiz:started', handleSync);
+      socket.off('quiz:completed', handleSync);
+    };
+  }, [selectedClassId, selectedPackageId, selectedCourseId, filterMode, sortBy, searchQuery, page, limit]);
 
   const handleClassChange = (newClassId: string) => {
     setSelectedClassId(newClassId);
