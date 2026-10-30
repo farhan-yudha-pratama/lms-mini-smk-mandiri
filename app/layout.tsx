@@ -1,16 +1,20 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { getSession } from "@/lib/session";
+import SessionWatcher from "@/components/auth/SessionWatcher";
 
 export const metadata: Metadata = {
   title: "EduBrutal - Dashboard Belajar",
   description: "Database 101",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const session = await getSession();
+
   return (
     <html lang="id">
       <head>
@@ -24,6 +28,7 @@ export default function RootLayout({
         />
       </head>
       <body className="bg-[#F4F0EA] min-h-screen">
+        {session?.userId && <SessionWatcher currentUserId={session.userId} />}
         {children}
       </body>
     </html>

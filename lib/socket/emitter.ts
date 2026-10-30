@@ -51,6 +51,18 @@ export interface QuizCompletedEvent {
   completedAt: string;
 }
 
+export interface UserStatusChangedEvent {
+  userIds: string[];
+  isActive: boolean;
+  updatedAt: string;
+}
+
+export interface UserRevokedEvent {
+  userIds: string[];
+  reason: 'DEACTIVATED' | 'REVOKED' | 'DELETED';
+  revokedAt: string;
+}
+
 /**
  * Emit event ketika kuis mulai dikerjakan oleh murid.
  */
@@ -122,5 +134,35 @@ export function emitQuizGraded(payload: QuizGradedEvent) {
     }
   } catch (error) {
     console.error('[SocketEmitter] Failed to emit quiz:graded:', error);
+  }
+}
+
+/**
+ * Emit event ketika status aktif/nonaktif akun pengguna diubah oleh Superadmin.
+ */
+export function emitUserStatusChanged(payload: UserStatusChangedEvent) {
+  try {
+    const io = (globalThis as any).__io;
+    if (io) {
+      io.emit('user:status_changed', payload);
+      io.emit('users:updated', { type: 'STATUS_CHANGED', ...payload });
+    }
+  } catch (error) {
+    console.error('[SocketEmitter] Failed to emit user:status_changed:', error);
+  }
+}
+
+/**
+ * Emit event ketika token/sesi login pengguna dicabut atau akun dinonaktifkan/dihapus.
+ */
+export function emitUserRevoked(payload: UserRevokedEvent) {
+  try {
+    const io = (globalThis as any).__io;
+    if (io) {
+      io.emit('user:revoked', payload);
+      io.emit('users:updated', { type: 'REVOKED', ...payload });
+    }
+  } catch (error) {
+    console.error('[SocketEmitter] Failed to emit user:revoked:', error);
   }
 }

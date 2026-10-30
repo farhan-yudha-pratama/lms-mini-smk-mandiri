@@ -82,11 +82,11 @@ export async function getQuizStatus(pageSlug: string, studentId: string) {
       }
     }
 
-    return { status: 'READY', assignmentId: assignment.id, packageTitle: pkg.title, hasEssay, antiCheatConfig };
+    return { status: 'READY', assignmentId: assignment.id, packageTitle: pkg.title, timeLimit: pkg.timeLimit, passingScore: pkg.passingScore, hasEssay, antiCheatConfig };
   }
 
   if (attempt.status === 'IN_PROGRESS') {
-    return { status: 'IN_PROGRESS', attemptId: attempt.id, packageTitle: pkg.title, hasEssay, antiCheatConfig };
+    return { status: 'IN_PROGRESS', attemptId: attempt.id, packageTitle: pkg.title, timeLimit: pkg.timeLimit, passingScore: pkg.passingScore, hasEssay, antiCheatConfig };
   }
 
   const needsReview = hasEssay && attempt.status === 'COMPLETED';
@@ -97,6 +97,7 @@ export async function getQuizStatus(pageSlug: string, studentId: string) {
     score: attempt.score, 
     passed: attempt.score !== null && attempt.score >= pkg.passingScore,
     passingScore: pkg.passingScore,
+    timeLimit: pkg.timeLimit,
     packageTitle: pkg.title,
     hasEssay,
     needsReview,

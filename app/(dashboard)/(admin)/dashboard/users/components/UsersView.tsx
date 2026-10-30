@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { UserRow, SortColumn, SortDirection, Role } from '../types';
 import { filterUsers, sortUsers } from '@/lib/user-helpers';
+import { getSocket } from '@/lib/socket/client';
 import { bulkResetPassword, bulkChangeRole, bulkToggleActive, editUserNameAction, bulkDeleteUsersAction, bulkRevokeUserTokenAction } from '../actions';
 import UsersToolbar from './UsersToolbar';
 import UsersTable from './UsersTable';
@@ -46,6 +47,35 @@ export default function UsersView({ initialUsers }: UsersViewProps) {
   } | null>(null);
 
   const [quizHistoryUser, setQuizHistoryUser] = useState<UserRow | null>(null);
+
+  // Real-time synchronization via WebSocket
+  useEffect(() => {
+    const socket = getSocket();
+    if (!socket) return;
+
+    const handleStatusChanged = (payload: { userIds: string[]; isActive: boolean }) => {
+      if (!payload?.userIds?.length) return;
+      const idSet = new Set(payload.userIds);
+      setUsers((prev) =>
+        prev.map((u) => (idSet.has(u.id) ? { ...u, isActive: payload.isActive } : u))
+      );
+    };
+
+    const handleUserRevoked = (payload: { userIds: string[]; reason: string }) => {
+      if (payload?.reason === 'DELETED' && payload?.userIds?.length) {
+        const idSet = new Set(payload.userIds);
+        setUsers((prev) => prev.filter((u) => !idSet.has(u.id)));
+      }
+    };
+
+    socket.on('user:status_changed', handleStatusChanged);
+    socket.on('user:revoked', handleUserRevoked);
+
+    return () => {
+      socket.off('user:status_changed', handleStatusChanged);
+      socket.off('user:revoked', handleUserRevoked);
+    };
+  }, []);
 
   // Apply filter & sort locally
   const displayedUsers = useMemo(() => {
@@ -246,6 +276,42 @@ export default function UsersView({ initialUsers }: UsersViewProps) {
     });
   };
 
+  const onToggleActiveSingle = (user: UserRow, isActive: boolean) => {
+    setModalConfig({
+      isOpen: true,
+      title: `${isActive ? 'Aktifkan' : 'Nonaktifkan'} Akun`,
+      message: `Yakin ingin ${isActive ? 'mengaktifkan' : 'menonaktifkan'} akun ${user.name}? ${
+        !isActive ? 'Pengguna akan otomatis dikeluarkan (logout) seketika jika sedang membuka sistem.' : ''
+      }`,
+      isDestructive: !isActive,
+      onConfirm: () => {
+        setModalConfig(null);
+        runAction(async () => {
+          const res = await bulkToggleActive([user.id], isActive);
+          if (res.success) {
+            setUsers(prev => prev.map(u => u.id === user.id ? { ...u, isActive } : u));
+          }
+          return res;
+        });
+      }
+    });
+  };
+
+  const onRevokeSingle = (user: UserRow) => {
+    setModalConfig({
+      isOpen: true,
+      title: 'Revoke Sesi Pengguna',
+      message: `Yakin ingin me-revoke token / mengeluarkan sesi login ${user.name} secara paksa? Pengguna akan langsung dikeluarkan ke halaman login secara real-time.`,
+      isDestructive: true,
+      onConfirm: () => {
+        setModalConfig(null);
+        runAction(async () => {
+          return await bulkRevokeUserTokenAction([user.id]);
+        });
+      }
+    });
+  };
+
   return (
     <div className="flex flex-col gap-6">
       {/* Toast Notification Alert */}
@@ -285,6 +351,8 @@ export default function UsersView({ initialUsers }: UsersViewProps) {
           onEditName={onEditName}
           onDeleteUser={onDeleteUser}
           onViewQuizHistory={(u) => setQuizHistoryUser(u)}
+          onToggleActiveUser={onToggleActiveSingle}
+          onRevokeUserSession={onRevokeSingle}
         />
 
         <UsersPagination

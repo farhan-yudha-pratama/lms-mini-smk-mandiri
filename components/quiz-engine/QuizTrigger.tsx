@@ -208,6 +208,27 @@ export default function QuizTrigger({ pageSlug }: { pageSlug: string }) {
         </div>
       ) : (
         <div className="text-center">
+          {/* Metadata KKM & Batas Waktu */}
+          <div className="flex items-center justify-center gap-3 mb-4 flex-wrap">
+            {status.passingScore && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-white border-2 border-black font-black text-xs uppercase shadow-[2px_2px_0px_0px_#000]">
+                <span className="material-symbols-outlined text-sm text-blue-600">verified</span>
+                KKM: {status.passingScore}
+              </span>
+            )}
+            {status.timeLimit && status.timeLimit > 0 ? (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-yellow-300 border-2 border-black font-black text-xs uppercase shadow-[2px_2px_0px_0px_#000]">
+                <span className="material-symbols-outlined text-sm text-amber-800">timer</span>
+                Waktu: {status.timeLimit} Menit
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-gray-100 border-2 border-black font-bold text-xs uppercase shadow-[2px_2px_0px_0px_#000]">
+                <span className="material-symbols-outlined text-sm text-gray-600">all_inclusive</span>
+                Tanpa Batas Waktu
+              </span>
+            )}
+          </div>
+
           <button
             onClick={handleStart}
             className="bg-black text-white px-8 py-4 text-xl font-black uppercase tracking-widest border-4 border-black hover:bg-white hover:text-black transition-colors shadow-neo-sm hover:shadow-neo-md hover:-translate-y-1"

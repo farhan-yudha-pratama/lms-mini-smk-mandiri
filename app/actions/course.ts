@@ -3,9 +3,40 @@
 import { db } from '@/prisma/db';
 import { revalidatePath } from 'next/cache';
 import { randomUUID } from 'crypto';
+import { getSession } from '@/lib/session';
+
+export type CourseWithFirstPage = {
+  id: string;
+  name: string;
+  slug: string;
+  joinCode?: string;
+  description?: string | null;
+  isActive?: boolean;
+  firstPageSlug?: string | null;
+};
 
 export async function getCourses() {
-  return await db.orm.public.Course.all();
+  const courses = await db.orm.public.Course.all();
+  const categories = await db.orm.public.MaterialCategory.where({ isActive: true }).all();
+  categories.sort((a, b) => a.orderIndex - b.orderIndex);
+  const pages = await db.orm.public.Page.where({ isPublished: true }).all();
+  pages.sort((a, b) => a.orderIndex - b.orderIndex);
+
+  return courses.map((c) => {
+    const courseCats = categories.filter((cat) => cat.courseId === c.id);
+    let firstPageSlug: string | null = null;
+    for (const cat of courseCats) {
+      const firstPage = pages.find((p) => p.categoryId === cat.id);
+      if (firstPage) {
+        firstPageSlug = firstPage.slug;
+        break;
+      }
+    }
+    return {
+      ...c,
+      firstPageSlug,
+    };
+  });
 }
 
 export async function getCourseById(id: string) {

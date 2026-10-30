@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState, useEffect } from 'react';
+import { useActionState, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { loginAction, ActionResponse } from './actions';
 import Link from 'next/link';
@@ -8,6 +8,19 @@ import Link from 'next/link';
 export default function LoginPage() {
   const router = useRouter();
   const [state, formAction, isPending] = useActionState<ActionResponse | null, FormData>(loginAction, null);
+  const [reasonMessage, setReasonMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const reason = params.get('reason');
+    if (reason === 'deactivated') {
+      setReasonMessage('Akun Anda telah dinonaktifkan oleh Administrator. Hubungi guru atau pihak sekolah jika ini adalah kekeliruan.');
+    } else if (reason === 'revoked') {
+      setReasonMessage('Sesi login Anda telah dicabut (revoked) oleh Administrator. Silakan login kembali.');
+    } else if (reason === 'deleted') {
+      setReasonMessage('Akun Anda telah dihapus dari sistem oleh Administrator.');
+    }
+  }, []);
 
   useEffect(() => {
     if (state?.success && state.data?.role) {
@@ -36,6 +49,13 @@ export default function LoginPage() {
             Masuk untuk mengakses materi dan dashboard
           </p>
         </div>
+
+        {reasonMessage && (
+          <div className="mb-6 bg-amber-50 text-black font-bold p-4 border-4 border-black shadow-[4px_4px_0px_0px_#000] flex items-center gap-3">
+            <span className="material-symbols-outlined text-2xl font-black text-amber-700 shrink-0">info</span>
+            <span className="text-sm">{reasonMessage}</span>
+          </div>
+        )}
 
         {state && !state.success && (
           <div className="mb-6 bg-[#2A835F] text-white font-bold p-4 border-4 border-black shadow-[4px_4px_0px_0px_#000]">
