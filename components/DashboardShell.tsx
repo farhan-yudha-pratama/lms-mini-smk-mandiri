@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { getUserSession } from '@/app/actions';
 import DashboardSidebar from './DashboardSidebar';
+import TeacherAssignmentWatcher from './dashboard/TeacherAssignmentWatcher';
 
 interface DashboardShellProps {
   children: React.ReactNode;
@@ -11,7 +12,7 @@ interface DashboardShellProps {
 export default function DashboardShell({ children }: DashboardShellProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
-  const [user, setUser] = useState<{ role: string; name: string; email: string } | null>(null);
+  const [user, setUser] = useState<{ userId?: string; role: string; name: string; email: string } | null>(null);
 
   useEffect(() => {
     getUserSession().then((session) => {
@@ -23,6 +24,9 @@ export default function DashboardShell({ children }: DashboardShellProps) {
 
   return (
     <div className="min-h-screen bg-gray-50 flex font-sans">
+      {/* Real-time Teacher Assignment WebSocket Watcher & Toasts */}
+      <TeacherAssignmentWatcher currentUserId={user?.userId} currentUserRole={user?.role} />
+
       {/* Mobile Overlay */}
       {isMobileOpen && (
         <div 

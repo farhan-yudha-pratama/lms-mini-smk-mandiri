@@ -85,12 +85,11 @@ export default function Sidebar({ courseSlug: propCourseSlug }: { courseSlug?: s
       )}
 
       <aside
-        className={`fixed left-0 top-0 h-full pt-20 flex flex-col z-40 w-[300px] bg-canvas border-r-4 border-black shadow-neo-xl transition-transform duration-300 ease-in-out ${
-          isOpen ? 'translate-x-0' : '-translate-x-full'
-        } md:translate-x-0`}
+        className={`fixed left-0 top-0 h-full pt-20 flex flex-col z-40 w-[300px] bg-canvas border-r-4 border-black shadow-neo-xl transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full'
+          } md:translate-x-0`}
       >
         <div className="flex-1 overflow-y-auto pb-4 pt-4">
-          
+
           {currentCourseSlug && (
             <div className="px-4 mb-2">
               <Link
@@ -119,7 +118,7 @@ export default function Sidebar({ courseSlug: propCourseSlug }: { courseSlug?: s
                   <div className="p-5 border-4 border-black mb-4 bg-white shadow-neo-md mx-4 mt-6 transform hover:rotate-1 transition-transform">
                     <h2 className="text-xl font-black text-black uppercase tracking-tight">Materi Pokok {catIndex + 1}</h2>
                     <p className="text-xs font-bold text-black uppercase mt-1">{cat.name}</p>
-                    
+
                     {/* Progress Bar */}
                     <div className="mt-4 w-full bg-mint-canvas border-4 border-black h-5 relative">
                       <div
@@ -138,7 +137,7 @@ export default function Sidebar({ courseSlug: propCourseSlug }: { courseSlug?: s
                       const isActive = isLinkActive(page.slug);
                       const linkColor = getLinkColor(pageIndex);
                       const pageUrl = `/course/${baseCourse}/${page.slug}`;
-                      
+
                       if (page.isUnlocked) {
                         return (
                           <Link
@@ -146,11 +145,10 @@ export default function Sidebar({ courseSlug: propCourseSlug }: { courseSlug?: s
                             href={pageUrl}
                             onClick={() => setIsOpen(false)}
                             data-active={isActive}
-                            className={`border-4 border-black p-3 flex items-center gap-3 transition-all font-sans uppercase font-black tracking-tight ${linkColor} ${
-                              isActive
+                            className={`border-4 border-black p-3 flex items-center gap-3 transition-all font-sans uppercase font-black tracking-tight ${linkColor} ${isActive
                                 ? 'shadow-neo-sm translate-x-[4px] border-l-[12px] border-l-black'
                                 : 'shadow-neo-sm hover:translate-x-[2px] hover:translate-y-[2px] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none'
-                            }`}
+                              }`}
                           >
                             <span className="material-symbols-outlined font-black">
                               {cat.icon !== 'folder' ? cat.icon : 'menu_book'}
