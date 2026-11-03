@@ -1,5 +1,5 @@
 import { db } from '@/prisma/db';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import Headbar from '@/components/Headbar';
 import Sidebar from '@/components/Sidebar';
 import Link from 'next/link';
@@ -12,6 +12,11 @@ export default async function DynamicMaterialPage({
   params: Promise<{ courseSlug: string; pageSlug: string }>;
 }) {
   const { courseSlug, pageSlug } = await params;
+
+  // Auto-normalize mixed-case slugs to lowercase to ensure static/dynamic parity
+  if (pageSlug !== pageSlug.toLowerCase() || courseSlug !== courseSlug.toLowerCase()) {
+    redirect(`/course/${courseSlug.toLowerCase()}/${pageSlug.toLowerCase()}`);
+  }
 
   const courses = await db.orm.public.Course.where({ slug: courseSlug, isActive: true }).all();
   const course = courses[0];

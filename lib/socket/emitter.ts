@@ -63,6 +63,21 @@ export interface UserRevokedEvent {
   revokedAt: string;
 }
 
+export interface CourseTeacherAssignedEvent {
+  courseId: string;
+  courseName: string;
+  teacherId: string;
+  teacherName?: string;
+  assignedAt: string;
+}
+
+export interface CourseTeacherRemovedEvent {
+  courseId: string;
+  courseName: string;
+  teacherId: string;
+  removedAt: string;
+}
+
 /**
  * Emit event ketika kuis mulai dikerjakan oleh murid.
  */
@@ -164,5 +179,39 @@ export function emitUserRevoked(payload: UserRevokedEvent) {
     }
   } catch (error) {
     console.error('[SocketEmitter] Failed to emit user:revoked:', error);
+  }
+}
+
+/**
+ * Emit event ketika guru di-assign sebagai pengampu mata pelajaran.
+ */
+export function emitCourseTeacherAssigned(payload: CourseTeacherAssignedEvent) {
+  try {
+    const io = (globalThis as any).__io;
+    if (io) {
+      io.emit('course:teacher_assigned', payload);
+      if (payload.teacherId) {
+        io.to(`user:${payload.teacherId}`).emit('course:teacher_assigned', payload);
+      }
+    }
+  } catch (error) {
+    console.error('[SocketEmitter] Failed to emit course:teacher_assigned:', error);
+  }
+}
+
+/**
+ * Emit event ketika hak pengampu guru pada mata pelajaran dicabut.
+ */
+export function emitCourseTeacherRemoved(payload: CourseTeacherRemovedEvent) {
+  try {
+    const io = (globalThis as any).__io;
+    if (io) {
+      io.emit('course:teacher_removed', payload);
+      if (payload.teacherId) {
+        io.to(`user:${payload.teacherId}`).emit('course:teacher_removed', payload);
+      }
+    }
+  } catch (error) {
+    console.error('[SocketEmitter] Failed to emit course:teacher_removed:', error);
   }
 }

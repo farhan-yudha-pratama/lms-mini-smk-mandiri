@@ -252,9 +252,10 @@ export default function CourseListClient({ initialCourses }: { initialCourses: a
                 <Link
                   href={`/dashboard/courses/${course.id}/assign`}
                   className="flex-1 py-1.5 px-3 text-xs font-medium text-purple-700 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 transition-colors flex items-center justify-center gap-1.5"
+                  title="Kelola Guru Pengampu & Materi"
                 >
-                  <span className="material-symbols-outlined text-sm">menu_book</span>
-                  <span>Kelola Materi</span>
+                  <span className="material-symbols-outlined text-sm">manage_accounts</span>
+                  <span>Kelola Guru & Materi</span>
                 </Link>
                 <button
                   onClick={() => setEditingCourse(course)}
@@ -360,10 +361,10 @@ export default function CourseListClient({ initialCourses }: { initialCourses: a
                       <Link
                         href={`/dashboard/courses/${course.id}/assign`}
                         className="px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-lg text-xs font-medium transition-colors flex items-center gap-1"
-                        title="Kelola Akses & Materi"
+                        title="Kelola Guru Pengampu & Materi"
                       >
-                        <span className="material-symbols-outlined text-sm">menu_book</span>
-                        <span>Materi</span>
+                        <span className="material-symbols-outlined text-sm">manage_accounts</span>
+                        <span>Guru & Materi</span>
                       </Link>
                       <button
                         onClick={() => setEditingCourse(course)}

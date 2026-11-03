@@ -1,5 +1,4 @@
 import { createServer } from 'node:http';
-import { parse } from 'node:url';
 import next from 'next';
 import { Server as SocketIOServer } from 'socket.io';
 
@@ -16,8 +15,7 @@ async function startServer() {
 
     const server = createServer(async (req, res) => {
       try {
-        const parsedUrl = parse(req.url, true);
-        await handle(req, res, parsedUrl);
+        await handle(req, res);
       } catch (err) {
         console.error('Error handling HTTP request:', err);
         res.statusCode = 500;
@@ -44,6 +42,12 @@ async function startServer() {
 
       socket.on('leave:reports', () => {
         socket.leave('reports');
+      });
+
+      socket.on('join:user', (userId) => {
+        if (userId) {
+          socket.join(`user:${userId}`);
+        }
       });
     });
 
