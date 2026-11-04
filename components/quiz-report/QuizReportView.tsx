@@ -175,6 +175,11 @@ export default function QuizReportView({
       setIsSocketConnected(false);
     };
 
+    const onConnectError = (err: any) => {
+      console.warn('[Socket.io] Connection error:', err?.message || err);
+      setIsSocketConnected(false);
+    };
+
     const handleQuizStarted = (payload: any) => {
       // 1. Show notification banner for started quiz
       setRealtimeAlert({
@@ -210,6 +215,7 @@ export default function QuizReportView({
 
     socket.on('connect', onConnect);
     socket.on('disconnect', onDisconnect);
+    socket.on('connect_error', onConnectError);
     socket.on('quiz:started', handleQuizStarted);
     socket.on('quiz:completed', handleQuizCompleted);
     socket.on('quiz:reset', handleQuizReset);
@@ -217,6 +223,7 @@ export default function QuizReportView({
     return () => {
       socket.off('connect', onConnect);
       socket.off('disconnect', onDisconnect);
+      socket.off('connect_error', onConnectError);
       socket.off('quiz:started', handleQuizStarted);
       socket.off('quiz:completed', handleQuizCompleted);
       socket.off('quiz:reset', handleQuizReset);

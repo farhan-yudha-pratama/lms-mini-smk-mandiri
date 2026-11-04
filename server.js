@@ -26,7 +26,7 @@ async function startServer() {
     const io = new SocketIOServer(server, {
       path: '/socket.io',
       cors: {
-        origin: '*',
+        origin: true,
         credentials: true,
       },
     });
