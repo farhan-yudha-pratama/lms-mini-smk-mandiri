@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { getQuizQuestionsAction, submitQuizAction } from '@/modules/quiz-engine/quiz-engine.action';
+import { getQuizQuestionsAction, submitQuizAction, activateQuizAttemptAction } from '@/modules/quiz-engine/quiz-engine.action';
 import QuizModal from './QuizModal';
 import CodeChallengeModal from './CodeChallengeModal';
 import { useQuizTimer } from './useQuizTimer';
@@ -290,6 +290,7 @@ export default function QuizEngineModal({
     attemptId,
     timeLimitMinutes: data?.timeLimit,
     startedAt: data?.startedAt,
+    serverTime: data?.serverTime,
     closeAt: data?.closeAt,
     isActive: quizStage === 'ACTIVE',
     onTimeout: handleTimeout,
@@ -407,16 +408,33 @@ export default function QuizEngineModal({
     };
   }, [quizStage, submitCheater, data?.antiCheatConfig]);
 
+  // Activate attempt on server (lock startedAt if first time) and transition to ACTIVE
+  const activateAndStart = async () => {
+    try {
+      const res = await activateQuizAttemptAction(attemptId);
+      if (res.success && res.data) {
+        setData((prev: any) => ({
+          ...prev,
+          startedAt: res.data.startedAt,
+          serverTime: res.data.serverTime,
+          isActivated: true,
+        }));
+      }
+    } catch (err) {
+      console.error('Failed to activate quiz attempt:', err);
+    }
+    setQuizStage('ACTIVE');
+    isArmedRef.current = true;
+    window.focus();
+  };
+
   // Handle Fullscreen Permission Request & Quiz Start
   const handleStartQuiz = async () => {
     const requiresFullscreen = data?.antiCheatConfig?.enableFullscreen;
 
     if (requiresFullscreen) {
       if (!isFullscreenSupported()) {
-        // Fallback for devices that don't support fullscreen API (e.g. iOS Safari)
-        setQuizStage('ACTIVE');
-        isArmedRef.current = true;
-        window.focus();
+        await activateAndStart();
         return;
       }
 
@@ -459,11 +477,9 @@ export default function QuizEngineModal({
       window.focus();
 
       // 1500ms grace period to let Chrome's fullscreen toast settle
-      setTimeout(() => {
+      setTimeout(async () => {
         if (getFullscreenElement()) {
-          setQuizStage('ACTIVE');
-          isArmedRef.current = true;
-          window.focus();
+          await activateAndStart();
         } else {
           // Fullscreen was dismissed during preparation
           setQuizStage('PRE_START');
@@ -483,9 +499,7 @@ export default function QuizEngineModal({
       }, 1500);
     } else {
       // If fullscreen is not required, just start immediately
-      setQuizStage('ACTIVE');
-      isArmedRef.current = true;
-      window.focus();
+      await activateAndStart();
     }
   };
 
@@ -645,7 +659,9 @@ export default function QuizEngineModal({
                     <div>
                       <div className="font-bold text-sm">Batas Waktu Pengerjaan</div>
                       <div className="text-xs text-gray-600">
-                        Waktu pengerjaan adalah {data.timeLimit} menit. Timer otomatis berjalan saat soal pertama terbuka.
+                        {data.isActivated 
+                          ? `Ujian sedang berlangsung (${data.timeLimit} menit). Waktu terus berjalan di server.`
+                          : `Waktu pengerjaan adalah ${data.timeLimit} menit. Timer baru mulai berjalan saat Anda mengklik tombol mulai.`}
                       </div>
                     </div>
                   </div>
@@ -739,8 +755,8 @@ export default function QuizEngineModal({
               className="w-full sm:w-2/3 bg-black text-white font-black uppercase text-base md:text-lg py-4 border-4 border-black hover:bg-white hover:text-black transition-colors shadow-neo-sm hover:-translate-y-0.5"
             >
               {data.antiCheatConfig?.enableFullscreen && fullscreenSupported 
-                ? 'Izinkan Layar Penuh & Mulai' 
-                : 'Mulai Kuis'}
+                ? (data.isActivated ? 'Lanjutkan Layar Penuh' : 'Izinkan Layar Penuh & Mulai') 
+                : (data.isActivated ? 'Lanjutkan Kuis' : 'Mulai Kuis')}
             </button>
           </div>
         </div>

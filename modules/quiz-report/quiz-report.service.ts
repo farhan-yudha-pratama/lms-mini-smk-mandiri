@@ -650,6 +650,10 @@ export async function resetQuizAttempt(studentId: string, packageId: string, att
   }
 
   await db.orm.public.QuizAttempt.where({ id: targetAttempt.id }).delete();
+  const activationLogs = await db.orm.public.AuditLog.where({ action: 'QUIZ_ACTIVATED', details: targetAttempt.id }).all();
+  for (const log of activationLogs) {
+    await db.orm.public.AuditLog.where({ id: log.id }).delete();
+  }
 
   // Bersihkan arsip permanen dan reset status akses materi (Opsi B: Strict Sequential)
   const pkg = await db.orm.public.QuizPackage.where({ id: packageId }).first();

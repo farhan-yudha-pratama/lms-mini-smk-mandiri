@@ -7,6 +7,7 @@ interface UseQuizTimerProps {
   attemptId: string;
   timeLimitMinutes?: number | null;
   startedAt?: string | null;
+  serverTime?: string | null;
   closeAt?: string | null;
   isActive: boolean;
   onTimeout: () => void;
@@ -16,6 +17,7 @@ export function useQuizTimer({
   attemptId,
   timeLimitMinutes,
   startedAt,
+  serverTime,
   closeAt,
   isActive,
   onTimeout,
@@ -46,6 +48,9 @@ export function useQuizTimer({
       return;
     }
 
+    // Offset between server clock and client browser clock to eliminate client clock drift
+    const serverOffset = serverTime ? new Date(serverTime).getTime() - Date.now() : 0;
+
     // Determine absolute deadline: sync from server startedAt, capped by closeAt
     let deadline: number;
 
@@ -59,7 +64,7 @@ export function useQuizTimer({
         if (stored) {
           durationDeadline = parseInt(stored, 10);
         } else {
-          durationDeadline = Date.now() + timeLimitMinutes! * 60 * 1000;
+          durationDeadline = (Date.now() + serverOffset) + timeLimitMinutes! * 60 * 1000;
           sessionStorage.setItem(storageKey, durationDeadline.toString());
         }
       }
@@ -71,11 +76,12 @@ export function useQuizTimer({
     if (durationDeadline && validClose) {
       deadline = Math.min(durationDeadline, validClose);
     } else {
-      deadline = durationDeadline || validClose || (Date.now() + 60 * 1000);
+      deadline = durationDeadline || validClose || (Date.now() + serverOffset + 60 * 1000);
     }
 
     const checkTime = () => {
-      const diffMs = deadline - Date.now();
+      const syncedNow = Date.now() + serverOffset;
+      const diffMs = deadline - syncedNow;
       const secondsLeft = Math.max(0, Math.ceil(diffMs / 1000));
       setTimeRemaining(secondsLeft);
 
@@ -95,7 +101,7 @@ export function useQuizTimer({
     return () => {
       clearInterval(interval);
     };
-  }, [timeLimitMinutes, startedAt, closeAt, isActive, storageKey, clearTimer]);
+  }, [timeLimitMinutes, startedAt, serverTime, closeAt, isActive, storageKey, clearTimer]);
 
   // Format seconds into MM:SS
   const formattedTime = timeRemaining !== null

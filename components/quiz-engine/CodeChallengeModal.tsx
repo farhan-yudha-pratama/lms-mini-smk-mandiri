@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import dynamic from 'next/dynamic';
-import { getQuizQuestionsAction, submitQuizAction } from '@/modules/quiz-engine/quiz-engine.action';
+import { getQuizQuestionsAction, submitQuizAction, activateQuizAttemptAction } from '@/modules/quiz-engine/quiz-engine.action';
 import QuizModal from './QuizModal';
 import { useQuizTimer } from './useQuizTimer';
 import FileExplorer from './FileExplorer';
@@ -598,15 +598,33 @@ export default function CodeChallengeModal({
     };
   }, [quizStage, submitCheater, data?.antiCheatConfig]);
 
+  // Activate attempt on server (lock startedAt if first time) and transition to ACTIVE
+  const activateAndStart = async () => {
+    try {
+      const res = await activateQuizAttemptAction(attemptId);
+      if (res.success && res.data) {
+        setData((prev: any) => ({
+          ...prev,
+          startedAt: res.data.startedAt,
+          serverTime: res.data.serverTime,
+          isActivated: true,
+        }));
+      }
+    } catch (err) {
+      console.error('Failed to activate quiz attempt:', err);
+    }
+    setQuizStage('ACTIVE');
+    isArmedRef.current = true;
+    window.focus();
+  };
+
   // Handle Start Quiz
   const handleStartQuiz = async () => {
     const requiresFullscreen = data?.antiCheatConfig?.enableFullscreen;
 
     if (requiresFullscreen) {
       if (!isFullscreenSupported()) {
-        setQuizStage('ACTIVE');
-        isArmedRef.current = true;
-        window.focus();
+        await activateAndStart();
         return;
       }
 
@@ -644,11 +662,9 @@ export default function CodeChallengeModal({
       setQuizStage('PREPARING');
       window.focus();
 
-      setTimeout(() => {
+      setTimeout(async () => {
         if (getFullscreenElement()) {
-          setQuizStage('ACTIVE');
-          isArmedRef.current = true;
-          window.focus();
+          await activateAndStart();
         } else {
           setQuizStage('PRE_START');
           isInternalModalOpenRef.current = true;
@@ -666,9 +682,7 @@ export default function CodeChallengeModal({
         }
       }, 1500);
     } else {
-      setQuizStage('ACTIVE');
-      isArmedRef.current = true;
-      window.focus();
+      await activateAndStart();
     }
   };
 
@@ -1046,6 +1060,7 @@ export default function CodeChallengeModal({
     attemptId,
     timeLimitMinutes: data?.timeLimit,
     startedAt: data?.startedAt,
+    serverTime: data?.serverTime,
     closeAt: data?.closeAt,
     isActive: quizStage === 'ACTIVE',
     onTimeout: handleTimeout,
@@ -1114,7 +1129,13 @@ export default function CodeChallengeModal({
                     <span className="material-symbols-outlined text-lg mt-0.5 text-amber-600">timer</span>
                     <div>
                       <div className="font-bold text-sm">Batas Waktu Pengerjaan</div>
-                      <div className="text-xs text-gray-600">Kuis dibatasi waktu selama <strong>{data.timeLimit} Menit</strong>. Waktu berjalan otomatis setelah tombol Mulai ditekan.</div>
+                      <div className="text-xs text-gray-600">
+                        {data.isActivated ? (
+                          'Ujian sedang berlangsung. Waktu terus berjalan di server.'
+                        ) : (
+                          <>Kuis dibatasi waktu selama <strong>{data.timeLimit} Menit</strong>. Waktu berjalan otomatis setelah tombol Mulai ditekan.</>
+                        )}
+                      </div>
                     </div>
                   </div>
                   <span className="shrink-0 px-2.5 py-1 text-xs font-black uppercase bg-amber-300 text-black border border-black">
@@ -1183,8 +1204,8 @@ export default function CodeChallengeModal({
             >
               <span className="material-symbols-outlined">play_circle</span>
               {data.antiCheatConfig?.enableFullscreen && fullscreenSupported
-                ? 'Buka Fullscreen & Mulai Ngoding'
-                : 'Mulai Ujian Sekarang'}
+                ? (data.isActivated ? 'Buka Fullscreen & Lanjutkan Ngoding' : 'Buka Fullscreen & Mulai Ngoding')
+                : (data.isActivated ? 'Lanjutkan Ujian' : 'Mulai Ujian Sekarang')}
             </button>
           </div>
         </div>
