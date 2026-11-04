@@ -10,7 +10,7 @@ export async function checkQuizStatusAction(pageSlug: string) {
   
   try {
     const data = await getQuizStatus(pageSlug, session.userId);
-    return { success: true, data };
+    return { success: true, data: { ...data, studentId: session.userId } };
   } catch (error) {
     return { success: false, message: 'Gagal memuat status kuis' };
   }

@@ -624,6 +624,9 @@ export async function resetQuizAttempt(studentId: string, packageId: string, att
 
   if (attemptId) {
     targetAttempt = await db.orm.public.QuizAttempt.where({ id: attemptId }).first();
+    if (targetAttempt && targetAttempt.studentId !== studentId) {
+      targetAttempt = null;
+    }
   }
 
   if (!targetAttempt) {
@@ -714,17 +717,7 @@ export async function resetQuizAttempt(studentId: string, packageId: string, att
       resetAt: new Date().toISOString()
     });
 
-    // Refresh teacher reports dashboard automatically
-    emitQuizCompleted({
-      attemptId: targetAttempt.id,
-      studentId,
-      studentName: '',
-      quizTitle: pkg?.title || 'Kuis',
-      score: 0,
-      isPassed: false,
-      needsReview: false,
-      completedAt: new Date().toISOString()
-    });
+
   } catch (socketErr) {
     console.error('Socket emit error in resetQuizAttempt:', socketErr);
   }
