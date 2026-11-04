@@ -19,9 +19,11 @@ export function getSocket(): Socket | null {
       path: '/socket.io',
       withCredentials: true,
       autoConnect: true,
-      transports: ['websocket', 'polling'],
-      reconnectionAttempts: 5,
+      transports: ['polling', 'websocket'],
+      reconnection: true,
+      reconnectionAttempts: Infinity,
       reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
     });
   }
 

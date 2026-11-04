@@ -6,6 +6,8 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 interface UseQuizTimerProps {
   attemptId: string;
   timeLimitMinutes?: number | null;
+  startedAt?: string | null;
+  closeAt?: string | null;
   isActive: boolean;
   onTimeout: () => void;
 }
@@ -13,6 +15,8 @@ interface UseQuizTimerProps {
 export function useQuizTimer({
   attemptId,
   timeLimitMinutes,
+  startedAt,
+  closeAt,
   isActive,
   onTimeout,
 }: UseQuizTimerProps) {
@@ -35,23 +39,39 @@ export function useQuizTimer({
   }, [storageKey]);
 
   useEffect(() => {
-    // If no time limit or quiz is not yet active, do nothing
-    if (!timeLimitMinutes || timeLimitMinutes <= 0 || !isActive || !storageKey) {
+    // If no limit exists or quiz is not active, do nothing
+    const hasTimeLimit = timeLimitMinutes && timeLimitMinutes > 0;
+    const hasCloseAt = Boolean(closeAt);
+    if ((!hasTimeLimit && !hasCloseAt) || !isActive || !storageKey) {
       return;
     }
 
-    // Determine or retrieve absolute deadline timestamp (in ms)
+    // Determine absolute deadline: sync from server startedAt, capped by closeAt
     let deadline: number;
-    try {
-      const stored = sessionStorage.getItem(storageKey);
-      if (stored) {
-        deadline = parseInt(stored, 10);
+
+    const startMs = startedAt ? new Date(startedAt).getTime() : NaN;
+    let durationDeadline: number | null = null;
+    if (hasTimeLimit) {
+      if (!isNaN(startMs)) {
+        durationDeadline = startMs + timeLimitMinutes! * 60 * 1000;
       } else {
-        deadline = Date.now() + timeLimitMinutes * 60 * 1000;
-        sessionStorage.setItem(storageKey, deadline.toString());
+        const stored = sessionStorage.getItem(storageKey);
+        if (stored) {
+          durationDeadline = parseInt(stored, 10);
+        } else {
+          durationDeadline = Date.now() + timeLimitMinutes! * 60 * 1000;
+          sessionStorage.setItem(storageKey, durationDeadline.toString());
+        }
       }
-    } catch {
-      deadline = Date.now() + timeLimitMinutes * 60 * 1000;
+    }
+
+    const closeMs = closeAt ? new Date(closeAt).getTime() : NaN;
+    const validClose = !isNaN(closeMs) ? closeMs : null;
+
+    if (durationDeadline && validClose) {
+      deadline = Math.min(durationDeadline, validClose);
+    } else {
+      deadline = durationDeadline || validClose || (Date.now() + 60 * 1000);
     }
 
     const checkTime = () => {
@@ -75,7 +95,7 @@ export function useQuizTimer({
     return () => {
       clearInterval(interval);
     };
-  }, [timeLimitMinutes, isActive, storageKey, clearTimer]);
+  }, [timeLimitMinutes, startedAt, closeAt, isActive, storageKey, clearTimer]);
 
   // Format seconds into MM:SS
   const formattedTime = timeRemaining !== null

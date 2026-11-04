@@ -53,7 +53,7 @@ export async function getQuizStatus(pageSlug: string, studentId: string) {
     return { status: 'LOCKED', openAt: pkg.openAt, packageTitle: pkg.title };
   }
   if (pkg.closeAt && now > new Date(pkg.closeAt)) {
-    if (!attempt || attempt.status === 'IN_PROGRESS') {
+    if (!attempt) {
       return { status: 'NO_QUIZ' };
     }
   }
@@ -212,6 +212,7 @@ export async function getQuizEngineData(attemptId: string, studentId: string) {
     title: pkg.title,
     timeLimit: pkg.timeLimit,
     startedAt: attempt.startedAt,
+    closeAt: pkg.closeAt,
     questions: safeQuestions,
     antiCheatConfig
   };

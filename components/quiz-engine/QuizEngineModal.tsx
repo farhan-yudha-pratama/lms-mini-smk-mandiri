@@ -289,6 +289,8 @@ export default function QuizEngineModal({
   const { timeRemaining, formattedTime, isWarning, clearTimer } = useQuizTimer({
     attemptId,
     timeLimitMinutes: data?.timeLimit,
+    startedAt: data?.startedAt,
+    closeAt: data?.closeAt,
     isActive: quizStage === 'ACTIVE',
     onTimeout: handleTimeout,
   });
@@ -327,7 +329,7 @@ export default function QuizEngineModal({
             submitCheater('Layar kehilangan fokus atau beralih ke aplikasi lain');
           }
         }
-      }, 500);
+      }, 2500);
     };
 
     const handleFocus = () => {

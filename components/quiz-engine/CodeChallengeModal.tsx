@@ -511,7 +511,7 @@ export default function CodeChallengeModal({
             submitCheater('Layar kehilangan fokus atau beralih ke aplikasi lain');
           }
         }
-      }, 500);
+      }, 2500);
     };
 
     const handleFocus = () => {
@@ -1045,6 +1045,8 @@ export default function CodeChallengeModal({
   const { timeRemaining: timeLeftSeconds, formattedTime, clearTimer } = useQuizTimer({
     attemptId,
     timeLimitMinutes: data?.timeLimit,
+    startedAt: data?.startedAt,
+    closeAt: data?.closeAt,
     isActive: quizStage === 'ACTIVE',
     onTimeout: handleTimeout,
   });
