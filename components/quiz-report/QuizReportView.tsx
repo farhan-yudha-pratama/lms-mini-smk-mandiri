@@ -204,16 +204,22 @@ export default function QuizReportView({
       loadReports();
     };
 
+    const handleQuizReset = () => {
+      loadReports();
+    };
+
     socket.on('connect', onConnect);
     socket.on('disconnect', onDisconnect);
     socket.on('quiz:started', handleQuizStarted);
     socket.on('quiz:completed', handleQuizCompleted);
+    socket.on('quiz:reset', handleQuizReset);
 
     return () => {
       socket.off('connect', onConnect);
       socket.off('disconnect', onDisconnect);
       socket.off('quiz:started', handleQuizStarted);
       socket.off('quiz:completed', handleQuizCompleted);
+      socket.off('quiz:reset', handleQuizReset);
     };
   }, [selectedClassId, selectedPackageId, selectedCourseId, searchQuery, page, limit, reviewFilter]);
 

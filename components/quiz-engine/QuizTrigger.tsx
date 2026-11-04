@@ -53,21 +53,25 @@ export default function QuizTrigger({ pageSlug }: { pageSlug: string }) {
     };
 
     const handleQuizReset = (data: any) => {
-      if (!data.pageSlug || data.pageSlug === pageSlug) {
-        // Active In-flight Exam Handling: close modal and alert student
-        setShowModal(false);
-        setAttemptId(null);
-        setErrorMessage('⚠️ Ujian Anda telah direset oleh Guru/Pengawas. Pengerjaan dibatalkan dan Anda dapat memulai kembali dari awal.');
-        loadStatus();
-        setToastNotification({
-          type: 'RESET',
-          message: '🔄 Riwayat kuis Anda telah direset oleh Guru. Anda dapat mengulang kuis sekarang.'
-        });
-        window.dispatchEvent(new Event('sidebar:refresh'));
-      }
+      // Guard: Pastikan event hanya diproses jika ditujukan untuk murid ini dan materi ini
+      if (data?.studentId && status?.studentId && data.studentId !== status.studentId) return;
+      if (data?.pageSlug && data.pageSlug !== pageSlug) return;
+      if (data?.studentId && !status?.studentId) return;
+
+      // Active In-flight Exam Handling: close modal and alert student
+      setShowModal(false);
+      setAttemptId(null);
+      setErrorMessage('⚠️ Ujian Anda telah direset oleh Guru/Pengawas. Pengerjaan dibatalkan dan Anda dapat memulai kembali dari awal.');
+      loadStatus();
+      setToastNotification({
+        type: 'RESET',
+        message: '🔄 Riwayat kuis Anda telah direset oleh Guru. Anda dapat mengulang kuis sekarang.'
+      });
+      window.dispatchEvent(new Event('sidebar:refresh'));
     };
 
     const handleQuizGraded = (data: any) => {
+      if (data?.studentId && status?.studentId && data.studentId !== status.studentId) return;
       if (!data.pageSlug || data.pageSlug === pageSlug) {
         loadStatus();
         setCompletionNotice(false);
@@ -88,7 +92,7 @@ export default function QuizTrigger({ pageSlug }: { pageSlug: string }) {
       socket.off('quiz:reset', handleQuizReset);
       socket.off('quiz:graded', handleQuizGraded);
     };
-  }, [pageSlug, loadStatus]);
+  }, [pageSlug, loadStatus, status?.studentId]);
 
   // Auto-dismiss toast notification after 7 seconds
   useEffect(() => {
