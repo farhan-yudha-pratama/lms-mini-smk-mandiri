@@ -207,15 +207,80 @@ export async function getQuizEngineData(attemptId: string, studentId: string) {
     preventCopyPaste: true
   };
 
+  const activationLog = await db.orm.public.AuditLog.where({
+    action: 'QUIZ_ACTIVATED',
+    details: attemptId
+  }).first();
+  const isActivated = Boolean(activationLog);
+
   return {
     attemptId,
     title: pkg.title,
     timeLimit: pkg.timeLimit,
     startedAt: attempt.startedAt,
+    serverTime: new Date().toISOString(),
+    isActivated,
     closeAt: pkg.closeAt,
     questions: safeQuestions,
     antiCheatConfig
   };
+}
+
+export async function activateQuizAttempt(attemptId: string, studentId: string) {
+  const attempt = await db.orm.public.QuizAttempt.where({ id: attemptId }).first();
+  if (!attempt || attempt.studentId !== studentId) throw new Error('Attempt tidak valid');
+  if (attempt.status !== 'IN_PROGRESS') {
+    return { startedAt: attempt.startedAt, serverTime: new Date().toISOString() };
+  }
+
+  const activationLog = await db.orm.public.AuditLog.where({
+    action: 'QUIZ_ACTIVATED',
+    details: attemptId
+  }).first();
+
+  const now = new Date().toISOString();
+
+  // If not yet activated, activate now: update startedAt to current server time and log it
+  if (!activationLog) {
+    await db.orm.public.QuizAttempt.where({ id: attemptId }).update({
+      startedAt: now
+    });
+
+    await db.orm.public.AuditLog.create({
+      id: randomUUID(),
+      action: 'QUIZ_ACTIVATED',
+      userId: studentId,
+      details: attemptId,
+      createdAt: now
+    });
+
+    // Dispatch WebSocket event when student actually enters active quiz
+    try {
+      const variant = await db.orm.public.QuizVariant.where({ id: attempt.quizVariantId }).first();
+      const pkg = variant ? await db.orm.public.QuizPackage.where({ id: variant.quizPackageId }).first() : null;
+      const student = await db.orm.public.User.where({ id: studentId }).first();
+      const classroom = student?.classId ? await db.orm.public.Classroom.where({ id: student.classId }).first() : null;
+      const { emitQuizStarted } = await import('@/lib/socket/emitter');
+      emitQuizStarted({
+        attemptId: attempt.id,
+        studentId,
+        studentName: student?.name || 'Siswa',
+        quizTitle: pkg?.title || 'Kuis',
+        packageId: pkg?.id,
+        classId: student?.classId || null,
+        className: classroom?.name || null,
+        status: 'IN_PROGRESS',
+        startedAt: now,
+      });
+    } catch (socketErr) {
+      console.error('[activateQuizAttempt] Socket emit error:', socketErr);
+    }
+
+    return { startedAt: now, serverTime: now };
+  }
+
+  // Already activated: keep original startedAt and return current serverTime
+  return { startedAt: attempt.startedAt, serverTime: now };
 }
 
 export async function submitQuiz(

@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { getQuizStatus, startQuiz, getQuizEngineData, submitQuiz } from './quiz-engine.service';
+import { getQuizStatus, startQuiz, getQuizEngineData, submitQuiz, activateQuizAttempt } from './quiz-engine.service';
 import { getUserSession } from '@/app/actions';
 
 export async function checkQuizStatusAction(pageSlug: string) {
@@ -37,6 +37,18 @@ export async function getQuizQuestionsAction(attemptId: string) {
     return { success: true, data };
   } catch (error) {
     return { success: false, message: error instanceof Error ? error.message : 'Gagal memuat soal' };
+  }
+}
+
+export async function activateQuizAttemptAction(attemptId: string) {
+  const session = await getUserSession();
+  if (!session) return { success: false, message: 'Unauthorized' };
+
+  try {
+    const data = await activateQuizAttempt(attemptId, session.userId);
+    return { success: true, data };
+  } catch (error) {
+    return { success: false, message: error instanceof Error ? error.message : 'Gagal mengaktifkan kuis' };
   }
 }
 
