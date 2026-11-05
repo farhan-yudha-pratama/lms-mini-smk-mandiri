@@ -87,7 +87,7 @@ export async function getQuizReports(params: {
   for (const q of allQuestions) {
     const cur = variantQuestionMap.get(q.quizVariantId) || { total: 0, essayCount: 0 };
     cur.total += 1;
-    if (q.questionType === 'ESSAY' || q.questionType === 'CODE_CHALLENGE') {
+    if (q.questionType === 'ESSAY' || (q.questionType === 'CODE_CHALLENGE' && q.codeLanguage?.toLowerCase() !== 'sql')) {
       cur.essayCount += 1;
     }
     variantQuestionMap.set(q.quizVariantId, cur);
@@ -96,7 +96,7 @@ export async function getQuizReports(params: {
   // Variant essay questions map
   const variantEssayMap = new Map<string, string[]>();
   for (const q of allQuestions) {
-    if (q.questionType === 'ESSAY' || q.questionType === 'CODE_CHALLENGE') {
+    if (q.questionType === 'ESSAY' || (q.questionType === 'CODE_CHALLENGE' && q.codeLanguage?.toLowerCase() !== 'sql')) {
       if (!variantEssayMap.has(q.quizVariantId)) {
         variantEssayMap.set(q.quizVariantId, []);
       }
@@ -944,6 +944,7 @@ export async function getQuizAttemptDetail(attemptId: string) {
       id: q.id,
       questionText: q.questionText,
       questionType: q.questionType,
+      codeLanguage: q.codeLanguage,
       points: Number(q.points) || 1,
       options,
       studentAnswer: studentAns ? {
@@ -963,7 +964,7 @@ export async function getQuizAttemptDetail(attemptId: string) {
 
   const totalMaxPoints = questions.reduce((sum, q) => sum + q.points, 0);
   const totalEarnedPoints = questions.reduce((sum, q) => sum + (q.studentAnswer?.pointsEarned || 0), 0);
-  const essayQuestions = questions.filter(q => q.questionType === 'ESSAY' || q.questionType === 'CODE_CHALLENGE');
+  const essayQuestions = questions.filter(q => q.questionType === 'ESSAY' || (q.questionType === 'CODE_CHALLENGE' && q.codeLanguage?.toLowerCase() !== 'sql'));
   const hasEssay = essayQuestions.length > 0;
   const hasUngradedEssay = essayQuestions.some(q => !q.studentAnswer || q.studentAnswer.isCorrect === null);
   const needsReview = hasEssay && attempt.status !== 'IN_PROGRESS' && attempt.status !== 'GRADED' && hasUngradedEssay;

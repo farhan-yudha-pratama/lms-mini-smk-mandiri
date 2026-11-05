@@ -555,7 +555,7 @@ export default function QuestionBank({
                   >
                     <option value="html">HTML, CSS & JavaScript (Live Web Preview)</option>
                     <option value="javascript">JavaScript (Unit Testing)</option>
-                    <option value="sql">SQL (Regex Matching)</option>
+                    <option value="sql">SQL (Simulasi Database Interaktif - DDL/DML/Query)</option>
                   </select>
                 </div>
                 <div>
@@ -574,6 +574,42 @@ export default function QuestionBank({
                         Muat Template Multi-File (HTML, CSS, JS)
                       </button>
                     )}
+                    {codeLanguage === 'sql' && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setInitialCode(`-- Silakan tulis perintah SQL kamu di bawah ini
+-- Pastikan setiap perintah diakhiri dengan titik koma (;)
+`);
+                          setTestCases(JSON.stringify([
+                            {
+                              "judul": "Tabel category dan product berhasil dibuat",
+                              "tipe": "SCHEMA_CHECK",
+                              "tables": ["category", "product"],
+                              "bobot": 30
+                            },
+                            {
+                              "judul": "Menampilkan data dari tabel product",
+                              "tipe": "QUERY_OUTPUT_CHECK",
+                              "expectedColumns": ["id", "name", "price", "category_id"],
+                              "bobot": 40
+                            },
+                            {
+                              "judul": "Satu data product dihapus (sisa 1)",
+                              "tipe": "ROW_COUNT_CHECK",
+                              "table": "product",
+                              "expectedValue": 1,
+                              "bobot": 30
+                            }
+                          ], null, 2));
+                        }}
+                        className="text-xs text-emerald-600 hover:text-emerald-800 font-semibold flex items-center gap-1 hover:underline"
+                        title="Isi template standar soal SQL (Category & Product DDL/DML/Query)"
+                      >
+                        <span className="material-symbols-outlined text-sm">auto_fix_high</span>
+                        Muat Template Soal SQL (Product & Category)
+                      </button>
+                    )}
                   </div>
                   <textarea
                     value={initialCode}
@@ -587,18 +623,28 @@ export default function QuestionBank({
                       💡 <strong>Tips:</strong> Siswa akan mendapatkan struktur multi-file dan folder explorer secara otomatis.
                     </p>
                   )}
+                  {codeLanguage === 'sql' && (
+                    <p className="text-[11px] text-gray-500 mt-1">
+                      💡 <strong>Tips:</strong> Siswa akan mendapatkan Terminal MySQL virtual interaktif dan live Data Grid untuk melihat hasil query.
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-1">
-                    Test Cases (Format JSON) - Opsional untuk HTML
+                    Test Cases (Format JSON) - Otomatis Menguji Jawaban Siswa
                   </label>
                   <textarea
                     value={testCases}
                     onChange={(e) => setTestCases(e.target.value)}
-                    rows={4}
+                    rows={5}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none text-sm font-mono"
-                    placeholder={'Contoh: [{"input": "2,3", "expected": "5"}]'}
+                    placeholder={'Contoh: [{"judul": "Tabel dibuat", "tipe": "SCHEMA_CHECK", "tables": ["siswa"], "bobot": 50}]'}
                   />
+                  {codeLanguage === 'sql' && (
+                    <p className="text-[11px] text-gray-500 mt-1">
+                      💡 Format Test Cases SQL mendukung tipe <code>SCHEMA_CHECK</code> (cek tabel), <code>ROW_COUNT_CHECK</code> (cek jumlah data), dan <code>QUERY_OUTPUT_CHECK</code> (cek kolom/data SELECT).
+                    </p>
+                  )}
                 </div>
               </div>
             )}

@@ -65,7 +65,7 @@ export async function getGradebookMatrix(classId: string, courseId: string): Pro
   const essayQuestionIds = new Set<string>();
 
   for (const q of allQuestions) {
-    if (q.questionType === 'ESSAY' || q.questionType === 'CODE_CHALLENGE') {
+    if (q.questionType === 'ESSAY' || (q.questionType === 'CODE_CHALLENGE' && q.codeLanguage?.toLowerCase() !== 'sql')) {
       variantEssayMap.set(q.quizVariantId, true);
       essayQuestionIds.add(q.id);
     }

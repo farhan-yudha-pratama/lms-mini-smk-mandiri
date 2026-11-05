@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { parseProjectFiles, bundleVirtualProject } from '@/lib/virtual-fs';
+import { executeVirtualSql, SqlExecutionOutput } from '@/lib/virtual-db';
 
 interface CodeAnswerPreviewProps {
   answerText: string;
@@ -17,11 +18,17 @@ export default function CodeAnswerPreview({
   className = ''
 }: CodeAnswerPreviewProps) {
   const isHtml = !codeLanguage || codeLanguage === 'html';
+  const isSql = codeLanguage === 'sql';
 
-  // Parse project files safely
+  // State untuk eksekusi SQL oleh guru
+  const [sqlOutput, setSqlOutput] = useState<SqlExecutionOutput | null>(null);
+  const [isExecutingSql, setIsExecutingSql] = useState(false);
+
+  // Parse project files safely (only for HTML)
   const files = useMemo(() => {
+    if (isSql) return {};
     return parseProjectFiles(answerText);
-  }, [answerText]);
+  }, [answerText, isSql]);
 
   const fileNames = useMemo(() => Object.keys(files), [files]);
   const [activeFile, setActiveFile] = useState<string>(() => {
@@ -36,16 +43,29 @@ export default function CodeAnswerPreview({
     return bundleVirtualProject(files);
   }, [files, isHtml]);
 
-  // Active file content snippet
-  const activeContent = files[activeFile] ?? '';
+  // Active content snippet
+  const activeContent = isSql ? answerText : (files[activeFile] ?? '');
   const lines = useMemo(() => activeContent.split('\n'), [activeContent]);
-  const previewLines = useMemo(() => lines.slice(0, 10).join('\n'), [lines]);
-  const hasMore = lines.length > 10;
+  const previewLines = useMemo(() => lines.slice(0, 15).join('\n'), [lines]);
+  const hasMore = lines.length > 15;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(activeContent);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleRunTeacherSql = async () => {
+    if (!isSql || !answerText.trim()) return;
+    setIsExecutingSql(true);
+    try {
+      const { output } = await executeVirtualSql(answerText);
+      setSqlOutput(output);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsExecutingSql(false);
+    }
   };
 
   if (!answerText || !answerText.trim()) {
@@ -58,8 +78,8 @@ export default function CodeAnswerPreview({
 
   return (
     <div className={`space-y-2.5 font-sans ${className}`}>
-      {/* 1. New Tab Link Bar */}
-      {answerId && (
+      {/* 1. New Tab Link Bar (HTML Only) */}
+      {answerId && isHtml && (
         <div className="flex flex-col sm:flex-row sm:items-center justify-between bg-blue-50 border border-blue-200 p-2.5 rounded-lg gap-2">
           <div className="flex items-center gap-2 text-xs font-bold text-blue-900">
             <span className="material-symbols-outlined text-blue-700 text-base">laptop_chromebook</span>
@@ -79,7 +99,7 @@ export default function CodeAnswerPreview({
         </div>
       )}
 
-      {/* 2. Compact Live Preview Web Frame */}
+      {/* 2. Compact Live Preview Web Frame (HTML Only) */}
       {isHtml && bundledHtml && (
         <div className="border border-gray-300 rounded-lg overflow-hidden bg-white shadow-xs">
           <div className="bg-gray-100 border-b border-gray-200 px-3 py-1 text-xs font-bold text-gray-700 flex items-center justify-between">
@@ -98,44 +118,64 @@ export default function CodeAnswerPreview({
         </div>
       )}
 
-      {/* 3. Clean Code Snippet Preview (Showing actual code, not raw JSON!) */}
+      {/* 3. Clean Code Snippet Preview */}
       <div className="border border-zinc-800 rounded-lg overflow-hidden bg-[#18181b] shadow-xs">
         {/* Header Tabs */}
         <div className="bg-[#202024] border-b border-zinc-800 px-2 py-1 flex items-center justify-between gap-2 overflow-x-auto">
           <div className="flex items-center gap-1">
-            {fileNames.map(fName => {
-              const isActive = activeFile === fName;
-              return (
-                <button
-                  key={fName}
-                  type="button"
-                  onClick={() => setActiveFile(fName)}
-                  className={`px-2 py-0.5 text-xs font-mono rounded flex items-center gap-1 transition-colors ${
-                    isActive
-                      ? 'bg-zinc-800 text-[#00E599] font-bold border border-zinc-700'
-                      : 'text-zinc-400 hover:text-white'
-                  }`}
-                >
-                  <span className="material-symbols-outlined text-[13px]">
-                    {fName.endsWith('.html') ? 'html' : fName.endsWith('.css') ? 'palette' : 'javascript'}
-                  </span>
-                  <span>{fName}</span>
-                </button>
-              );
-            })}
+            {isSql ? (
+              <span className="px-2 py-0.5 text-xs font-mono text-[#00E599] font-bold flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-[14px]">database</span>
+                <span>script.sql</span>
+              </span>
+            ) : (
+              fileNames.map(fName => {
+                const isActive = activeFile === fName;
+                return (
+                  <button
+                    key={fName}
+                    type="button"
+                    onClick={() => setActiveFile(fName)}
+                    className={`px-2 py-0.5 text-xs font-mono rounded flex items-center gap-1 transition-colors ${
+                      isActive
+                        ? 'bg-zinc-800 text-[#00E599] font-bold border border-zinc-700'
+                        : 'text-zinc-400 hover:text-white'
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-[13px]">
+                      {fName.endsWith('.html') ? 'html' : fName.endsWith('.css') ? 'palette' : 'javascript'}
+                    </span>
+                    <span>{fName}</span>
+                  </button>
+                );
+              })
+            )}
           </div>
 
-          <button
-            type="button"
-            onClick={handleCopy}
-            className="px-2 py-0.5 text-[11px] text-zinc-400 hover:text-white bg-zinc-800/80 hover:bg-zinc-700 rounded flex items-center gap-1 shrink-0 font-mono transition-colors"
-            title={`Salin isi file ${activeFile}`}
-          >
-            <span className="material-symbols-outlined text-[13px]">
-              {copied ? 'check' : 'content_copy'}
-            </span>
-            <span>{copied ? 'Tersalin' : 'Salin'}</span>
-          </button>
+          <div className="flex items-center gap-1.5">
+            {isSql && (
+              <button
+                type="button"
+                onClick={handleRunTeacherSql}
+                disabled={isExecutingSql}
+                className="px-2.5 py-0.5 text-xs font-bold text-black bg-[#00E599] hover:bg-[#00c784] rounded flex items-center gap-1 transition-all disabled:opacity-50"
+              >
+                <span className="material-symbols-outlined text-[14px]">{isExecutingSql ? 'sync' : 'play_arrow'}</span>
+                <span>Uji Query</span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={handleCopy}
+              className="px-2 py-0.5 text-[11px] text-zinc-400 hover:text-white bg-zinc-800/80 hover:bg-zinc-700 rounded flex items-center gap-1 shrink-0 font-mono transition-colors"
+              title="Salin isi kode"
+            >
+              <span className="material-symbols-outlined text-[13px]">
+                {copied ? 'check' : 'content_copy'}
+              </span>
+              <span>{copied ? 'Tersalin' : 'Salin'}</span>
+            </button>
+          </div>
         </div>
 
         {/* Code Snippet */}
@@ -143,20 +183,51 @@ export default function CodeAnswerPreview({
           <pre className="whitespace-pre">{previewLines || '(File kosong)'}</pre>
           {hasMore && (
             <div className="mt-2 pt-2 border-t border-zinc-800 text-[11px] text-zinc-500 italic flex items-center justify-between">
-              <span>... ({lines.length - 10} baris lainnya disembunyikan)</span>
-              {answerId && (
-                <a
-                  href={`/code-preview/${answerId}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-400 hover:underline font-sans not-italic text-xs flex items-center gap-0.5"
-                >
-                  Lihat Selengkapnya ↗
-                </a>
-              )}
+              <span>... ({lines.length - 15} baris lainnya disembunyikan)</span>
             </div>
           )}
         </div>
+
+        {/* Live SQL Output (If executed by teacher) */}
+        {isSql && sqlOutput && (
+          <div className="border-t border-zinc-800 bg-[#121214] p-3 text-xs font-mono">
+            <div className="text-[11px] font-bold text-zinc-400 mb-2 flex items-center justify-between">
+              <span>Hasil Eksekusi Guru:</span>
+              <span className={sqlOutput.success ? 'text-emerald-400' : 'text-red-400'}>
+                {sqlOutput.success ? 'Query Berhasil (OK)' : 'Error Sintaks'}
+              </span>
+            </div>
+            {sqlOutput.error && (
+              <div className="p-2 bg-red-950/30 border border-red-800 rounded text-red-300 text-[11px] mb-2">
+                {sqlOutput.error.message}
+              </div>
+            )}
+            {sqlOutput.results.length > 0 && (
+              <div className="space-y-2 overflow-x-auto">
+                {sqlOutput.results.map((r, i) => (
+                  <table key={i} className="w-full border-collapse border border-zinc-700 text-[11px]">
+                    <thead>
+                      <tr className="bg-zinc-800 text-zinc-300">
+                        {r.columns.map((c, ci) => (
+                          <th key={ci} className="border border-zinc-700 px-2 py-1 text-left">{c}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {r.values.map((row, ri) => (
+                        <tr key={ri} className="border-b border-zinc-800">
+                          {row.map((val, vi) => (
+                            <td key={vi} className="border border-zinc-700 px-2 py-0.5 text-zinc-200">{String(val)}</td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
