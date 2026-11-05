@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { checkQuizStatusAction, startQuizAction } from '@/modules/quiz-engine/quiz-engine.action';
+import { checkQuizStatusAction, startQuizAction, studentResetQuizAttemptAction } from '@/modules/quiz-engine/quiz-engine.action';
 import QuizEngineModal from './QuizEngineModal';
 import QuizModal from './QuizModal';
 import { useRouter } from 'next/navigation';
@@ -119,6 +119,28 @@ export default function QuizTrigger({ pageSlug }: { pageSlug: string }) {
     setLoading(false);
   };
 
+  const [resetting, setResetting] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+
+  const handleStudentReset = async () => {
+    if (!status?.attemptId) return;
+    setResetting(true);
+    try {
+      const res = await studentResetQuizAttemptAction(status.attemptId);
+      if (res.success) {
+        setShowResetConfirm(false);
+        setAttemptId(null);
+        await loadStatus();
+      } else {
+        setErrorMessage((res as any).message || 'Gagal membatalkan kuis');
+      }
+    } catch (e: any) {
+      setErrorMessage(e.message || 'Gagal menghubungi server');
+    } finally {
+      setResetting(false);
+    }
+  };
+
   const handleComplete = async (
     score: number, 
     passed: boolean, 
@@ -233,12 +255,25 @@ export default function QuizTrigger({ pageSlug }: { pageSlug: string }) {
             )}
           </div>
 
-          <button
-            onClick={handleStart}
-            className="bg-black text-white px-8 py-4 text-xl font-black uppercase tracking-widest border-4 border-black hover:bg-white hover:text-black transition-colors shadow-neo-sm hover:shadow-neo-md hover:-translate-y-1"
-          >
-            {status.status === 'IN_PROGRESS' ? 'Lanjutkan Kuis' : 'Mulai Kuis Sekarang'}
-          </button>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+            <button
+              onClick={handleStart}
+              className="bg-black text-white px-8 py-4 text-xl font-black uppercase tracking-widest border-4 border-black hover:bg-white hover:text-black transition-colors shadow-neo-sm hover:shadow-neo-md hover:-translate-y-1"
+            >
+              {status.status === 'IN_PROGRESS' ? 'Lanjutkan Kuis' : 'Mulai Kuis Sekarang'}
+            </button>
+            {status.status === 'IN_PROGRESS' && (
+              <button
+                type="button"
+                onClick={() => setShowResetConfirm(true)}
+                disabled={resetting}
+                className="bg-red-50 text-red-700 px-5 py-4 text-sm font-black uppercase tracking-wider border-2 border-red-600 hover:bg-red-600 hover:text-white transition-colors shadow-neo-sm"
+                title="Gunakan jika kuis Anda macet atau mengalami kendala teknis"
+              >
+                {resetting ? 'Mereset...' : 'Ulangi / Batalkan Sesi'}
+              </button>
+            )}
+          </div>
 
           {(status.antiCheatConfig?.enableFullscreen || status.antiCheatConfig?.preventTabSwitch) && (
             <div className="mt-4 text-sm font-bold text-red-600 max-w-lg mx-auto bg-white border-2 border-black p-3 space-y-1 text-left">
@@ -301,6 +336,26 @@ export default function QuizTrigger({ pageSlug }: { pageSlug: string }) {
         confirmText="Tutup"
         onConfirm={() => setErrorMessage(null)}
       />
+
+      {/* Confirmation to reset in-flight exam session */}
+      {showResetConfirm && (
+        <QuizModal
+          isOpen={true}
+          type="confirm"
+          title="Ulangi Kuis dari Awal?"
+          message={
+            <div className="space-y-2">
+              <p>Apakah Anda yakin ingin membatalkan sesi pengerjaan ini dan mengulang dari awal?</p>
+              <p className="text-xs text-red-600 font-bold">⚠️ Seluruh jawaban sementara yang belum berhasil dikumpulkan akan dihapus.</p>
+            </div>
+          }
+          confirmText="Ya, Ulangi dari Awal"
+          cancelText="Batal"
+          isDestructive={true}
+          onConfirm={handleStudentReset}
+          onCancel={() => setShowResetConfirm(false)}
+        />
+      )}
 
       {/* Floating Responsive Toast Notification (Tactile Neo Brutalism) */}
       {toastNotification && (

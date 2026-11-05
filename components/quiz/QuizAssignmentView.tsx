@@ -1,7 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getAssignmentsAction, assignManualAction, distributeRandomAction } from '@/modules/quiz-assignment/quiz-assignment.action';
+import { 
+  getAssignmentsAction, 
+  assignManualAction, 
+  distributeRandomAction,
+  unassignStudentsAction 
+} from '@/modules/quiz-assignment/quiz-assignment.action';
 import AdminModal, { AdminModalType } from '@/components/quiz/AdminModal';
 
 export default function QuizAssignmentView({ 
@@ -124,6 +129,55 @@ export default function QuizAssignmentView({
     setActionLoading(false);
   };
 
+  // Unassign students (single or bulk)
+  const executeUnassign = async (studentIds: string[]) => {
+    setActionLoading(true);
+    closeModal();
+    const res = await unassignStudentsAction({ packageId, studentIds });
+    if (res.success) {
+      showModal(
+        'Penugasan Dibatalkan',
+        `Berhasil membatalkan penugasan untuk ${res.count} siswa.${res.skippedLocked ? ` (${res.skippedLocked} siswa dilewati karena sudah memulai ujian)` : ''}`,
+        'success'
+      );
+      loadData(selectedClassId);
+    } else {
+      showModal('Gagal Membatalkan', res.message || 'Gagal membatalkan penugasan', 'error');
+    }
+    setActionLoading(false);
+  };
+
+  const handleSingleUnassign = (studentId: string, studentName: string) => {
+    showModal(
+      'Batalkan Penugasan',
+      `Apakah Anda yakin ingin membatalkan penugasan kuis untuk ${studentName}? Murid ini tidak akan melihat kuis ini di daftar tugasnya.`,
+      'confirm',
+      () => executeUnassign([studentId]),
+      'Ya, Batalkan',
+      true
+    );
+  };
+
+  const handleBulkUnassign = () => {
+    if (selectedStudentIds.length === 0) return;
+    const assignedInSelection = studentsData.filter(
+      s => selectedStudentIds.includes(s.student.id) && s.assignment
+    );
+    if (assignedInSelection.length === 0) {
+      showModal('Pemberitahuan', 'Tidak ada siswa terpilih yang memiliki penugasan aktif untuk dibatalkan.', 'info');
+      return;
+    }
+
+    showModal(
+      'Batalkan Penugasan Massal',
+      `Apakah Anda yakin ingin membatalkan penugasan kuis untuk ${assignedInSelection.length} murid terpilih? Murid-murid ini tidak akan melihat kuis ini di daftar tugas mereka.`,
+      'confirm',
+      () => executeUnassign(assignedInSelection.map(s => s.student.id)),
+      'Ya, Batalkan Semua',
+      true
+    );
+  };
+
   const toggleStudent = (id: string) => {
     if (selectedStudentIds.includes(id)) {
       setSelectedStudentIds(prev => prev.filter(s => s !== id));
@@ -142,6 +196,9 @@ export default function QuizAssignmentView({
   };
 
   const assignableStudents = studentsData.filter(s => !s.isLocked);
+  const selectedAssignedCount = studentsData.filter(
+    s => selectedStudentIds.includes(s.student.id) && s.assignment
+  ).length;
 
   return (
     <div className="bg-white border border-gray-200 rounded-2xl p-4 sm:p-6 shadow-xs">
@@ -216,6 +273,18 @@ export default function QuizAssignmentView({
                 >
                   {actionLoading ? 'Menugaskan...' : 'Tugaskan Varian'}
                 </button>
+                {selectedAssignedCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleBulkUnassign}
+                    disabled={actionLoading}
+                    className="w-full sm:w-auto px-3.5 py-2 bg-white text-red-600 border border-red-300 hover:bg-red-50 text-xs sm:text-sm font-semibold rounded-lg transition-colors shadow-2xs flex items-center justify-center gap-1 min-h-[38px]"
+                    title="Batalkan penugasan varian untuk murid terpilih"
+                  >
+                    <span className="material-symbols-outlined text-base">person_remove</span>
+                    <span>Batal Tugaskan ({selectedAssignedCount})</span>
+                  </button>
+                )}
               </div>
             </div>
           )}
@@ -257,16 +326,30 @@ export default function QuizAssignmentView({
                     </td>
                     <td className="px-4 py-3">
                       {row.assignment ? (
-                        row.assignment.variant?.isActive === false ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-300">
-                            <span>⚠️</span>
-                            <span>{row.assignment.variant?.name || 'Varian'} (Disuspend)</span>
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
-                            {row.assignment.variant?.name || 'Varian Tidak Ditemukan'}
-                          </span>
-                        )
+                        <div className="flex items-center gap-1.5">
+                          {row.assignment.variant?.isActive === false ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-300">
+                              <span>⚠️</span>
+                              <span>{row.assignment.variant?.name || 'Varian'} (Disuspend)</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                              {row.assignment.variant?.name || 'Varian Tidak Ditemukan'}
+                            </span>
+                          )}
+
+                          {!row.isLocked && (
+                            <button
+                              type="button"
+                              onClick={() => handleSingleUnassign(row.student.id, row.student.name)}
+                              disabled={actionLoading}
+                              className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors inline-flex items-center"
+                              title={`Batalkan penugasan untuk ${row.student.name}`}
+                            >
+                              <span className="material-symbols-outlined text-base leading-none">close</span>
+                            </button>
+                          )}
+                        </div>
                       ) : (
                         <span className="text-gray-400 text-xs italic">Belum ditugaskan</span>
                       )}
@@ -347,16 +430,34 @@ export default function QuizAssignmentView({
                     <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-gray-100 text-xs">
                       <div>
                         {row.assignment ? (
-                          row.assignment.variant?.isActive === false ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-amber-50 text-amber-800 border border-amber-300">
-                              <span>⚠️</span>
-                              <span>{row.assignment.variant?.name || 'Varian'} (Disuspend)</span>
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
-                              {row.assignment.variant?.name || 'Varian Tidak Ditemukan'}
-                            </span>
-                          )
+                          <div className="flex items-center gap-1.5">
+                            {row.assignment.variant?.isActive === false ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-amber-50 text-amber-800 border border-amber-300">
+                                <span>⚠️</span>
+                                <span>{row.assignment.variant?.name || 'Varian'} (Disuspend)</span>
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                {row.assignment.variant?.name || 'Varian Tidak Ditemukan'}
+                              </span>
+                            )}
+
+                            {!row.isLocked && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleSingleUnassign(row.student.id, row.student.name);
+                                }}
+                                disabled={actionLoading}
+                                className="px-2 py-0.5 text-[11px] font-semibold text-red-600 bg-red-50 border border-red-200 rounded hover:bg-red-100 transition-colors flex items-center gap-0.5"
+                                title={`Batalkan penugasan untuk ${row.student.name}`}
+                              >
+                                <span className="material-symbols-outlined text-[13px] leading-none">close</span>
+                                <span>Batal</span>
+                              </button>
+                            )}
+                          </div>
                         ) : (
                           <span className="text-gray-400 text-xs italic">Belum ditugaskan</span>
                         )}

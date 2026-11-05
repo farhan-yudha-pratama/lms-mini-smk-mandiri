@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { getQuizStatus, startQuiz, getQuizEngineData, submitQuiz, activateQuizAttempt } from './quiz-engine.service';
+import { getQuizStatus, startQuiz, getQuizEngineData, submitQuiz, activateQuizAttempt, studentResetQuizAttempt } from './quiz-engine.service';
 import { getUserSession } from '@/app/actions';
 
 export async function checkQuizStatusAction(pageSlug: string) {
@@ -71,11 +71,14 @@ export async function submitQuizAction(
 
     const result = await submitQuiz(validated.attemptId, session.userId, validated.answers, validated.forcedScoreZero);
     
-    // Invalidate specific page cache and layout
+    // Invalidate specific page cache only if tied to material page (skip layout to avoid reverse-proxy SSL crash)
     if (result.categorySlug && result.pageSlug) {
-      revalidatePath(`/materi/${result.categorySlug}/${result.pageSlug}`, 'page');
+      try {
+        revalidatePath(`/materi/${result.categorySlug}/${result.pageSlug}`, 'page');
+      } catch (e) {
+        console.warn('revalidatePath ignored:', e);
+      }
     }
-    revalidatePath('/', 'layout');
     
     return { success: true, ...result };
   } catch (error) {
@@ -83,5 +86,17 @@ export async function submitQuizAction(
       return { success: false, message: error.message };
     }
     return { success: false, message: 'Gagal submit kuis' };
+  }
+}
+
+export async function studentResetQuizAttemptAction(attemptId: string) {
+  const session = await getUserSession();
+  if (!session) return { success: false, message: 'Unauthorized' };
+
+  try {
+    const data = await studentResetQuizAttempt(attemptId, session.userId);
+    return data;
+  } catch (error) {
+    return { success: false, message: error instanceof Error ? error.message : 'Gagal membatalkan kuis' };
   }
 }

@@ -5,6 +5,9 @@ import { getSession } from '@/lib/session';
 import { 
   getLeaderboardByPackageAndClass, 
   resetQuizAttempt,
+  previewBulkResetQuizAttempts,
+  bulkResetQuizAttempts,
+  BulkResetParams,
   completeQuizAttempt, 
   getQuizReports,
   getQuizAttemptDetail,
@@ -82,6 +85,53 @@ export async function resetQuizAttemptAction(studentId: string, packageId: strin
     return { success: true };
   } catch (error) {
     return { success: false, message: error instanceof Error ? error.message : 'Gagal mereset kuis' };
+  }
+}
+
+export async function previewBulkResetQuizAction(params: Omit<BulkResetParams, 'teacherId'>) {
+  try {
+    const session = await getSession();
+    if (!session || (session.role !== 'SUPERADMIN' && session.role !== 'GURU')) {
+      return { success: false, message: 'Unauthorized' };
+    }
+
+    const teacherId = session.role === 'GURU' ? session.userId : undefined;
+    const data = await previewBulkResetQuizAttempts({ ...params, teacherId });
+    return { success: true, data };
+  } catch (error) {
+    return { success: false, message: error instanceof Error ? error.message : 'Gagal memuat pratinjau reset massal' };
+  }
+}
+
+export async function bulkResetQuizAction(params: Omit<BulkResetParams, 'teacherId'>): Promise<
+  | { success: true; count: number; classLabel: string; packageLabel: string; modeLabel: string }
+  | { success: false; message: string }
+> {
+  try {
+    const session = await getSession();
+    if (!session || (session.role !== 'SUPERADMIN' && session.role !== 'GURU')) {
+      return { success: false, message: 'Unauthorized' };
+    }
+
+    const teacherId = session.role === 'GURU' ? session.userId : undefined;
+    const result = await bulkResetQuizAttempts({ ...params, teacherId });
+
+    await logAudit({
+      action: 'RESET_QUIZ',
+      message: msg.bulkResetQuiz(result),
+      meta: { ...result }
+    });
+
+    revalidatePath('/dashboard/reports');
+    return {
+      success: true as const,
+      count: result.count,
+      classLabel: result.classLabel,
+      packageLabel: result.packageLabel,
+      modeLabel: result.modeLabel
+    };
+  } catch (error) {
+    return { success: false, message: error instanceof Error ? error.message : 'Gagal melakukan reset massal' };
   }
 }
 

@@ -619,32 +619,29 @@ export async function completeQuizAttempt(attemptId: string) {
   };
 }
 
-export async function resetQuizAttempt(studentId: string, packageId: string, attemptId?: string) {
-  let targetAttempt: any = null;
+export interface BulkResetParams {
+  classId?: string;
+  packageId?: string;
+  courseId?: string;
+  targetMode: 'FAILED_KKM' | 'IN_PROGRESS' | 'ALL';
+  teacherId?: string;
+}
 
-  if (attemptId) {
-    targetAttempt = await db.orm.public.QuizAttempt.where({ id: attemptId }).first();
-    if (targetAttempt && targetAttempt.studentId !== studentId) {
-      targetAttempt = null;
-    }
-  }
+export interface BulkResetTarget {
+  attemptId: string;
+  studentId: string;
+  studentName: string;
+  className: string;
+  packageId: string;
+  quizTitle: string;
+  score: number | null;
+  passingScore: number;
+  status: string;
+  attempt: any;
+}
 
-  if (!targetAttempt) {
-    const variants = await db.orm.public.QuizVariant.where({ quizPackageId: packageId }).all();
-    const variantIds = variants.map(v => v.id);
-    const attempts = await db.orm.public.QuizAttempt.where({ studentId }).all();
-    targetAttempt = attempts.find(a => variantIds.includes(a.quizVariantId));
-  }
-
-  if (!targetAttempt) {
-    throw new Error('Tidak ada riwayat kuis untuk di-reset');
-  }
-
+async function executeSingleReset(targetAttempt: any, studentId: string, packageId: string) {
   const answers = await db.orm.public.StudentAnswer.where({ quizAttemptId: targetAttempt.id }).all();
-  const previousScore = targetAttempt.score;
-  const previousStatus = targetAttempt.status;
-  const answerCount = answers.length;
-
   for (const ans of answers) {
     await db.orm.public.StudentAnswer.where({ id: ans.id }).delete();
   }
@@ -713,19 +710,181 @@ export async function resetQuizAttempt(studentId: string, packageId: string, att
 
   // ponytail: Dispatch real-time WebSocket reset event
   try {
-    const { emitQuizReset, emitQuizCompleted } = await import('@/lib/socket/emitter');
+    const { emitQuizReset } = await import('@/lib/socket/emitter');
     emitQuizReset({
       studentId,
       packageId,
       pageSlug,
       resetAt: new Date().toISOString()
     });
-
-
   } catch (socketErr) {
-    console.error('Socket emit error in resetQuizAttempt:', socketErr);
+    console.error('Socket emit error in executeSingleReset:', socketErr);
   }
-  
+}
+
+async function findBulkResetTargets(params: BulkResetParams): Promise<{
+  targets: BulkResetTarget[];
+  classLabel: string;
+  packageLabel: string;
+  modeLabel: string;
+}> {
+  if (!params.classId && !params.packageId) {
+    throw new Error('Harap pilih minimal salah satu filter (Kelas atau Materi) untuk melakukan reset massal.');
+  }
+
+  const [classrooms, allPackages, allVariants, allStudents, allAttempts] = await Promise.all([
+    db.orm.public.Classroom.all(),
+    db.orm.public.QuizPackage.all(),
+    db.orm.public.QuizVariant.all(),
+    db.orm.public.User.where({ role: 'MURID' }).all(),
+    db.orm.public.QuizAttempt.all()
+  ]);
+
+  const classMap = new Map(classrooms.map(c => [c.id, c.name]));
+  const studentMap = new Map(allStudents.map(s => [s.id, s]));
+  const packageMap = new Map(allPackages.map(p => [p.id, p]));
+  const variantMap = new Map(allVariants.map(v => [v.id, v]));
+
+  // Filter Target Packages
+  let targetPackages = allPackages;
+  if (params.packageId) {
+    targetPackages = targetPackages.filter(p => p.id === params.packageId);
+  } else if (params.teacherId) {
+    const teacherCourses = await db.orm.public.CourseTeacher.where({ teacherId: params.teacherId }).all();
+    const validCourseIds = new Set(teacherCourses.map(c => c.courseId));
+    const pages = await db.orm.public.Page.all();
+    const categories = await db.orm.public.MaterialCategory.all();
+    const validCategoryIds = new Set(categories.filter(c => c.courseId && validCourseIds.has(c.courseId)).map(c => c.id));
+    const validPageIds = new Set(pages.filter(p => validCategoryIds.has(p.categoryId)).map(p => p.id));
+    targetPackages = targetPackages.filter(p => p.pageId && validPageIds.has(p.pageId));
+  }
+
+  const targetPackageIds = new Set(targetPackages.map(p => p.id));
+  const targetVariants = allVariants.filter(v => targetPackageIds.has(v.quizPackageId));
+  const targetVariantIds = new Set(targetVariants.map(v => v.id));
+
+  // Filter Target Students
+  let targetStudents = allStudents;
+  if (params.classId) {
+    targetStudents = targetStudents.filter(s => s.classId === params.classId);
+  }
+  const targetStudentIds = new Set(targetStudents.map(s => s.id));
+
+  // Filter Attempts
+  const relevantAttempts = allAttempts.filter(a => 
+    targetStudentIds.has(a.studentId) && targetVariantIds.has(a.quizVariantId)
+  );
+
+  const targets: BulkResetTarget[] = [];
+  for (const attempt of relevantAttempts) {
+    const variant = variantMap.get(attempt.quizVariantId);
+    if (!variant) continue;
+    const pkg = packageMap.get(variant.quizPackageId);
+    if (!pkg) continue;
+    const student = studentMap.get(attempt.studentId);
+    if (!student) continue;
+
+    const passingScore = pkg.passingScore || 70;
+    const score = attempt.score;
+
+    let matches = false;
+    if (params.targetMode === 'FAILED_KKM') {
+      matches = score !== null && score !== undefined && score < passingScore;
+    } else if (params.targetMode === 'IN_PROGRESS') {
+      matches = attempt.status === 'IN_PROGRESS';
+    } else if (params.targetMode === 'ALL') {
+      matches = true;
+    }
+
+    if (matches) {
+      targets.push({
+        attemptId: attempt.id,
+        studentId: student.id,
+        studentName: student.name,
+        className: student.classId ? (classMap.get(student.classId) || 'Tanpa Kelas') : 'Tanpa Kelas',
+        packageId: pkg.id,
+        quizTitle: pkg.title,
+        score,
+        passingScore,
+        status: attempt.status,
+        attempt
+      });
+    }
+  }
+
+  const classLabel = params.classId ? (classMap.get(params.classId) || 'Kelas Terpilih') : 'Semua Kelas';
+  const packageLabel = params.packageId ? (packageMap.get(params.packageId)?.title || 'Materi Terpilih') : 'Semua Materi';
+  const modeLabel = params.targetMode === 'FAILED_KKM' 
+    ? 'Hanya Nilai < KKM' 
+    : params.targetMode === 'IN_PROGRESS' 
+    ? 'Hanya Sesi Sedang Berjalan' 
+    : 'Semua Siswa';
+
+  return { targets, classLabel, packageLabel, modeLabel };
+}
+
+export async function previewBulkResetQuizAttempts(params: BulkResetParams) {
+  const { targets, classLabel, packageLabel, modeLabel } = await findBulkResetTargets(params);
+  return {
+    count: targets.length,
+    classLabel,
+    packageLabel,
+    modeLabel,
+    sampleStudents: targets.slice(0, 20).map(t => ({
+      attemptId: t.attemptId,
+      studentName: t.studentName,
+      className: t.className,
+      quizTitle: t.quizTitle,
+      score: t.score,
+      passingScore: t.passingScore,
+      status: t.status
+    }))
+  };
+}
+
+export async function bulkResetQuizAttempts(params: BulkResetParams) {
+  const { targets, classLabel, packageLabel, modeLabel } = await findBulkResetTargets(params);
+
+  for (const t of targets) {
+    await executeSingleReset(t.attempt, t.studentId, t.packageId);
+  }
+
+  return {
+    success: true,
+    count: targets.length,
+    classLabel,
+    packageLabel,
+    modeLabel
+  };
+}
+
+export async function resetQuizAttempt(studentId: string, packageId: string, attemptId?: string) {
+  let targetAttempt: any = null;
+
+  if (attemptId) {
+    targetAttempt = await db.orm.public.QuizAttempt.where({ id: attemptId }).first();
+    if (targetAttempt && targetAttempt.studentId !== studentId) {
+      targetAttempt = null;
+    }
+  }
+
+  if (!targetAttempt) {
+    const variants = await db.orm.public.QuizVariant.where({ quizPackageId: packageId }).all();
+    const variantIds = variants.map(v => v.id);
+    const attempts = await db.orm.public.QuizAttempt.where({ studentId }).all();
+    targetAttempt = attempts.find(a => variantIds.includes(a.quizVariantId));
+  }
+
+  if (!targetAttempt) {
+    throw new Error('Tidak ada riwayat kuis untuk di-reset');
+  }
+
+  const previousScore = targetAttempt.score;
+  const previousStatus = targetAttempt.status;
+  const answerCount = (await db.orm.public.StudentAnswer.where({ quizAttemptId: targetAttempt.id }).all()).length;
+
+  await executeSingleReset(targetAttempt, studentId, packageId);
+
   return { attemptId: targetAttempt.id, studentId, previousScore, previousStatus, answerCount };
 }
 

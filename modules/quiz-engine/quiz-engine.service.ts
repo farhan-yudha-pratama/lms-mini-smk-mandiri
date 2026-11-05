@@ -424,15 +424,6 @@ export async function submitQuiz(
       }
     }
 
-    if (!hasEssay) {
-      try {
-        const { recordQuizCompletion } = await import('@/modules/quiz-completion/quiz-completion.service');
-        await recordQuizCompletion(attemptId);
-      } catch (err) {
-        console.error('Auto record completion error in submitQuiz:', err);
-      }
-    }
-
     return { 
       attemptId,
       score: roundedScore, 
@@ -449,6 +440,16 @@ export async function submitQuiz(
       className: classroom?.name || null
     };
   });
+
+  // ponytail: Record completion outside transaction to prevent connection pool exhaustion/deadlock
+  if (!result.hasEssay) {
+    try {
+      const { recordQuizCompletion } = await import('@/modules/quiz-completion/quiz-completion.service');
+      await recordQuizCompletion(attemptId);
+    } catch (err) {
+      console.error('Auto record completion error in submitQuiz:', err);
+    }
+  }
 
   // ponytail: Dispatch WebSocket event immediately after commit
   try {
@@ -470,4 +471,23 @@ export async function submitQuiz(
   }
 
   return result;
+}
+
+export async function studentResetQuizAttempt(attemptId: string, studentId: string) {
+  const attempt = await db.orm.public.QuizAttempt.where({ id: attemptId }).first();
+  if (!attempt || attempt.studentId !== studentId) throw new Error('Attempt tidak valid');
+  if (attempt.status !== 'IN_PROGRESS') throw new Error('Hanya kuis yang sedang berjalan yang dapat dibatalkan');
+
+  const answers = await db.orm.public.StudentAnswer.where({ quizAttemptId: attemptId }).all();
+  for (const ans of answers) {
+    await db.orm.public.StudentAnswer.where({ id: ans.id }).delete();
+  }
+
+  const logs = await db.orm.public.AuditLog.where({ action: 'QUIZ_ACTIVATED', details: attemptId }).all();
+  for (const log of logs) {
+    await db.orm.public.AuditLog.where({ id: log.id }).delete();
+  }
+
+  await db.orm.public.QuizAttempt.where({ id: attemptId }).delete();
+  return { success: true };
 }

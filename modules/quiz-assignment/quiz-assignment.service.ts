@@ -159,6 +159,54 @@ export async function distributeRandomlyByClass(packageId: string, classId: stri
   return assignedCount;
 }
 
+// Unassign students from a quiz package
+export async function unassignStudents(packageId: string, studentIds: string[]) {
+  // 1. Fetch attempts to protect locked students
+  const attempts = await db.orm.public.QuizAttempt.all();
+  const variants = await db.orm.public.QuizVariant.where({ quizPackageId: packageId }).all();
+  const variantIds = variants.map(v => v.id);
+  const relevantAttempts = attempts.filter(a => variantIds.includes(a.quizVariantId));
+  const lockedStudentIds = new Set(relevantAttempts.map(a => a.studentId));
+
+  // Only unassign students who have not started/attempted the quiz
+  const validStudentIds = studentIds.filter(id => !lockedStudentIds.has(id));
+  if (validStudentIds.length === 0) {
+    return { count: 0, skippedLocked: studentIds.length };
+  }
+
+  // 2. Fetch existing assignments for this package
+  const existingAssignments = await db.orm.public.QuizAssignment.where({ quizPackageId: packageId }).all();
+  const targets = existingAssignments.filter(a => validStudentIds.includes(a.studentId));
+
+  for (const assign of targets) {
+    await db.orm.public.QuizAssignment.where({ id: assign.id }).delete();
+  }
+
+  // 3. Dispatch real-time socket event so student tasks page refreshes
+  try {
+    const pkg = await db.orm.public.QuizPackage.where({ id: packageId }).first();
+    let pageSlug: string | null = null;
+    if (pkg?.pageId) {
+      const page = await db.orm.public.Page.where({ id: pkg.pageId }).first();
+      pageSlug = page?.slug || null;
+    }
+    const { emitQuizAssigned } = await import('@/lib/socket/emitter');
+    emitQuizAssigned({
+      packageId,
+      pageSlug,
+      studentIds: validStudentIds,
+      assignedAt: new Date().toISOString()
+    });
+  } catch (socketErr) {
+    console.error('Socket emit error in unassignStudents:', socketErr);
+  }
+
+  return {
+    count: targets.length,
+    skippedLocked: studentIds.length - validStudentIds.length
+  };
+}
+
 export interface StudentTaskItem {
   assignment: any;
   pkg: any;

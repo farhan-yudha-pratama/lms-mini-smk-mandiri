@@ -929,40 +929,59 @@ export default function CodeChallengeModal({
       essayAnswer: q.type === 'ESSAY' || q.type === 'CODE_CHALLENGE' ? answers[q.id] || undefined : undefined
     }));
 
-    const res = await submitQuizAction(attemptId, answersArray, false);
-    await exitFullscreen();
-    clearTimer();
+    try {
+      const res = await submitQuizAction(attemptId, answersArray, false);
+      await exitFullscreen();
+      clearTimer();
 
-    if (res.success) {
-      try { localStorage.removeItem(`cc-draft-${attemptId}`); } catch (e) {}
-      onComplete(
-        (res as any).score,
-        (res as any).passed,
-        {
-          hasEssay: Boolean((res as any).hasEssay),
-          needsReview: Boolean((res as any).needsReview)
-        }
-      );
-    } else {
+      if (res.success) {
+        try { localStorage.removeItem(`cc-draft-${attemptId}`); } catch (e) {}
+        onComplete(
+          (res as any).score,
+          (res as any).passed,
+          {
+            hasEssay: Boolean((res as any).hasEssay),
+            needsReview: Boolean((res as any).needsReview)
+          }
+        );
+      } else {
+        setSubmitting(false);
+        submittingRef.current = false;
+        isArmedRef.current = true;
+        isInternalModalOpenRef.current = true;
+        const isAlreadyCompleted = (res as any).message === 'Kuis telah diselesaikan' || (res as any).message === 'Status kuis tidak valid';
+        setModalConfig({
+          isOpen: true,
+          type: 'error',
+          title: isAlreadyCompleted ? 'Kuis Sudah Terkumpul' : 'Gagal Mengumpulkan',
+          message: isAlreadyCompleted
+            ? 'Kuis ini sudah diselesaikan sebelumnya. Memperbarui status...'
+            : ((res as any).message || 'Terjadi kesalahan saat mengumpulkan. Silakan coba lagi.'),
+          confirmText: isAlreadyCompleted ? 'Mengerti' : 'Coba Kumpulkan Lagi',
+          onConfirm: () => {
+            setModalConfig(null);
+            isInternalModalOpenRef.current = false;
+            if (isAlreadyCompleted) {
+              onComplete(0, false);
+            }
+          }
+        });
+      }
+    } catch (err: any) {
+      console.error('Code challenge submit error:', err);
       setSubmitting(false);
       submittingRef.current = false;
       isArmedRef.current = true;
       isInternalModalOpenRef.current = true;
-      const isAlreadyCompleted = (res as any).message === 'Kuis telah diselesaikan' || (res as any).message === 'Status kuis tidak valid';
       setModalConfig({
         isOpen: true,
         type: 'error',
-        title: isAlreadyCompleted ? 'Kuis Sudah Terkumpul' : 'Gagal Mengumpulkan',
-        message: isAlreadyCompleted
-          ? 'Kuis ini sudah diselesaikan sebelumnya. Memperbarui status...'
-          : ((res as any).message || 'Terjadi kesalahan saat mengumpulkan. Silakan coba lagi.'),
-        confirmText: 'Mengerti',
+        title: 'Koneksi Terputus / Gagal Mengumpulkan',
+        message: 'Gagal menghubungi server untuk mengumpulkan kode program. Kode Anda masih aman di editor ini.',
+        confirmText: 'Coba Kumpulkan Lagi',
         onConfirm: () => {
           setModalConfig(null);
           isInternalModalOpenRef.current = false;
-          if (isAlreadyCompleted) {
-            onComplete(0, false);
-          }
         }
       });
     }
