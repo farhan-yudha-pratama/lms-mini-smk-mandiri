@@ -82,12 +82,16 @@ export async function getQuizReports(params: {
   const studentMap = new Map(allStudents.map(s => [s.id, s]));
   const courseMap = new Map(courses.map(c => [c.id, c.name]));
 
+  const isManualReview = (q: any) =>
+    q.questionType === 'ESSAY' ||
+    (q.questionType === 'CODE_CHALLENGE' && q.codeLanguage?.toLowerCase() !== 'sql' && !(q.codeLanguage?.toLowerCase() === 'php' && Boolean(q.testCases)));
+
   // Variant stats map: total questions and essay question count
   const variantQuestionMap = new Map<string, { total: number; essayCount: number }>();
   for (const q of allQuestions) {
     const cur = variantQuestionMap.get(q.quizVariantId) || { total: 0, essayCount: 0 };
     cur.total += 1;
-    if (q.questionType === 'ESSAY' || (q.questionType === 'CODE_CHALLENGE' && q.codeLanguage?.toLowerCase() !== 'sql')) {
+    if (isManualReview(q)) {
       cur.essayCount += 1;
     }
     variantQuestionMap.set(q.quizVariantId, cur);
@@ -96,7 +100,7 @@ export async function getQuizReports(params: {
   // Variant essay questions map
   const variantEssayMap = new Map<string, string[]>();
   for (const q of allQuestions) {
-    if (q.questionType === 'ESSAY' || (q.questionType === 'CODE_CHALLENGE' && q.codeLanguage?.toLowerCase() !== 'sql')) {
+    if (isManualReview(q)) {
       if (!variantEssayMap.has(q.quizVariantId)) {
         variantEssayMap.set(q.quizVariantId, []);
       }
@@ -964,7 +968,10 @@ export async function getQuizAttemptDetail(attemptId: string) {
 
   const totalMaxPoints = questions.reduce((sum, q) => sum + q.points, 0);
   const totalEarnedPoints = questions.reduce((sum, q) => sum + (q.studentAnswer?.pointsEarned || 0), 0);
-  const essayQuestions = questions.filter(q => q.questionType === 'ESSAY' || (q.questionType === 'CODE_CHALLENGE' && q.codeLanguage?.toLowerCase() !== 'sql'));
+  const essayQuestions = questions.filter(q =>
+    q.questionType === 'ESSAY' ||
+    (q.questionType === 'CODE_CHALLENGE' && q.codeLanguage?.toLowerCase() !== 'sql' && !(q.codeLanguage?.toLowerCase() === 'php' && Boolean(q.testCases)))
+  );
   const hasEssay = essayQuestions.length > 0;
   const hasUngradedEssay = essayQuestions.some(q => !q.studentAnswer || q.studentAnswer.isCorrect === null);
   const needsReview = hasEssay && attempt.status !== 'IN_PROGRESS' && attempt.status !== 'GRADED' && hasUngradedEssay;

@@ -48,6 +48,7 @@ export default async function ManageQuestionsPage({ params }: { params: Promise<
   // Cek apakah varian sudah pernah dikerjakan oleh murid
   const attempts = await db.orm.public.QuizAttempt.where({ quizVariantId: resolvedParams.id }).all();
   const hasStudentAttempts = attempts.length > 0;
+  const defaultModel = process.env.AI_DEFAULT_MODEL || 'free-tier';
 
   return (
     <div className="p-4 sm:p-6 max-w-5xl mx-auto space-y-6">
@@ -71,16 +72,17 @@ export default async function ManageQuestionsPage({ params }: { params: Promise<
             </span>
           </div>
           <p className="text-gray-500 text-xs sm:text-sm mt-0.5">
-            Atur perlindungan ujian dan daftar butir pertanyaan untuk varian kuis ini.
+            Daftar butir pertanyaan dan perlindungan ujian untuk varian kuis ini.
           </p>
         </div>
-      </div>
 
-      <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-xs p-4 sm:p-6">
-        <AntiCheatManager 
-          quizVariantId={variant.id} 
-          initialConfig={antiCheatConfig} 
-        />
+        <div className="flex items-center gap-2 self-start sm:self-center shrink-0">
+          <AntiCheatManager 
+            quizVariantId={variant.id} 
+            initialConfig={antiCheatConfig} 
+            variantName={variant.name}
+          />
+        </div>
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-xs p-4 sm:p-6">
@@ -94,6 +96,7 @@ export default async function ManageQuestionsPage({ params }: { params: Promise<
           summariesCount={summariesCount}
           pageTitle={pageTitle}
           pageId={pageId}
+          defaultModel={defaultModel}
         />
       </div>
     </div>

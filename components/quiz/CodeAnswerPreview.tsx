@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import { parseProjectFiles, bundleVirtualProject } from '@/lib/virtual-fs';
 import { executeVirtualSql, SqlExecutionOutput } from '@/lib/virtual-db';
+import { executeVirtualPhp, PhpExecutionOutput } from '@/lib/virtual-php';
 
 interface CodeAnswerPreviewProps {
   answerText: string;
@@ -17,18 +18,23 @@ export default function CodeAnswerPreview({
   codeLanguage = 'html',
   className = ''
 }: CodeAnswerPreviewProps) {
-  const isHtml = !codeLanguage || codeLanguage === 'html';
+  const isPhp = codeLanguage === 'php';
   const isSql = codeLanguage === 'sql';
+  const isHtml = (!codeLanguage || codeLanguage === 'html') && !isPhp && !isSql;
 
   // State untuk eksekusi SQL oleh guru
   const [sqlOutput, setSqlOutput] = useState<SqlExecutionOutput | null>(null);
   const [isExecutingSql, setIsExecutingSql] = useState(false);
 
+  // State untuk eksekusi PHP oleh guru
+  const [phpOutput, setPhpOutput] = useState<PhpExecutionOutput | null>(null);
+  const [isExecutingPhp, setIsExecutingPhp] = useState(false);
+
   // Parse project files safely (only for HTML)
   const files = useMemo(() => {
-    if (isSql) return {};
+    if (isSql || isPhp) return {};
     return parseProjectFiles(answerText);
-  }, [answerText, isSql]);
+  }, [answerText, isSql, isPhp]);
 
   const fileNames = useMemo(() => Object.keys(files), [files]);
   const [activeFile, setActiveFile] = useState<string>(() => {
@@ -44,7 +50,7 @@ export default function CodeAnswerPreview({
   }, [files, isHtml]);
 
   // Active content snippet
-  const activeContent = isSql ? answerText : (files[activeFile] ?? '');
+  const activeContent = isSql || isPhp ? answerText : (files[activeFile] ?? '');
   const lines = useMemo(() => activeContent.split('\n'), [activeContent]);
   const previewLines = useMemo(() => lines.slice(0, 15).join('\n'), [lines]);
   const hasMore = lines.length > 15;
@@ -65,6 +71,19 @@ export default function CodeAnswerPreview({
       console.error(err);
     } finally {
       setIsExecutingSql(false);
+    }
+  };
+
+  const handleRunTeacherPhp = async () => {
+    if (!isPhp || !answerText.trim()) return;
+    setIsExecutingPhp(true);
+    try {
+      const output = await executeVirtualPhp(answerText);
+      setPhpOutput(output);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsExecutingPhp(false);
     }
   };
 
@@ -128,6 +147,11 @@ export default function CodeAnswerPreview({
                 <span className="material-symbols-outlined text-[14px]">database</span>
                 <span>script.sql</span>
               </span>
+            ) : isPhp ? (
+              <span className="px-2 py-0.5 text-xs font-mono text-purple-400 font-bold flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-[14px]">code</span>
+                <span>index.php</span>
+              </span>
             ) : (
               fileNames.map(fName => {
                 const isActive = activeFile === fName;
@@ -162,6 +186,17 @@ export default function CodeAnswerPreview({
               >
                 <span className="material-symbols-outlined text-[14px]">{isExecutingSql ? 'sync' : 'play_arrow'}</span>
                 <span>Uji Query</span>
+              </button>
+            )}
+            {isPhp && (
+              <button
+                type="button"
+                onClick={handleRunTeacherPhp}
+                disabled={isExecutingPhp}
+                className="px-2.5 py-0.5 text-xs font-bold text-white bg-purple-600 hover:bg-purple-700 rounded flex items-center gap-1 transition-all disabled:opacity-50"
+              >
+                <span className="material-symbols-outlined text-[14px]">{isExecutingPhp ? 'sync' : 'play_arrow'}</span>
+                <span>{isExecutingPhp ? 'Mengeksekusi...' : 'Uji Skrip PHP'}</span>
               </button>
             )}
             <button
@@ -224,6 +259,47 @@ export default function CodeAnswerPreview({
                     </tbody>
                   </table>
                 ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Live PHP Output (If executed by teacher) */}
+        {isPhp && phpOutput && (
+          <div className="border-t border-zinc-800 bg-[#121214] p-3 text-xs font-mono space-y-2">
+            <div className="text-[11px] font-bold text-zinc-400 flex items-center justify-between">
+              <span>Hasil Eksekusi Guru (PHP):</span>
+              <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${phpOutput.success ? 'bg-emerald-950/60 text-emerald-400 border border-emerald-800' : 'bg-red-950/60 text-red-400 border border-red-800'}`}>
+                {phpOutput.success ? `Sukses (${phpOutput.executionTimeMs}ms)` : 'Error Eksekusi'}
+              </span>
+            </div>
+
+            {phpOutput.error && (
+              <div className="p-2 bg-red-950/30 border border-red-800 rounded text-red-300 text-[11px] space-y-1">
+                <div className="font-bold">{phpOutput.error.message}</div>
+                {phpOutput.error.hint && <div className="text-[10px] text-red-400 italic">💡 {phpOutput.error.hint}</div>}
+              </div>
+            )}
+
+            {phpOutput.stdout && (
+              <div className="bg-[#0a0a0c] border border-zinc-800 rounded p-2.5 overflow-x-auto text-zinc-200">
+                <div className="text-[10px] text-zinc-500 mb-1 font-bold">STDOUT / TERMINAL:</div>
+                <pre className="whitespace-pre-wrap">{phpOutput.stdout}</pre>
+              </div>
+            )}
+
+            {phpOutput.isHtml && (
+              <div className="border border-zinc-700 rounded overflow-hidden bg-white mt-2">
+                <div className="bg-zinc-800 px-2.5 py-1 text-[10px] font-bold text-zinc-300 flex items-center justify-between">
+                  <span>Pratinjau Render HTML (Output PHP):</span>
+                  <span className="text-zinc-400">Live Frame</span>
+                </div>
+                <iframe
+                  srcDoc={phpOutput.stdout}
+                  className="w-full h-40 border-none bg-white"
+                  sandbox="allow-scripts"
+                  title="Render HTML Output Siswa"
+                />
               </div>
             )}
           </div>

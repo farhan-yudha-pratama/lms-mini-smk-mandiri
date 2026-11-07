@@ -1,6 +1,7 @@
 import { db } from '@/prisma/db';
 import { randomUUID } from 'crypto';
 import { executeVirtualSql, runSqlTestCases } from '@/lib/virtual-db';
+import { runPhpTestCases } from '@/lib/virtual-php';
 
 export async function getQuizStatus(pageSlug: string, studentId: string) {
   // Find page by slug
@@ -40,7 +41,10 @@ export async function getQuizStatus(pageSlug: string, studentId: string) {
   }
 
   const rawQuestions = await db.orm.public.Question.where({ quizVariantId: assignment.quizVariantId }).all();
-  const hasEssay = rawQuestions.some(q => q.questionType === 'ESSAY' || (q.questionType === 'CODE_CHALLENGE' && q.codeLanguage?.toLowerCase() !== 'sql'));
+  const isAutoGraded = (q: any) =>
+    (q.questionType === 'CODE_CHALLENGE' && (q.codeLanguage?.toLowerCase() === 'sql' || (!q.codeLanguage && Boolean(q.testCases)))) ||
+    (q.questionType === 'CODE_CHALLENGE' && q.codeLanguage?.toLowerCase() === 'php' && Boolean(q.testCases));
+  const hasEssay = rawQuestions.some(q => q.questionType === 'ESSAY' || (q.questionType === 'CODE_CHALLENGE' && !isAutoGraded(q)));
 
   const antiCheatRow = await db.orm.public.QuizAntiCheatConfig.where({ quizVariantId: assignment.quizVariantId }).first();
   const antiCheatConfig = antiCheatRow || {
@@ -324,7 +328,8 @@ export async function submitQuiz(
 
     const rawQuestions = await tx.orm.public.Question.where({ quizVariantId: variant!.id }).all();
     const isSqlQuestion = (q: any) => q.questionType === 'CODE_CHALLENGE' && (q.codeLanguage?.toLowerCase() === 'sql' || (!q.codeLanguage && Boolean(q.testCases)));
-    const hasEssay = rawQuestions.some(q => q.questionType === 'ESSAY' || (q.questionType === 'CODE_CHALLENGE' && !isSqlQuestion(q)));
+    const isAutoGradedPhp = (q: any) => q.questionType === 'CODE_CHALLENGE' && q.codeLanguage?.toLowerCase() === 'php' && Boolean(q.testCases);
+    const hasEssay = rawQuestions.some(q => q.questionType === 'ESSAY' || (q.questionType === 'CODE_CHALLENGE' && !isSqlQuestion(q) && !isAutoGradedPhp(q)));
 
     for (const q of rawQuestions) {
       maxPossibleScore += q.points;
@@ -370,6 +375,29 @@ export async function submitQuiz(
             }
           } catch (e) {
             console.error('Auto-grading SQL error:', e);
+          }
+        }
+
+        await tx.orm.public.StudentAnswer.create({
+          id: randomUUID(),
+          quizAttemptId: attemptId,
+          questionId: q.id,
+          selectedOptionId: null,
+          essayAnswer: script || null,
+          isCorrect,
+          pointsEarned
+        });
+      } else if (isAutoGradedPhp(q)) {
+        const script = studentAns?.essayAnswer?.trim() || '';
+        if (script && !forcedScoreZero) {
+          try {
+            const report = await runPhpTestCases(script, q.testCases);
+            const earnedRatio = report.maxPoints > 0 ? report.totalPoints / report.maxPoints : 0;
+            pointsEarned = Math.round(earnedRatio * q.points * 100) / 100;
+            isCorrect = report.passedCount === report.totalCount && report.totalCount > 0;
+            totalScore += pointsEarned;
+          } catch (e) {
+            console.error('Auto-grading PHP error:', e);
           }
         }
 
