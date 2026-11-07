@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { generateQuizAction, applyAiQuestionsToVariantAction } from '@/modules/ai-quiz/actions';
 
@@ -16,6 +16,7 @@ interface AiQuestionGeneratorModalProps {
   pageTitle?: string;
   pageId?: string;
   existingQuestionsCount?: number;
+  defaultModel?: string;
 }
 
 export default function AiQuestionGeneratorModal({
@@ -30,14 +31,51 @@ export default function AiQuestionGeneratorModal({
   pageTitle = '',
   pageId = '',
   existingQuestionsCount = 0,
+  defaultModel = 'free-tier',
 }: AiQuestionGeneratorModalProps) {
   const router = useRouter();
 
+  // Deteksi Afiliasi Materi Pembelajaran
+  const isAffiliatedWithMaterial = Boolean(pageId || pageTitle);
+  const hasMaterialSummary = Boolean(hasAiSummary && initialSummaryText && initialSummaryText.trim().length > 0);
+
   // Form State
-  const [questionType, setQuestionType] = useState<'PILIHAN_GANDA' | 'ESSAY'>('PILIHAN_GANDA');
-  const [totalQuestions, setTotalQuestions] = useState<number>(5);
+  const [questionType, setQuestionType] = useState<'PILIHAN_GANDA' | 'ESSAY' | 'CODE_CHALLENGE'>('PILIHAN_GANDA');
+  const [codeLanguage, setCodeLanguage] = useState<'sql' | 'php'>('sql');
+  const [phpMode, setPhpMode] = useState<'LOGIC' | 'WEB' | 'MIXED'>('LOGIC');
+  const [totalQuestions, setTotalQuestions] = useState<string>('5');
   const [difficulty, setDifficulty] = useState({ easy: 30, medium: 50, hard: 20 });
+  const [model, setModel] = useState<string>(defaultModel || 'free-tier');
   const [mode, setMode] = useState<'APPEND' | 'REPLACE'>(hasStudentAttempts ? 'APPEND' : 'APPEND');
+  const [customPrompt, setCustomPrompt] = useState('');
+  
+  // Opsi Keselarasan Materi (default true jika ada materi & summary, false jika kuis mandiri / belum ada summary)
+  const [alignWithMaterial, setAlignWithMaterial] = useState<boolean>(
+    Boolean(isAffiliatedWithMaterial && hasMaterialSummary)
+  );
+
+  useEffect(() => {
+    if (isOpen) {
+      setAlignWithMaterial(Boolean(isAffiliatedWithMaterial && hasMaterialSummary));
+      setErrorMsg('');
+      if (pageTitle && /php/i.test(pageTitle)) {
+        setCodeLanguage('php');
+      }
+    }
+  }, [isOpen, isAffiliatedWithMaterial, hasMaterialSummary, pageTitle]);
+
+  // Validasi Jumlah Soal (String -> Int)
+  const getTotalQuestionsValidation = (): string | null => {
+    const trimmed = String(totalQuestions).trim();
+    if (!trimmed) return 'Jumlah soal tidak boleh kosong.';
+    if (!/^\d+$/.test(trimmed)) return 'Jumlah soal harus berupa angka bulat positif.';
+    const parsed = parseInt(trimmed, 10);
+    if (isNaN(parsed) || parsed < 1) return 'Jumlah soal minimal 1 butir.';
+    if (parsed > 20) return 'Jumlah soal maksimal 20 butir.';
+    return null;
+  };
+  const totalQuestionsError = getTotalQuestionsValidation();
+  const isTotalQuestionsInvalid = Boolean(totalQuestionsError);
 
   // Generation & Review State
   const [isGenerating, setIsGenerating] = useState(false);
@@ -48,30 +86,52 @@ export default function AiQuestionGeneratorModal({
 
   if (!isOpen) return null;
 
-  const handleGenerate = async (customPrompt?: string) => {
+  const handleGenerate = async (feedbackPrompt?: string) => {
     setErrorMsg('');
-    if (!initialSummaryText.trim()) {
-      setErrorMsg('Materi belum memiliki rangkuman Summary AI. Silakan buat Summary AI terlebih dahulu.');
-      return;
-    }
 
     if (difficulty.easy + difficulty.medium + difficulty.hard !== 100) {
       setErrorMsg('Total persentase tingkat kesulitan harus tepat 100%.');
       return;
     }
 
+    const totalValidation = getTotalQuestionsValidation();
+    if (totalValidation) {
+      setErrorMsg(totalValidation);
+      return;
+    }
+
+    const parsedTotal = parseInt(String(totalQuestions).trim(), 10);
+
+    const shouldAlign = isAffiliatedWithMaterial && alignWithMaterial;
+    if (shouldAlign && !hasMaterialSummary) {
+      setErrorMsg('Materi belum memiliki rangkuman Summary AI. Silakan buat Summary AI terlebih dahulu atau pilih opsi "Bebas / Mandiri".');
+      return;
+    }
+
     setIsGenerating(true);
 
     try {
-      const textToUse = customPrompt?.trim()
-        ? `INSTRUKSI TAMBAHAN PENGGUNA:\n${customPrompt.trim()}\n\nMATERI ACUAN:\n${initialSummaryText.trim()}`
-        : initialSummaryText.trim();
+      const promptDirectives = [customPrompt?.trim(), feedbackPrompt?.trim()].filter(Boolean).join('\n\n');
+      
+      let textToUse = '';
+      if (shouldAlign) {
+        textToUse = initialSummaryText.trim();
+      } else {
+        textToUse = promptDirectives
+          ? `TOPIK / INSTRUKSI UTAMA SOAL:\n${promptDirectives}`
+          : (pageTitle ? `Topik: Kuis ${pageTitle}` : 'Topik: Kuis Database & Pemrograman SMK');
+      }
 
       const res = await generateQuizAction(textToUse, {
         questionType,
-        totalQuestions,
+        codeLanguage: questionType === 'CODE_CHALLENGE' ? codeLanguage : undefined,
+        phpMode: questionType === 'CODE_CHALLENGE' && codeLanguage === 'php' ? phpMode : undefined,
+        totalQuestions: parsedTotal,
         difficultyDistribution: difficulty,
-        model: 'free-tier',
+        model: model.trim() || 'free-tier',
+        customPrompt: promptDirectives,
+        alignWithMaterial: shouldAlign,
+        materialTitle: pageTitle || undefined,
       });
 
       if (!res?.success || !res.data) {
@@ -175,57 +235,129 @@ export default function AiQuestionGeneratorModal({
           {!generatedQuestions ? (
             /* STEP 1: CONFIGURATION FORM */
             <div className="space-y-4 text-xs sm:text-sm">
-              {/* Sumber Materi Acuan: Menggunakan Summary AI */}
-              {hasAiSummary ? (
-                <div className="p-3.5 sm:p-4 rounded-xl border border-purple-200 bg-purple-50/50 space-y-2">
-                  <div className="flex items-center justify-between flex-wrap gap-2">
+              {/* Sumber Materi Acuan / Afiliasi Modul */}
+              {isAffiliatedWithMaterial ? (
+                <div className="p-3.5 sm:p-4 rounded-xl border border-gray-200 bg-gray-50/60 space-y-3">
+                  <div className="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-gray-200/70">
                     <div className="flex items-center gap-2">
-                      <span className="material-symbols-outlined text-purple-700 text-lg">auto_awesome</span>
-                      <span className="font-bold text-xs sm:text-sm text-purple-950">
-                        Materi Acuan: Summary AI {pageTitle ? `"${pageTitle}"` : ''}
+                      <span className="material-symbols-outlined text-purple-600 text-lg">menu_book</span>
+                      <span className="font-bold text-xs sm:text-sm text-gray-900">
+                        Modul Materi: &quot;{pageTitle}&quot;
                       </span>
                     </div>
-                    <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 border border-purple-200">
-                      {summariesCount > 0 ? `${summariesCount} Bagian Rangkuman` : 'Rangkuman Aktif'}
-                    </span>
-                  </div>
-                  <p className="text-xs text-purple-900/80 leading-relaxed">
-                    Soal-soal kuis akan otomatis digenerate berbasis seluruh rangkuman materi yang sudah dibuat oleh Summary AI ({initialSummaryText.length} karakter). Anda tidak perlu mengetik atau membuat ulang materi acuan.
-                  </p>
-                </div>
-              ) : (
-                <div className="p-4 rounded-xl border border-amber-300 bg-amber-50 space-y-3">
-                  <div className="flex items-start gap-2.5">
-                    <span className="material-symbols-outlined text-amber-600 text-xl shrink-0 mt-0.5">warning</span>
-                    <div className="space-y-1">
-                      <h4 className="font-bold text-xs sm:text-sm text-amber-950">
-                        Materi Ini Belum Memiliki Summary AI
-                      </h4>
-                      <p className="text-xs text-amber-900 leading-relaxed">
-                        Generator kuis AI membutuhkan rangkuman materi pembelajaran untuk membuat butir-butir soal yang akurat dan relevan.
-                      </p>
-                    </div>
+                    {hasMaterialSummary && (
+                      <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+                        <span className="material-symbols-outlined text-[13px]">verified</span>
+                        <span>Summary AI Siap ({summariesCount || 1} Bagian)</span>
+                      </span>
+                    )}
                   </div>
 
-                  {pageId && (
-                    <div className="pt-1">
-                      <a
-                        href={`/dashboard/summaries/${pageId}/generate-summary`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-semibold transition-colors shadow-2xs"
+                  <div className="space-y-2">
+                    <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                      Target Keselarasan Soal
+                    </label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      {/* Opsi 1: Sesuai Materi Modul */}
+                      <label
+                        className={`flex items-start gap-2.5 p-2.5 rounded-xl border transition-all cursor-pointer ${
+                          alignWithMaterial
+                            ? 'bg-purple-50/80 border-purple-400 ring-1 ring-purple-400 text-purple-950'
+                            : 'bg-white border-gray-200 hover:border-gray-300 text-gray-700'
+                        }`}
                       >
-                        <span className="material-symbols-outlined text-sm">psychology</span>
-                        <span>Buat Summary AI Sekarang</span>
-                        <span className="material-symbols-outlined text-xs">open_in_new</span>
-                      </a>
+                        <input
+                          type="radio"
+                          name="alignMode"
+                          checked={alignWithMaterial}
+                          onChange={() => setAlignWithMaterial(true)}
+                          className="mt-0.5 text-purple-600 focus:ring-purple-500"
+                        />
+                        <div className="space-y-0.5 text-xs">
+                          <span className="font-bold block">Sesuai Materi Modul</span>
+                          <span className="text-[11px] text-gray-500 block leading-tight">
+                            AI mengekstrak skema tabel, entitas data, dan konsep dari rangkuman bab ini.
+                          </span>
+                        </div>
+                      </label>
+
+                      {/* Opsi 2: Bebas / Mandiri */}
+                      <label
+                        className={`flex items-start gap-2.5 p-2.5 rounded-xl border transition-all cursor-pointer ${
+                          !alignWithMaterial
+                            ? 'bg-purple-50/80 border-purple-400 ring-1 ring-purple-400 text-purple-950'
+                            : 'bg-white border-gray-200 hover:border-gray-300 text-gray-700'
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="alignMode"
+                          checked={!alignWithMaterial}
+                          onChange={() => setAlignWithMaterial(false)}
+                          className="mt-0.5 text-purple-600 focus:ring-purple-500"
+                        />
+                        <div className="space-y-0.5 text-xs">
+                          <span className="font-bold block">Bebas / Mandiri (Pengayaan)</span>
+                          <span className="text-[11px] text-gray-500 block leading-tight">
+                            Buat soal latihan umum tanpa terikat batasan teks rangkuman materi ini.
+                          </span>
+                        </div>
+                      </label>
                     </div>
-                  )}
+
+                    {/* Catatan jika memilih Sesuai Materi tetapi Summary belum ada */}
+                    {alignWithMaterial && !hasMaterialSummary && (
+                      <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-2 text-xs text-amber-900 mt-2">
+                        <span className="material-symbols-outlined text-amber-600 text-base shrink-0 mt-0.5">warning</span>
+                        <div className="space-y-1.5 flex-1">
+                          <p className="leading-relaxed">
+                            Materi <strong>&quot;{pageTitle}&quot;</strong> belum memiliki rangkuman Summary AI. Anda dapat membuat summary terlebih dahulu atau beralih ke mode <strong>Bebas / Mandiri</strong> di atas.
+                          </p>
+                          <div className="flex gap-2 items-center flex-wrap pt-0.5">
+                            {pageId && (
+                              <a
+                                href={`/dashboard/summaries/${pageId}/generate-summary`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-[11px] font-semibold transition-colors"
+                              >
+                                <span className="material-symbols-outlined text-xs">psychology</span>
+                                <span>Buat Summary AI</span>
+                                <span className="material-symbols-outlined text-[10px]">open_in_new</span>
+                              </a>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => setAlignWithMaterial(false)}
+                              className="px-2.5 py-1 bg-white border border-amber-300 text-amber-900 hover:bg-amber-100/60 rounded-lg text-[11px] font-semibold transition-colors"
+                            >
+                              Gunakan Mode Bebas Saja
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                /* KUIS MANDIRI / BEBAS (TIDAK TERAFILIASI MATERI APAPUN) */
+                <div className="p-3.5 sm:p-4 rounded-xl border border-blue-200 bg-blue-50/50 flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center shrink-0">
+                    <span className="material-symbols-outlined text-lg">quiz</span>
+                  </div>
+                  <div className="space-y-0.5">
+                    <h4 className="font-bold text-xs sm:text-sm text-blue-950">
+                      Mode Kuis Mandiri (Tanpa Afiliasi Modul)
+                    </h4>
+                    <p className="text-xs text-blue-900/80 leading-relaxed">
+                      Kuis ini tidak terikat pada modul materi tertentu. AI akan merumuskan butir-butir soal sesuai tipe soal dan instruksi prompt kustom yang Anda masukkan.
+                    </p>
+                  </div>
                 </div>
               )}
 
-              {/* Tipe Soal & Jumlah Soal */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Tipe Soal, Jumlah Soal & Model AI */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="space-y-1.5">
                   <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider">
                     Tipe Soal
@@ -236,26 +368,181 @@ export default function AiQuestionGeneratorModal({
                     className="w-full px-3 py-2 border border-gray-300 rounded-xl text-xs sm:text-sm bg-white focus:ring-2 focus:ring-purple-500 outline-none"
                   >
                     <option value="PILIHAN_GANDA">Pilihan Ganda (4 Opsi + Kunci)</option>
+                    <option value="CODE_CHALLENGE">Code Challenge (Praktek Koding)</option>
                     <option value="ESSAY">Essay (Penalaran / Analisis)</option>
                   </select>
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    Jumlah Soal yang Digenerate
-                  </label>
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                      Jumlah Soal
+                    </label>
+                    <span className="text-[10px] text-gray-400">1 - 20 butir</span>
+                  </div>
                   <input
-                    type="number"
-                    min={1}
-                    max={20}
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="Contoh: 5"
                     value={totalQuestions}
-                    onChange={(e) => setTotalQuestions(Math.max(1, parseInt(e.target.value) || 1))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-xl text-xs sm:text-sm bg-white focus:ring-2 focus:ring-purple-500 outline-none"
+                    onChange={(e) => setTotalQuestions(e.target.value)}
+                    className={`w-full px-3 py-2 border rounded-xl text-xs sm:text-sm bg-white focus:ring-2 outline-none transition-colors ${
+                      isTotalQuestionsInvalid
+                        ? 'border-red-400 focus:ring-red-400 text-red-900 bg-red-50/20'
+                        : 'border-gray-300 focus:ring-purple-500'
+                    }`}
                   />
+                  {totalQuestionsError && (
+                    <p className="text-[11px] text-red-500 font-medium leading-tight">
+                      {totalQuestionsError}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                      Model AI
+                    </label>
+                    <span className="text-[10px] font-mono text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded border border-purple-100 font-semibold">
+                      free-tier
+                    </span>
+                  </div>
+                  <input
+                    type="text"
+                    list="ai-models-modal-list"
+                    placeholder="free-tier"
+                    value={model}
+                    onChange={(e) => setModel(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-xl text-xs sm:text-sm bg-white focus:ring-2 focus:ring-purple-500 outline-none transition-shadow font-mono"
+                  />
+                  <datalist id="ai-models-modal-list">
+                    <option value="free-tier">free-tier (Default)</option>
+                    <option value="gpt-4o-mini">gpt-4o-mini</option>
+                    <option value="gpt-4o">gpt-4o</option>
+                    <option value="claude-3-5-sonnet">claude-3-5-sonnet</option>
+                    <option value="gemini-1.5-flash">gemini-1.5-flash</option>
+                    <option value="gemini-1.5-pro">gemini-1.5-pro</option>
+                  </datalist>
                 </div>
               </div>
 
-              {/* Distribusi Tingkat Kesulitan */}
+              {/* Pilihan Bahasa & Mode Code Challenge */}
+              {questionType === 'CODE_CHALLENGE' && (
+                <div className="p-3.5 bg-emerald-50/60 rounded-xl border border-emerald-200 space-y-3">
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-semibold text-emerald-950 uppercase tracking-wider">
+                      Bahasa Pemrograman Soal
+                    </label>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <label className={`flex items-center gap-2 p-2.5 rounded-lg border cursor-pointer font-medium transition-colors ${
+                        codeLanguage === 'php' ? 'bg-white border-emerald-400 text-emerald-950 ring-1 ring-emerald-400' : 'bg-white/70 border-emerald-200 text-gray-700'
+                      }`}>
+                        <input
+                          type="radio"
+                          name="aiCodeLang"
+                          checked={codeLanguage === 'php'}
+                          onChange={() => setCodeLanguage('php')}
+                          className="text-emerald-600 focus:ring-emerald-500"
+                        />
+                        <div>
+                          <span className="font-bold block">PHP (Web SMK)</span>
+                          <span className="text-[10px] text-gray-500 block leading-tight">Server-side script & layout web</span>
+                        </div>
+                      </label>
+
+                      <label className={`flex items-center gap-2 p-2.5 rounded-lg border cursor-pointer font-medium transition-colors ${
+                        codeLanguage === 'sql' ? 'bg-white border-emerald-400 text-emerald-950 ring-1 ring-emerald-400' : 'bg-white/70 border-emerald-200 text-gray-700'
+                      }`}>
+                        <input
+                          type="radio"
+                          name="aiCodeLang"
+                          checked={codeLanguage === 'sql'}
+                          onChange={() => setCodeLanguage('sql')}
+                          className="text-emerald-600 focus:ring-emerald-500"
+                        />
+                        <div>
+                          <span className="font-bold block">SQL (Database)</span>
+                          <span className="text-[10px] text-gray-500 block leading-tight">SQLite DDL/DML & query</span>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+
+                  {codeLanguage === 'php' && (
+                    <div className="space-y-1.5 pt-1 border-t border-emerald-200/60">
+                      <label className="block text-xs font-semibold text-emerald-950 uppercase tracking-wider">
+                        Mode Pengujian PHP:
+                      </label>
+                      <div className="grid grid-cols-3 gap-2 text-xs">
+                        <label className={`p-2 rounded-lg border cursor-pointer text-center transition-colors ${
+                          phpMode === 'LOGIC' ? 'bg-white border-emerald-500 text-emerald-900 font-bold ring-1 ring-emerald-400' : 'bg-white/70 border-emerald-200 text-gray-700'
+                        }`}>
+                          <input
+                            type="radio"
+                            name="aiPhpMode"
+                            checked={phpMode === 'LOGIC'}
+                            onChange={() => setPhpMode('LOGIC')}
+                            className="sr-only"
+                          />
+                          <span>🤖 Logika (Auto)</span>
+                        </label>
+
+                        <label className={`p-2 rounded-lg border cursor-pointer text-center transition-colors ${
+                          phpMode === 'WEB' ? 'bg-white border-emerald-500 text-emerald-900 font-bold ring-1 ring-emerald-400' : 'bg-white/70 border-emerald-200 text-gray-700'
+                        }`}>
+                          <input
+                            type="radio"
+                            name="aiPhpMode"
+                            checked={phpMode === 'WEB'}
+                            onChange={() => setPhpMode('WEB')}
+                            className="sr-only"
+                          />
+                          <span>👁️ Web (Manual)</span>
+                        </label>
+
+                        <label className={`p-2 rounded-lg border cursor-pointer text-center transition-colors ${
+                          phpMode === 'MIXED' ? 'bg-white border-emerald-500 text-emerald-900 font-bold ring-1 ring-emerald-400' : 'bg-white/70 border-emerald-200 text-gray-700'
+                        }`}>
+                          <input
+                            type="radio"
+                            name="aiPhpMode"
+                            checked={phpMode === 'MIXED'}
+                            onChange={() => setPhpMode('MIXED')}
+                            className="sr-only"
+                          />
+                          <span>🔄 Campuran</span>
+                        </label>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Prompt Pengarah Kustom (Custom Prompt) */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider flex items-center justify-between">
+                  <span>Instruksi Khusus / Prompt Pengarah (Opsional)</span>
+                  <span className="text-[10px] text-gray-400 font-normal lowercase">arahkan topik spesifik</span>
+                </label>
+                <textarea
+                  rows={2}
+                  value={customPrompt}
+                  onChange={(e) => setCustomPrompt(e.target.value)}
+                  placeholder={
+                    questionType === 'CODE_CHALLENGE'
+                      ? codeLanguage === 'php'
+                        ? (phpMode === 'WEB'
+                            ? "Contoh: Buatkan soal merancang kartu profil siswa dengan PHP dan layout HTML CSS yang rapi..."
+                            : "Contoh: Buatkan fungsi perhitungan diskon belanja bertingkat dan tampilkan output dalam format rupiah...")
+                        : "Contoh: Buatkan studi kasus kasir minimarket yang membutuhkan INNER JOIN antara tabel transaksi dan produk, filter tanggal hari ini, urutkan DESC."
+                      : "Contoh: Fokuskan pada fungsi agregasi GROUP BY dan HAVING, hindari pertanyaan teori sejarah..."
+                  }
+                  className="w-full p-2.5 border border-gray-300 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-purple-500 outline-none transition-shadow"
+                />
+              </div>
+
+              {/* Distribusi Kesulitan */}
               <div className="space-y-2 p-3.5 bg-gray-50 rounded-xl border border-gray-200">
                 <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider">
                   Distribusi Tingkat Kesulitan (Total Harus 100%)
@@ -330,10 +617,15 @@ export default function AiQuestionGeneratorModal({
           ) : (
             /* STEP 2: REVIEW & REGENERATE QUESTIONS */
             <div className="space-y-4">
-              <div className="flex items-center justify-between pb-2 border-b border-gray-100">
-                <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">
-                  Hasil Generate: {generatedQuestions.length} Soal
-                </span>
+              <div className="flex items-center justify-between pb-2 border-b border-gray-100 flex-wrap gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">
+                    Hasil Generate: {generatedQuestions.length} Soal
+                  </span>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 border border-purple-200 font-semibold">
+                    Model: {model || 'free-tier'}
+                  </span>
+                </div>
                 <button
                   type="button"
                   onClick={handleReset}
@@ -351,10 +643,50 @@ export default function AiQuestionGeneratorModal({
                       <span className="font-bold text-purple-700 text-xs bg-purple-100 w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5">
                         {qIdx + 1}
                       </span>
-                      <p className="text-xs sm:text-sm font-semibold text-gray-900 leading-relaxed">
-                        {q.questionText}
-                      </p>
+                      <div className="flex-1">
+                        <p className="text-xs sm:text-sm font-semibold text-gray-900 leading-relaxed">
+                          {q.questionText}
+                        </p>
+                      </div>
                     </div>
+
+                    {/* Code Challenge Preview */}
+                    {questionType === 'CODE_CHALLENGE' && (
+                      <div className="pl-7 space-y-2 pt-1 text-xs">
+                        {q.isVerified && (
+                          <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-sans font-bold">
+                            <span className="material-symbols-outlined text-[12px]">verified</span>
+                            <span>Kunci Jawaban Terverifikasi Otomatis</span>
+                          </div>
+                        )}
+                        {q.initialCode && (
+                          <div className="bg-white p-2.5 rounded-lg border border-gray-200">
+                            <div className="text-[10px] font-bold text-gray-500 mb-1">Skrip Awal (Initial Code):</div>
+                            <pre className="text-[11px] font-mono text-gray-800 overflow-x-auto whitespace-pre-wrap">{q.initialCode}</pre>
+                          </div>
+                        )}
+                        {q.solutionCode && (
+                          <div className="bg-emerald-50/60 p-2.5 rounded-lg border border-emerald-200">
+                            <div className="text-[10px] font-bold text-emerald-800 mb-1">
+                              Solusi / Kunci Jawaban ({q.codeLanguage?.toUpperCase() || (codeLanguage === 'php' ? 'PHP' : 'SQL')}):
+                            </div>
+                            <pre className="text-[11px] font-mono text-emerald-950 overflow-x-auto whitespace-pre-wrap">{q.solutionCode}</pre>
+                          </div>
+                        )}
+                        <div className="text-[11px] text-gray-600 flex items-center gap-2">
+                          <span className="font-semibold">Evaluasi: </span>
+                          {q.testCases && Array.isArray(q.testCases) && q.testCases.length > 0 ? (
+                            <span className="text-emerald-700 font-medium">
+                              🤖 Auto-Grading ({q.testCases.length} Skenario Test Cases)
+                            </span>
+                          ) : (
+                            <span className="text-amber-700 font-medium">
+                              👁️ Review Manual Guru ({q.codeLanguage === 'php' || codeLanguage === 'php' ? 'Web Tampilan' : 'Manual'})
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
 
                     {/* Options for Pilihan Ganda */}
                     {q.options && q.options.length > 0 && (
@@ -431,19 +763,25 @@ export default function AiQuestionGeneratorModal({
           {!generatedQuestions ? (
             <button
               type="button"
-              disabled={isGenerating || !hasAiSummary}
+              disabled={
+                isGenerating ||
+                isTotalQuestionsInvalid ||
+                (isAffiliatedWithMaterial && alignWithMaterial && !hasMaterialSummary)
+              }
               onClick={() => handleGenerate()}
               className="px-5 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs sm:text-sm font-semibold transition-colors flex items-center justify-center gap-1.5 shadow-sm disabled:opacity-50"
-              title={!hasAiSummary ? 'Materi belum memiliki Summary AI' : 'Generate Soal AI'}
+              title={
+                isAffiliatedWithMaterial && alignWithMaterial && !hasMaterialSummary
+                  ? 'Materi belum memiliki Summary AI (Pilih mode Bebas / Mandiri atau buat summary)'
+                  : isTotalQuestionsInvalid
+                  ? totalQuestionsError || 'Jumlah soal tidak valid'
+                  : 'Generate Soal AI'
+              }
             >
               {isGenerating ? (
-                <>
-                  <span>Sedang Membuat Soal AI...</span>
-                </>
+                <span>Sedang Membuat Soal AI...</span>
               ) : (
-                <>
-                  <span>Generate Soal Sekarang</span>
-                </>
+                <span>Generate Soal Sekarang</span>
               )}
             </button>
           ) : (

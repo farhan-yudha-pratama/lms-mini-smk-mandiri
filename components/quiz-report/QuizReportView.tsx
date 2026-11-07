@@ -12,6 +12,7 @@ import { QuizReportItem, QuizReportsResponse, UnfinishedStudentsResponse } from 
 import UnfinishedStudentsView from './UnfinishedStudentsView';
 import TaskRecapView from './TaskRecapView';
 import CodeAnswerPreview from '@/components/quiz/CodeAnswerPreview';
+import BulkResetModal from './BulkResetModal';
 import { getSocket } from '@/lib/socket/client';
 
 type Package = { id: string; title: string; pageTitle: string; categoryName: string; };
@@ -79,6 +80,7 @@ export default function QuizReportView({
   const [modalConfig, setModalConfig] = useState<ModalState | null>(null);
   const [resettingId, setResettingId] = useState<string | null>(null);
   const [completingId, setCompletingId] = useState<string | null>(null);
+  const [bulkResetModalOpen, setBulkResetModalOpen] = useState(false);
 
   // DETAIL & ESSAY REVIEW MODAL STATE
   const [detailModalOpen, setDetailModalOpen] = useState(false);
@@ -955,15 +957,29 @@ export default function QuizReportView({
             )}
           </div>
           
-          <button 
-            type="button"
-            onClick={() => loadReports()} 
-            disabled={isPending}
-            className="text-xs font-bold text-gray-700 bg-white border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-100 flex items-center gap-1.5 shadow-sm transition-transform active:translate-y-0.5"
-          >
-            <span className="material-symbols-outlined text-base">refresh</span>
-            Segarkan
-          </button>
+          <div className="flex items-center gap-2 flex-wrap">
+            {(role === 'SUPERADMIN' || role === 'GURU') && (
+              <button 
+                type="button"
+                onClick={() => setBulkResetModalOpen(true)}
+                className="text-xs font-bold text-red-700 bg-red-50 border-2 border-red-300 hover:border-red-600 hover:bg-red-600 hover:text-white px-3 py-1.5 rounded-lg flex items-center gap-1.5 shadow-sm transition-all active:translate-y-0.5 cursor-pointer"
+                title="Reset massal kuis siswa berdasarkan filter kelas, materi, dan nilai KKM"
+              >
+                <span className="material-symbols-outlined text-base">restart_alt</span>
+                Reset Massal Kuis
+              </button>
+            )}
+
+            <button 
+              type="button"
+              onClick={() => loadReports()} 
+              disabled={isPending}
+              className="text-xs font-bold text-gray-700 bg-white border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-100 flex items-center gap-1.5 shadow-sm transition-transform active:translate-y-0.5"
+            >
+              <span className="material-symbols-outlined text-base">refresh</span>
+              Segarkan
+            </button>
+          </div>
         </div>
 
         {/* Table Container */}
@@ -1628,6 +1644,30 @@ export default function QuizReportView({
           </div>
         </div>
       )}
+
+      {/* BULK RESET QUIZ MODAL */}
+      <BulkResetModal
+        isOpen={bulkResetModalOpen}
+        onClose={() => setBulkResetModalOpen(false)}
+        classes={classes}
+        packages={packages}
+        initialClassId={selectedClassId}
+        initialPackageId={selectedPackageId}
+        onSuccess={(_count, summaryText) => {
+          setModalConfig({
+            isOpen: true,
+            type: 'success',
+            title: 'Reset Massal Berhasil',
+            message: summaryText,
+            confirmText: 'OK',
+            onConfirm: () => {
+              setModalConfig(null);
+              loadReports();
+            },
+          });
+          loadReports();
+        }}
+      />
 
       {/* POPUP MODAL (Replacing native alert & confirm) */}
       {modalConfig && modalConfig.isOpen && (

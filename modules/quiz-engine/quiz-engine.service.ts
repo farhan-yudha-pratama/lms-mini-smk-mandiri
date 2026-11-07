@@ -1,5 +1,7 @@
 import { db } from '@/prisma/db';
 import { randomUUID } from 'crypto';
+import { executeVirtualSql, runSqlTestCases } from '@/lib/virtual-db';
+import { runPhpTestCases } from '@/lib/virtual-php';
 
 export async function getQuizStatus(pageSlug: string, studentId: string) {
   // Find page by slug
@@ -39,7 +41,10 @@ export async function getQuizStatus(pageSlug: string, studentId: string) {
   }
 
   const rawQuestions = await db.orm.public.Question.where({ quizVariantId: assignment.quizVariantId }).all();
-  const hasEssay = rawQuestions.some(q => q.questionType === 'ESSAY' || q.questionType === 'CODE_CHALLENGE');
+  const isAutoGraded = (q: any) =>
+    (q.questionType === 'CODE_CHALLENGE' && (q.codeLanguage?.toLowerCase() === 'sql' || (!q.codeLanguage && Boolean(q.testCases)))) ||
+    (q.questionType === 'CODE_CHALLENGE' && q.codeLanguage?.toLowerCase() === 'php' && Boolean(q.testCases));
+  const hasEssay = rawQuestions.some(q => q.questionType === 'ESSAY' || (q.questionType === 'CODE_CHALLENGE' && !isAutoGraded(q)));
 
   const antiCheatRow = await db.orm.public.QuizAntiCheatConfig.where({ quizVariantId: assignment.quizVariantId }).first();
   const antiCheatConfig = antiCheatRow || {
@@ -322,7 +327,9 @@ export async function submitQuiz(
     let maxPossibleScore = 0;
 
     const rawQuestions = await tx.orm.public.Question.where({ quizVariantId: variant!.id }).all();
-    const hasEssay = rawQuestions.some(q => q.questionType === 'ESSAY' || q.questionType === 'CODE_CHALLENGE');
+    const isSqlQuestion = (q: any) => q.questionType === 'CODE_CHALLENGE' && (q.codeLanguage?.toLowerCase() === 'sql' || (!q.codeLanguage && Boolean(q.testCases)));
+    const isAutoGradedPhp = (q: any) => q.questionType === 'CODE_CHALLENGE' && q.codeLanguage?.toLowerCase() === 'php' && Boolean(q.testCases);
+    const hasEssay = rawQuestions.some(q => q.questionType === 'ESSAY' || (q.questionType === 'CODE_CHALLENGE' && !isSqlQuestion(q) && !isAutoGradedPhp(q)));
 
     for (const q of rawQuestions) {
       maxPossibleScore += q.points;
@@ -346,6 +353,60 @@ export async function submitQuiz(
           questionId: q.id,
           selectedOptionId: studentAns?.optionId || null,
           essayAnswer: null,
+          isCorrect,
+          pointsEarned
+        });
+      } else if (isSqlQuestion(q)) {
+        const script = studentAns?.essayAnswer?.trim() || '';
+        if (script && !forcedScoreZero) {
+          try {
+            const { db: vDb, output } = await executeVirtualSql(script, q.initialCode || undefined);
+            if (q.testCases) {
+              const report = runSqlTestCases(vDb, q.testCases, output.results, output);
+              const earnedRatio = report.maxPoints > 0 ? report.totalPoints / report.maxPoints : 0;
+              pointsEarned = Math.round(earnedRatio * q.points * 100) / 100;
+              isCorrect = report.passedCount === report.totalCount && report.totalCount > 0;
+              totalScore += pointsEarned;
+            } else if (output.success) {
+              // Jika tanpa test case, berikan poin penuh jika query valid
+              pointsEarned = q.points;
+              isCorrect = true;
+              totalScore += pointsEarned;
+            }
+          } catch (e) {
+            console.error('Auto-grading SQL error:', e);
+          }
+        }
+
+        await tx.orm.public.StudentAnswer.create({
+          id: randomUUID(),
+          quizAttemptId: attemptId,
+          questionId: q.id,
+          selectedOptionId: null,
+          essayAnswer: script || null,
+          isCorrect,
+          pointsEarned
+        });
+      } else if (isAutoGradedPhp(q)) {
+        const script = studentAns?.essayAnswer?.trim() || '';
+        if (script && !forcedScoreZero) {
+          try {
+            const report = await runPhpTestCases(script, q.testCases);
+            const earnedRatio = report.maxPoints > 0 ? report.totalPoints / report.maxPoints : 0;
+            pointsEarned = Math.round(earnedRatio * q.points * 100) / 100;
+            isCorrect = report.passedCount === report.totalCount && report.totalCount > 0;
+            totalScore += pointsEarned;
+          } catch (e) {
+            console.error('Auto-grading PHP error:', e);
+          }
+        }
+
+        await tx.orm.public.StudentAnswer.create({
+          id: randomUUID(),
+          quizAttemptId: attemptId,
+          questionId: q.id,
+          selectedOptionId: null,
+          essayAnswer: script || null,
           isCorrect,
           pointsEarned
         });
@@ -424,15 +485,6 @@ export async function submitQuiz(
       }
     }
 
-    if (!hasEssay) {
-      try {
-        const { recordQuizCompletion } = await import('@/modules/quiz-completion/quiz-completion.service');
-        await recordQuizCompletion(attemptId);
-      } catch (err) {
-        console.error('Auto record completion error in submitQuiz:', err);
-      }
-    }
-
     return { 
       attemptId,
       score: roundedScore, 
@@ -449,6 +501,16 @@ export async function submitQuiz(
       className: classroom?.name || null
     };
   });
+
+  // ponytail: Record completion outside transaction to prevent connection pool exhaustion/deadlock
+  if (!result.hasEssay) {
+    try {
+      const { recordQuizCompletion } = await import('@/modules/quiz-completion/quiz-completion.service');
+      await recordQuizCompletion(attemptId);
+    } catch (err) {
+      console.error('Auto record completion error in submitQuiz:', err);
+    }
+  }
 
   // ponytail: Dispatch WebSocket event immediately after commit
   try {
@@ -470,4 +532,23 @@ export async function submitQuiz(
   }
 
   return result;
+}
+
+export async function studentResetQuizAttempt(attemptId: string, studentId: string) {
+  const attempt = await db.orm.public.QuizAttempt.where({ id: attemptId }).first();
+  if (!attempt || attempt.studentId !== studentId) throw new Error('Attempt tidak valid');
+  if (attempt.status !== 'IN_PROGRESS') throw new Error('Hanya kuis yang sedang berjalan yang dapat dibatalkan');
+
+  const answers = await db.orm.public.StudentAnswer.where({ quizAttemptId: attemptId }).all();
+  for (const ans of answers) {
+    await db.orm.public.StudentAnswer.where({ id: ans.id }).delete();
+  }
+
+  const logs = await db.orm.public.AuditLog.where({ action: 'QUIZ_ACTIVATED', details: attemptId }).all();
+  for (const log of logs) {
+    await db.orm.public.AuditLog.where({ id: log.id }).delete();
+  }
+
+  await db.orm.public.QuizAttempt.where({ id: attemptId }).delete();
+  return { success: true };
 }

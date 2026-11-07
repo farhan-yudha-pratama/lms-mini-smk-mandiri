@@ -20,7 +20,8 @@ export default function ClientQuizGenerator({
   const router = useRouter();
   
   // Tahap 1 State: Form Input
-  const [questionType, setQuestionType] = useState<"PILIHAN_GANDA" | "ESSAY">("PILIHAN_GANDA");
+  const [questionType, setQuestionType] = useState<"PILIHAN_GANDA" | "ESSAY" | "CODE_CHALLENGE">("PILIHAN_GANDA");
+  const [customPrompt, setCustomPrompt] = useState<string>("");
   const [totalQuestions, setTotalQuestions] = useState<number | string>("5");
   const [variantCount, setVariantCount] = useState<number | string>("1");
   const [difficulty, setDifficulty] = useState({ easy: 30, medium: 50, hard: 20 });
@@ -366,6 +367,24 @@ export default function ClientQuizGenerator({
                 />
               </div>
             </div>
+          </div>
+
+                    <div className="space-y-1.5 pt-2 border-t border-gray-100">
+            <label className="block text-sm font-semibold text-gray-700 flex items-center justify-between">
+              <span>Instruksi Khusus / Prompt Pengarah (Opsional)</span>
+              <span className="text-xs text-gray-400 font-normal">Arahkan topik/studi kasus spesifik</span>
+            </label>
+            <textarea
+              rows={2}
+              value={customPrompt}
+              onChange={(e) => setCustomPrompt(e.target.value)}
+              placeholder={
+                questionType === "CODE_CHALLENGE"
+                  ? "Contoh: Buatkan soal studi kasus kasir minimarket yang membutuhkan INNER JOIN antara tabel transaksi dan produk, filter tanggal hari ini, urutkan DESC."
+                  : "Contoh: Fokuskan pada fungsi agregasi GROUP BY dan HAVING, hindari pertanyaan teori sejarah..."
+              }
+              className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-shadow"
+            />
           </div>
 
           <div className="pt-3 border-t border-gray-100 flex justify-end">

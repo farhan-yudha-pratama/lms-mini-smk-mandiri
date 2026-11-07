@@ -18,7 +18,10 @@ export type MappedPackage = {
   closeAt: string | null;
   courseName: string;
   pageTitle: string | null;
+  pageOrderIndex?: number | null;
+  categoryId?: string | null;
   categoryName: string | null;
+  categoryOrderIndex?: number | null;
   variantsCount: number;
 };
 
@@ -65,12 +68,12 @@ export default function QuizListTable({ packages }: { packages: MappedPackage[] 
     const seen = new Set<string>();
 
     for (const p of packages) {
-      if (!seen.has(p.courseName)) {
+      if (p.courseName && !seen.has(p.courseName)) {
         seen.add(p.courseName);
         list.push(p.courseName);
       }
     }
-    return list;
+    return list.sort((a, b) => a.localeCompare(b));
   }, [packages]);
 
   const filteredPackages = useMemo(() => {
@@ -80,7 +83,8 @@ export default function QuizListTable({ packages }: { packages: MappedPackage[] 
       const matchesSearch =
         !q ||
         pkg.title.toLowerCase().includes(q) ||
-        (pkg.pageTitle && pkg.pageTitle.toLowerCase().includes(q));
+        (pkg.pageTitle && pkg.pageTitle.toLowerCase().includes(q)) ||
+        (pkg.categoryName && pkg.categoryName.toLowerCase().includes(q));
 
       const matchesCourse =
         selectedCourse === 'ALL' || pkg.courseName === selectedCourse;
@@ -90,9 +94,39 @@ export default function QuizListTable({ packages }: { packages: MappedPackage[] 
   }, [packages, searchQuery, selectedCourse]);
 
   const groupedPackages = useMemo(() => {
+    // Urutkan filteredPackages:
+    // 1. Mata Pelajaran (courseName)
+    // 2. Kategori Materi (categoryOrderIndex, Tugas Mandiri/null di urutan akhir)
+    // 3. Nama Kategori jika urutan sama
+    // 4. Urutan Halaman Materi (pageOrderIndex, null di urutan akhir)
+    // 5. Judul Kuis jika urutan materi sama
+    const sorted = [...filteredPackages].sort((a, b) => {
+      const courseComp = (a.courseName || '').localeCompare(b.courseName || '');
+      if (courseComp !== 0) return courseComp;
+
+      // Urutan Kategori Materi (Tugas mandiri / null ditaruh di akhir)
+      const catOrderA = a.categoryOrderIndex ?? 999999;
+      const catOrderB = b.categoryOrderIndex ?? 999999;
+      if (catOrderA !== catOrderB) return catOrderA - catOrderB;
+
+      // Nama Kategori jika orderIndex sama
+      const catNameA = a.categoryName || '';
+      const catNameB = b.categoryName || '';
+      const catComp = catNameA.localeCompare(catNameB);
+      if (catComp !== 0) return catComp;
+
+      // Urutan Halaman Materi (orderIndex)
+      const pageOrderA = a.pageOrderIndex ?? 999999;
+      const pageOrderB = b.pageOrderIndex ?? 999999;
+      if (pageOrderA !== pageOrderB) return pageOrderA - pageOrderB;
+
+      // Judul Kuis
+      return a.title.localeCompare(b.title);
+    });
+
     const groups: { courseName: string; packages: MappedPackage[] }[] = [];
 
-    for (const pkg of filteredPackages) {
+    for (const pkg of sorted) {
       let group = groups.find(g => g.courseName === pkg.courseName);
       if (!group) {
         group = { courseName: pkg.courseName, packages: [] };
@@ -128,7 +162,7 @@ export default function QuizListTable({ packages }: { packages: MappedPackage[] 
           </span>
           <input
             type="text"
-            placeholder="Cari judul kuis atau halaman..."
+            placeholder="Cari judul kuis, bab kategori, atau materi..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all text-sm"
@@ -162,30 +196,35 @@ export default function QuizListTable({ packages }: { packages: MappedPackage[] 
               <thead className="bg-gray-50 text-gray-600 font-semibold border-b border-gray-200">
                 <tr>
                   <th className="px-4 py-3 min-w-[250px]">Informasi Kuis / Tugas</th>
-                  <th className="px-4 py-3 min-w-[150px]">Keterikatan Halaman</th>
+                  <th className="px-4 py-3 min-w-[200px]">Kategori & Halaman Materi</th>
                   <th className="px-4 py-3 text-center">Status</th>
                   <th className="px-4 py-3 text-center">Varian</th>
                   <th className="px-4 py-3 min-w-[120px] text-right">Aksi</th>
                 </tr>
               </thead>
               <tbody>
-                {groupedPackages.map((group, groupIdx) => (
+                {groupedPackages.map((group) => (
                   <React.Fragment key={group.courseName}>
                     {/* Header Group */}
                     <tr className="bg-blue-50/50 border-b border-gray-200">
                       <td colSpan={5} className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <span className="material-symbols-outlined text-blue-600 text-sm font-bold">book</span>
-                          <span className="font-bold text-gray-900">{group.courseName}</span>
-                          <span className="text-xs bg-white text-gray-600 border px-2 py-0.5 rounded-full ml-2 font-medium">
-                            {group.packages.length} Kuis
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="material-symbols-outlined text-blue-600 text-sm font-bold">book</span>
+                            <span className="font-bold text-gray-900">{group.courseName}</span>
+                            <span className="text-xs bg-white text-gray-600 border px-2 py-0.5 rounded-full ml-2 font-medium">
+                              {group.packages.length} Kuis
+                            </span>
+                          </div>
+                          <span className="text-[11px] text-gray-500 font-medium hidden sm:inline">
+                            Urutan: Bab Kategori &rarr; Materi (Order Index)
                           </span>
                         </div>
                       </td>
                     </tr>
 
                     {/* Baris Data Kuis */}
-                    {group.packages.map((pkg, idx) => {
+                    {group.packages.map((pkg) => {
                       const isStandalone = !pkg.pageId;
 
                       return (
@@ -230,13 +269,38 @@ export default function QuizListTable({ packages }: { packages: MappedPackage[] 
 
                           <td className="px-4 py-4">
                             {isStandalone ? (
-                              <span className="text-gray-400 italic text-xs">Tidak terikat materi</span>
+                              <div className="flex items-center gap-1.5 text-gray-400 italic text-xs">
+                                <span className="material-symbols-outlined text-[15px]">link_off</span>
+                                <span>Tidak terikat materi (Tugas Mandiri)</span>
+                              </div>
                             ) : (
-                              <div className="flex flex-col">
-                                <span className="text-xs font-medium text-gray-500 uppercase">{pkg.categoryName || 'Kategori ?'}</span>
-                                <span className="text-gray-900 font-medium text-sm truncate max-w-[200px]" title={pkg.pageTitle || ''}>
-                                  {pkg.pageTitle}
-                                </span>
+                              <div className="flex flex-col gap-1">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  {pkg.categoryOrderIndex !== null && pkg.categoryOrderIndex !== undefined && (
+                                    <span 
+                                      className="inline-flex items-center text-[10px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200 shrink-0"
+                                      title={`Urutan Kategori: #${pkg.categoryOrderIndex}`}
+                                    >
+                                      Bab #{pkg.categoryOrderIndex}
+                                    </span>
+                                  )}
+                                  <span className="text-xs font-semibold text-gray-600 uppercase tracking-tight truncate max-w-[200px]" title={pkg.categoryName || ''}>
+                                    {pkg.categoryName || 'Tanpa Kategori'}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                  {pkg.pageOrderIndex !== null && pkg.pageOrderIndex !== undefined && (
+                                    <span 
+                                      className="inline-flex items-center text-[10px] font-mono font-bold px-1.5 py-0.5 bg-gray-100 text-gray-700 rounded border border-gray-200 shrink-0"
+                                      title={`Urutan Materi: #${pkg.pageOrderIndex}`}
+                                    >
+                                      #{pkg.pageOrderIndex}
+                                    </span>
+                                  )}
+                                  <span className="text-gray-900 font-medium text-sm truncate max-w-[220px]" title={pkg.pageTitle || ''}>
+                                    {pkg.pageTitle}
+                                  </span>
+                                </div>
                               </div>
                             )}
                           </td>

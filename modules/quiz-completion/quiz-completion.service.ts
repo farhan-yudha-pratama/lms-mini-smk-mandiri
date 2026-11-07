@@ -101,7 +101,7 @@ export async function recordQuizCompletion(attemptId: string) {
   const isPassed = score >= passingScore;
   const totalQuestions = questions.length;
   const correctAnswers = answers.filter(a => a.isCorrect === true).length;
-  const essayCount = questions.filter(q => q.questionType === 'ESSAY' || q.questionType === 'CODE_CHALLENGE').length;
+  const essayCount = questions.filter(q => q.questionType === 'ESSAY' || (q.questionType === 'CODE_CHALLENGE' && q.codeLanguage?.toLowerCase() !== 'sql' && !(q.codeLanguage?.toLowerCase() === 'php' && Boolean(q.testCases)))).length;
 
   let timeTakenSeconds: number | null = null;
   if (attempt.startedAt && attempt.finishedAt) {

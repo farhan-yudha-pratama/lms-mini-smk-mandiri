@@ -31,6 +31,10 @@ export const msg = {
     return `Mereset kuis "${pkg.title}" (materi: ${pkg.pageTitle} · kategori: ${pkg.categoryName}) milik ${formatStudent(student)}. Nilai sebelumnya: ${previousScore ?? 'Belum ada'} (${previousStatus || '-'}).`;
   },
 
+  bulkResetQuiz: ({ count, classLabel, packageLabel, modeLabel }: any) => {
+    return `Mereset massal ${count} riwayat kuis (${modeLabel}) untuk ${classLabel}, ${packageLabel}.`;
+  },
+
   completeQuiz: ({ student, pkg, score }: any) => {
     return `Menyelesaikan kuis "${pkg.title}" milik ${formatStudent(student)} dengan nilai akhir ${score ?? 0} (LULUS, KKM ${pkg.passingScore}).`;
   },

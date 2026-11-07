@@ -5,11 +5,12 @@ import { z } from 'zod';
 import { 
   assignManual, 
   distributeRandomlyByClass, 
+  unassignStudents,
   getAssignmentsByPackageAndClass,
   getStudentTasks,
   StudentTaskItem
 } from './quiz-assignment.service';
-import { assignManualSchema, distributeRandomSchema } from './quiz-assignment.schema';
+import { assignManualSchema, distributeRandomSchema, unassignStudentsSchema } from './quiz-assignment.schema';
 import { getSession } from '@/lib/session';
 
 export async function getAssignmentsAction(packageId: string, classId: string) {
@@ -41,6 +42,25 @@ export async function distributeRandomAction(data: { packageId: string; classId:
     const count = await distributeRandomlyByClass(validatedData.packageId, validatedData.classId);
     revalidatePath(`/dashboard/quizzes/${validatedData.packageId}/edit`);
     return { success: true, count };
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return { success: false, message: error.issues[0].message };
+    }
+    return { success: false, message: error instanceof Error ? error.message : 'Terjadi kesalahan' };
+  }
+}
+
+export async function unassignStudentsAction(data: { packageId: string; studentIds: string[] }) {
+  try {
+    const session = await getSession();
+    if (!session || (session.role !== 'SUPERADMIN' && session.role !== 'GURU')) {
+      return { success: false, message: 'Unauthorized' };
+    }
+
+    const validatedData = unassignStudentsSchema.parse(data);
+    const result = await unassignStudents(validatedData.packageId, validatedData.studentIds);
+    revalidatePath(`/dashboard/quizzes/${validatedData.packageId}/edit`);
+    return { success: true, count: result.count, skippedLocked: result.skippedLocked };
   } catch (error) {
     if (error instanceof z.ZodError) {
       return { success: false, message: error.issues[0].message };

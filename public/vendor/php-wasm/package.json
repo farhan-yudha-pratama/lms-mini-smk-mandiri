@@ -1,0 +1,213 @@
+{
+  "name": "php-wasm",
+  "version": "0.2.0",
+  "description": "Run PHP right in the browser or anywhere else JS can run",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/seanmorris/php-wasm.git"
+  },
+  "author": "Sean Morris<php-wasm@seanmorr.is>",
+  "license": "(Apache-2.0 OR GPL-2.0-only)",
+  "contributors": [
+    {
+      "name": "Sean Morris",
+      "email": "php-wasm@seanmorr.is",
+      "url": "https://seanmorr.is"
+    },
+    {
+      "name": "Oraoto",
+      "email": "oraoto@outlook.com"
+    }
+  ],
+  "scripts": {
+    "postpublish": "ls *.mjs *.js *.wasm *.data | while read FILENAME; do echo -n \"curl -X PURGE $FILENAME ... \";  curl -X PURGE https://cdn.jsdelivr.net/npm/php-wasm/$FILENAME; echo; done;"
+  },
+  "keywords": [
+    "php",
+    "wasm",
+    "php-wasm",
+    "vrzno"
+  ],
+  "exports": {
+    "./package.json": "./package.json",
+    "./public": {
+      "types": "./public.d.ts",
+      "default": "./public.d.ts"
+    },
+    "./OutputBuffer": {
+      "import": "./OutputBuffer.mjs",
+      "default": "./OutputBuffer.mjs"
+    },
+    "./PhpBase": {
+      "import": {
+        "types": "./PhpBase.d.mts",
+        "default": "./PhpBase.mjs"
+      },
+      "require": {
+        "types": "./PhpBase.d.cts",
+        "default": "./PhpBase.js"
+      },
+      "default": "./PhpBase.mjs"
+    },
+    "./PhpNode": {
+      "import": {
+        "types": "./PhpNode.d.mts",
+        "default": "./PhpNode.mjs"
+      },
+      "require": {
+        "types": "./PhpNode.d.cts",
+        "default": "./PhpNode.js"
+      },
+      "default": "./PhpNode.mjs"
+    },
+    "./PhpWeb": {
+      "import": {
+        "types": "./PhpWeb.d.mts",
+        "default": "./PhpWeb.mjs"
+      },
+      "require": {
+        "types": "./PhpWeb.d.cts",
+        "default": "./PhpWeb.js"
+      },
+      "default": "./PhpWeb.mjs"
+    },
+    "./_Event": {
+      "import": "./_Event.mjs",
+      "default": "./_Event.mjs"
+    },
+    "./fsOps": {
+      "import": "./fsOps.mjs",
+      "default": "./fsOps.mjs"
+    },
+    "./resolveDependencies": {
+      "import": "./resolveDependencies.mjs",
+      "default": "./resolveDependencies.mjs"
+    },
+    "./webTransactions": {
+      "import": "./webTransactions.mjs",
+      "default": "./webTransactions.mjs"
+    },
+    "./php-tags": {
+      "types": "./php-tags.d.mts",
+      "import": "./php-tags.mjs",
+      "default": "./php-tags.mjs"
+    },
+    "./php-tags.jsdelivr": {
+      "types": "./php-tags.jsdelivr.d.mts",
+      "import": "./php-tags.jsdelivr.mjs",
+      "default": "./php-tags.jsdelivr.mjs"
+    },
+    "./php-tags.local": {
+      "types": "./php-tags.local.d.mts",
+      "import": "./php-tags.local.mjs",
+      "default": "./php-tags.local.mjs"
+    },
+    "./php-tags.unpkg": {
+      "types": "./php-tags.unpkg.d.mts",
+      "import": "./php-tags.unpkg.mjs",
+      "default": "./php-tags.unpkg.mjs"
+    },
+    "./*.mjs": "./*.mjs",
+    "./*.js": "./*.js",
+    "./*.wasm": "./*.wasm",
+    "./*.data": "./*.data",
+    "./PhpBase.mjs": {
+      "types": "./PhpBase.d.mts",
+      "default": "./PhpBase.mjs"
+    },
+    "./PhpBase.js": {
+      "types": "./PhpBase.d.cts",
+      "default": "./PhpBase.js"
+    },
+    "./PhpNode.mjs": {
+      "types": "./PhpNode.d.mts",
+      "default": "./PhpNode.mjs"
+    },
+    "./PhpNode.js": {
+      "types": "./PhpNode.d.cts",
+      "default": "./PhpNode.js"
+    },
+    "./PhpWeb.mjs": {
+      "types": "./PhpWeb.d.mts",
+      "default": "./PhpWeb.mjs"
+    },
+    "./PhpWeb.js": {
+      "types": "./PhpWeb.d.cts",
+      "default": "./PhpWeb.js"
+    },
+    "./PhpWebview": {
+      "import": {
+        "types": "./PhpWebview.d.mts",
+        "default": "./PhpWebview.mjs"
+      },
+      "require": {
+        "types": "./PhpWebview.d.cts",
+        "default": "./PhpWebview.js"
+      },
+      "default": "./PhpWebview.mjs"
+    },
+    "./PhpWebview.mjs": {
+      "types": "./PhpWebview.d.mts",
+      "default": "./PhpWebview.mjs"
+    },
+    "./PhpWebview.js": {
+      "types": "./PhpWebview.d.cts",
+      "default": "./PhpWebview.js"
+    },
+    "./PhpWorker": {
+      "import": {
+        "types": "./PhpWorker.d.mts",
+        "default": "./PhpWorker.mjs"
+      },
+      "require": {
+        "types": "./PhpWorker.d.cts",
+        "default": "./PhpWorker.js"
+      },
+      "default": "./PhpWorker.mjs"
+    },
+    "./PhpWorker.mjs": {
+      "types": "./PhpWorker.d.mts",
+      "default": "./PhpWorker.mjs"
+    },
+    "./PhpWorker.js": {
+      "types": "./PhpWorker.d.cts",
+      "default": "./PhpWorker.js"
+    },
+    "./PhpWebBase": {
+      "import": {
+        "types": "./PhpWebBase.d.mts",
+        "default": "./PhpWebBase.mjs"
+      },
+      "require": {
+        "types": "./PhpWebBase.d.cts",
+        "default": "./PhpWebBase.js"
+      },
+      "default": "./PhpWebBase.mjs"
+    },
+    "./PhpWebBase.mjs": {
+      "types": "./PhpWebBase.d.mts",
+      "default": "./PhpWebBase.mjs"
+    },
+    "./PhpWebBase.js": {
+      "types": "./PhpWebBase.d.cts",
+      "default": "./PhpWebBase.js"
+    }
+  },
+  "files": [
+    "*.js",
+    "*.mjs",
+    "!php8.*_sdl-*",
+    "[0-9a-f]*.wasm",
+    "*.data",
+    "*.d.ts",
+    "*.d.mts",
+    "LICENSE",
+    "NOTICE",
+    "README.md",
+    "package.json",
+    "stdlib/*.mjs",
+    "mapped/*",
+    "*.d.cts",
+    "LICENSE-GPL"
+  ]
+}

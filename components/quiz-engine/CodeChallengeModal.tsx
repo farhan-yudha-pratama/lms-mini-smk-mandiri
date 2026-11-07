@@ -14,6 +14,19 @@ import {
   VirtualProjectFiles,
   DEFAULT_WEB_PROJECT
 } from '@/lib/virtual-fs';
+import {
+  executeVirtualSql,
+  runSqlTestCases,
+  SqlExecutionOutput,
+  SqlTestReport
+} from '@/lib/virtual-db';
+import {
+  executeVirtualPhp,
+  runPhpTestCases,
+  PhpExecutionOutput,
+  PhpTestReport,
+  DEFAULT_PHP_SCRIPT
+} from '@/lib/virtual-php';
 
 // Dynamic import Monaco Editor (SSR disabled)
 const Editor = dynamic(() => import('@monaco-editor/react').then(mod => mod.Editor), {
@@ -197,7 +210,17 @@ export default function CodeChallengeModal({
   const [fontSize, setFontSize] = useState<number>(14);
   const [wordWrap, setWordWrap] = useState<'on' | 'off'>('on');
   const [viewportMode, setViewportMode] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
-  const [activeRightTab, setActiveRightTab] = useState<'preview' | 'console' | 'tests'>('preview');
+  const [activeRightTab, setActiveRightTab] = useState<'preview' | 'console' | 'tests' | 'grid' | 'tables'>('preview');
+
+  // SQL Virtual Database States
+  const [sqlOutput, setSqlOutput] = useState<Record<string, SqlExecutionOutput>>({});
+  const [sqlTestReport, setSqlTestReport] = useState<Record<string, SqlTestReport>>({});
+  const [isExecutingSql, setIsExecutingSql] = useState(false);
+
+  // PHP Virtual States
+  const [phpOutput, setPhpOutput] = useState<Record<string, PhpExecutionOutput>>({});
+  const [phpTestReport, setPhpTestReport] = useState<Record<string, PhpTestReport>>({});
+  const [isExecutingPhp, setIsExecutingPhp] = useState(false);
 
   // Per-Question Isolated State
   // 1. Active file per question: { [questionId]: 'index.html' }
@@ -363,7 +386,12 @@ export default function CodeChallengeModal({
 
   // Current Question Information
   const currentQ = data?.questions ? data.questions[currentIdx] : null;
-  const isHtmlMode = currentQ?.type === 'CODE_CHALLENGE' && (currentQ?.codeLanguage === 'html' || !currentQ?.codeLanguage);
+  const isPhpMode = currentQ?.type === 'CODE_CHALLENGE' && currentQ?.codeLanguage?.toLowerCase() === 'php';
+  const isSqlMode = currentQ?.type === 'CODE_CHALLENGE' && !isPhpMode && (
+    currentQ?.codeLanguage?.toLowerCase() === 'sql' ||
+    Boolean(currentQ?.initialCode && /CREATE\s+TABLE|INSERT\s+INTO/i.test(currentQ.initialCode))
+  );
+  const isHtmlMode = currentQ?.type === 'CODE_CHALLENGE' && !isSqlMode && !isPhpMode;
 
   // Get active file for the current question (defaults to 'index.html')
   const activeFile = currentQ ? (activeFiles[currentQ.id] || 'index.html') : 'index.html';
@@ -721,8 +749,18 @@ export default function CodeChallengeModal({
     }
   }, [currentQ, isHtmlMode, currentFiles]);
 
-  const handleRunPreviewRef = useRef(handleRunPreview);
-  handleRunPreviewRef.current = handleRunPreview;
+  const handleRunPreviewRef = useRef<() => void>(() => {});
+  useEffect(() => {
+    handleRunPreviewRef.current = () => {
+      if (isHtmlMode) {
+        handleRunPreview();
+      } else if (isSqlMode) {
+        handleRunSql();
+      } else if (isPhpMode) {
+        handleRunPhp();
+      }
+    };
+  });
 
   // Create Virtual File in Current Question
   const handleCreateFile = (filename: string) => {
@@ -863,6 +901,191 @@ export default function CodeChallengeModal({
     }
   };
 
+  // Run SQL Script (Virtual Database)
+  const handleRunSql = useCallback(async () => {
+    if (!currentQ || currentQ.type !== 'CODE_CHALLENGE' || !isSqlMode) return;
+    setIsExecutingSql(true);
+    try {
+      const userScript = answers[currentQ.id] ?? currentQ.initialCode ?? '';
+      const { output } = await executeVirtualSql(userScript);
+      setSqlOutput(prev => ({ ...prev, [currentQ.id]: output }));
+
+      const newLogs: ConsoleMessage[] = output.logs.map(msg => ({
+        type: msg.startsWith('[Error]') ? 'error' : msg.startsWith('[System]') ? 'info' : 'log',
+        message: msg,
+        timestamp: new Date().toLocaleTimeString()
+      }));
+      setConsoleLogsByQuestion(prev => ({
+        ...prev,
+        [currentQ.id]: [...(prev[currentQ.id] || []), ...newLogs]
+      }));
+
+      if (!output.success) {
+        setActiveRightTab('console');
+      } else if (output.results.length > 0) {
+        setActiveRightTab('grid');
+      } else {
+        setActiveRightTab('tables');
+      }
+
+      if (typeof window !== 'undefined' && window.innerWidth < 768) {
+        setMobilePane('result');
+      }
+    } catch (err: any) {
+      console.error('Error running SQL:', err);
+    } finally {
+      setIsExecutingSql(false);
+    }
+  }, [currentQ, answers, isSqlMode]);
+
+  // Run SQL Tests
+  const handleRunSqlTests = useCallback(async () => {
+    if (!currentQ || currentQ.type !== 'CODE_CHALLENGE' || !isSqlMode) return;
+    setIsExecutingSql(true);
+    try {
+      const userScript = answers[currentQ.id] ?? currentQ.initialCode ?? '';
+      const { db, output } = await executeVirtualSql(userScript);
+      setSqlOutput(prev => ({ ...prev, [currentQ.id]: output }));
+
+      const newLogs: ConsoleMessage[] = output.logs.map(msg => ({
+        type: msg.startsWith('[Error]') ? 'error' : msg.startsWith('[System]') ? 'info' : 'log',
+        message: msg,
+        timestamp: new Date().toLocaleTimeString()
+      }));
+      setConsoleLogsByQuestion(prev => ({
+        ...prev,
+        [currentQ.id]: [...(prev[currentQ.id] || []), ...newLogs]
+      }));
+
+      if (currentQ.testCases) {
+        const report = runSqlTestCases(db, currentQ.testCases, output.results, output);
+        setSqlTestReport(prev => ({ ...prev, [currentQ.id]: report }));
+      }
+      setActiveRightTab('tests');
+      if (typeof window !== 'undefined' && window.innerWidth < 768) {
+        setMobilePane('result');
+      }
+    } catch (err: any) {
+      console.error('Error testing SQL:', err);
+    } finally {
+      setIsExecutingSql(false);
+    }
+  }, [currentQ, answers, isSqlMode]);
+
+  // Reset Virtual Database for SQL
+  const handleResetSqlDatabase = useCallback(async () => {
+    if (!currentQ || currentQ.type !== 'CODE_CHALLENGE' || !isSqlMode) return;
+    setIsExecutingSql(true);
+    try {
+      const initial = currentQ.initialCode || '';
+      const { output } = await executeVirtualSql(initial);
+      setSqlOutput(prev => ({ ...prev, [currentQ.id]: output }));
+      setConsoleLogsByQuestion(prev => ({
+        ...prev,
+        [currentQ.id]: [
+          {
+            type: 'info',
+            message: '[Reset] Database virtual telah di-reset ke kondisi awal.',
+            timestamp: new Date().toLocaleTimeString()
+          }
+        ]
+      }));
+      setActiveRightTab('tables');
+    } catch (err: any) {
+      console.error('Reset DB error:', err);
+    } finally {
+      setIsExecutingSql(false);
+    }
+  }, [currentQ]);
+
+  // Run PHP Script (WebAssembly Virtual Runtime)
+  const handleRunPhp = useCallback(async () => {
+    if (!currentQ || currentQ.type !== 'CODE_CHALLENGE' || !isPhpMode) return;
+    setIsExecutingPhp(true);
+    try {
+      const userScript = answers[currentQ.id] ?? currentQ.initialCode ?? DEFAULT_PHP_SCRIPT;
+      const output = await executeVirtualPhp(userScript);
+      setPhpOutput(prev => ({ ...prev, [currentQ.id]: output }));
+
+      const newLogs: ConsoleMessage[] = [];
+      if (output.stdout) {
+        newLogs.push({
+          type: 'log',
+          message: output.stdout,
+          timestamp: new Date().toLocaleTimeString()
+        });
+      }
+      if (output.error) {
+        newLogs.push({
+          type: 'error',
+          message: output.error.message + (output.error.line ? ` (Baris ${output.error.line})` : ''),
+          timestamp: new Date().toLocaleTimeString()
+        });
+      }
+
+      setConsoleLogsByQuestion(prev => ({
+        ...prev,
+        [currentQ.id]: [...(prev[currentQ.id] || []), ...newLogs]
+      }));
+
+      // Buka preview jika output menghasilkan HTML, atau buka console jika teks biasa/error
+      if (output.isHtml) {
+        setActiveRightTab('preview');
+      } else {
+        setActiveRightTab('console');
+      }
+
+      if (typeof window !== 'undefined' && window.innerWidth < 768) {
+        setMobilePane('result');
+      }
+    } catch (err: any) {
+      console.error('Error running PHP:', err);
+    } finally {
+      setIsExecutingPhp(false);
+    }
+  }, [currentQ, answers, isPhpMode]);
+
+  // Run PHP Tests
+  const handleRunPhpTests = useCallback(async () => {
+    if (!currentQ || currentQ.type !== 'CODE_CHALLENGE' || !isPhpMode) return;
+    setIsExecutingPhp(true);
+    try {
+      const userScript = answers[currentQ.id] ?? currentQ.initialCode ?? DEFAULT_PHP_SCRIPT;
+      const output = await executeVirtualPhp(userScript);
+      setPhpOutput(prev => ({ ...prev, [currentQ.id]: output }));
+
+      if (currentQ.testCases) {
+        const report = await runPhpTestCases(userScript, currentQ.testCases, output);
+        setPhpTestReport(prev => ({ ...prev, [currentQ.id]: report }));
+      }
+      setActiveRightTab('tests');
+      if (typeof window !== 'undefined' && window.innerWidth < 768) {
+        setMobilePane('result');
+      }
+    } catch (err: any) {
+      console.error('Error testing PHP:', err);
+    } finally {
+      setIsExecutingPhp(false);
+    }
+  }, [currentQ, answers, isPhpMode]);
+
+  // Reset PHP Code
+  const handleResetPhpCode = useCallback(() => {
+    if (!currentQ || currentQ.type !== 'CODE_CHALLENGE' || !isPhpMode) return;
+    const initial = currentQ.initialCode || DEFAULT_PHP_SCRIPT;
+    setAnswers(prev => ({ ...prev, [currentQ.id]: initial }));
+    setConsoleLogsByQuestion(prev => ({
+      ...prev,
+      [currentQ.id]: [
+        {
+          type: 'info',
+          message: '[Reset] Kode program PHP telah dikembalikan ke kondisi awal.',
+          timestamp: new Date().toLocaleTimeString()
+        }
+      ]
+    }));
+  }, [currentQ, isPhpMode]);
+
   // Submission Flow
   const handleOpenSubmitConfirm = () => {
     const totalQuestions = data?.questions?.length || 0;
@@ -871,6 +1094,24 @@ export default function CodeChallengeModal({
       return q.type === 'ESSAY' || q.type === 'CODE_CHALLENGE' ? Boolean(val && val.trim().length > 0) : Boolean(val);
     }).length;
     const unansweredCount = totalQuestions - answeredCount;
+
+    // Cek apakah ada soal SQL yang masih ada error sintaks
+    const sqlQuestionsWithError = (data?.questions || []).filter((q: any) => {
+      if (q.type === 'CODE_CHALLENGE' && (q.codeLanguage?.toLowerCase() === 'sql' || Boolean(q.initialCode && /CREATE\s+TABLE/i.test(q.initialCode)))) {
+        const out = sqlOutput[q.id];
+        return out && !out.success;
+      }
+      return false;
+    });
+
+    // Cek apakah ada soal PHP yang masih ada error sintaks
+    const phpQuestionsWithError = (data?.questions || []).filter((q: any) => {
+      if (q.type === 'CODE_CHALLENGE' && q.codeLanguage?.toLowerCase() === 'php') {
+        const out = phpOutput[q.id];
+        return out && !out.success;
+      }
+      return false;
+    });
 
     isInternalModalOpenRef.current = true;
     setModalConfig({
@@ -898,6 +1139,28 @@ export default function CodeChallengeModal({
               </div>
             )}
           </div>
+          {sqlQuestionsWithError.length > 0 && (
+            <div className="p-2.5 bg-amber-50 border-2 border-amber-500 rounded text-amber-900 text-xs font-medium space-y-1">
+              <div className="font-bold flex items-center gap-1 text-amber-800">
+                <span className="material-symbols-outlined text-sm">warning</span>
+                <span>Peringatan Error Sintaks SQL</span>
+              </div>
+              <p>
+                Terdapat {sqlQuestionsWithError.length} soal SQL yang kodenya masih memiliki error sintaks (misal: kurang titik koma). Disarankan untuk memeriksa kembali agar tidak mengurangi nilai pengujian otomatis.
+              </p>
+            </div>
+          )}
+          {phpQuestionsWithError.length > 0 && (
+            <div className="p-2.5 bg-amber-50 border-2 border-amber-500 rounded text-amber-900 text-xs font-medium space-y-1">
+              <div className="font-bold flex items-center gap-1 text-amber-800">
+                <span className="material-symbols-outlined text-sm">warning</span>
+                <span>Peringatan Error Sintaks PHP</span>
+              </div>
+              <p>
+                Terdapat {phpQuestionsWithError.length} soal PHP yang kodenya masih memiliki error sintaks. Disarankan untuk memeriksa kembali sebelum mengumpulkan.
+              </p>
+            </div>
+          )}
           <p className="text-xs text-gray-500 italic">
             *Setelah dikumpulkan, kode akan dievaluasi dan dinilai oleh sistem/guru.
           </p>
@@ -929,40 +1192,59 @@ export default function CodeChallengeModal({
       essayAnswer: q.type === 'ESSAY' || q.type === 'CODE_CHALLENGE' ? answers[q.id] || undefined : undefined
     }));
 
-    const res = await submitQuizAction(attemptId, answersArray, false);
-    await exitFullscreen();
-    clearTimer();
+    try {
+      const res = await submitQuizAction(attemptId, answersArray, false);
+      await exitFullscreen();
+      clearTimer();
 
-    if (res.success) {
-      try { localStorage.removeItem(`cc-draft-${attemptId}`); } catch (e) {}
-      onComplete(
-        (res as any).score,
-        (res as any).passed,
-        {
-          hasEssay: Boolean((res as any).hasEssay),
-          needsReview: Boolean((res as any).needsReview)
-        }
-      );
-    } else {
+      if (res.success) {
+        try { localStorage.removeItem(`cc-draft-${attemptId}`); } catch (e) {}
+        onComplete(
+          (res as any).score,
+          (res as any).passed,
+          {
+            hasEssay: Boolean((res as any).hasEssay),
+            needsReview: Boolean((res as any).needsReview)
+          }
+        );
+      } else {
+        setSubmitting(false);
+        submittingRef.current = false;
+        isArmedRef.current = true;
+        isInternalModalOpenRef.current = true;
+        const isAlreadyCompleted = (res as any).message === 'Kuis telah diselesaikan' || (res as any).message === 'Status kuis tidak valid';
+        setModalConfig({
+          isOpen: true,
+          type: 'error',
+          title: isAlreadyCompleted ? 'Kuis Sudah Terkumpul' : 'Gagal Mengumpulkan',
+          message: isAlreadyCompleted
+            ? 'Kuis ini sudah diselesaikan sebelumnya. Memperbarui status...'
+            : ((res as any).message || 'Terjadi kesalahan saat mengumpulkan. Silakan coba lagi.'),
+          confirmText: isAlreadyCompleted ? 'Mengerti' : 'Coba Kumpulkan Lagi',
+          onConfirm: () => {
+            setModalConfig(null);
+            isInternalModalOpenRef.current = false;
+            if (isAlreadyCompleted) {
+              onComplete(0, false);
+            }
+          }
+        });
+      }
+    } catch (err: any) {
+      console.error('Code challenge submit error:', err);
       setSubmitting(false);
       submittingRef.current = false;
       isArmedRef.current = true;
       isInternalModalOpenRef.current = true;
-      const isAlreadyCompleted = (res as any).message === 'Kuis telah diselesaikan' || (res as any).message === 'Status kuis tidak valid';
       setModalConfig({
         isOpen: true,
         type: 'error',
-        title: isAlreadyCompleted ? 'Kuis Sudah Terkumpul' : 'Gagal Mengumpulkan',
-        message: isAlreadyCompleted
-          ? 'Kuis ini sudah diselesaikan sebelumnya. Memperbarui status...'
-          : ((res as any).message || 'Terjadi kesalahan saat mengumpulkan. Silakan coba lagi.'),
-        confirmText: 'Mengerti',
+        title: 'Koneksi Terputus / Gagal Mengumpulkan',
+        message: 'Gagal menghubungi server untuk mengumpulkan kode program. Kode Anda masih aman di editor ini.',
+        confirmText: 'Coba Kumpulkan Lagi',
         onConfirm: () => {
           setModalConfig(null);
           isInternalModalOpenRef.current = false;
-          if (isAlreadyCompleted) {
-            onComplete(0, false);
-          }
         }
       });
     }
@@ -1657,6 +1939,74 @@ export default function CodeChallengeModal({
                         </div>
                       )}
                     </div>
+                  ) : isSqlMode ? (
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={handleRunSql}
+                        disabled={isExecutingSql}
+                        title="Jalankan Script SQL (Shortcut: Ctrl + Enter)"
+                        className="px-3 py-1 bg-[#00E599] hover:bg-[#00c784] text-black text-xs font-black rounded flex items-center gap-1 shadow-xs transition-all active:scale-95 disabled:opacity-50"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">{isExecutingSql ? 'sync' : 'play_arrow'}</span>
+                        <span>Run SQL</span>
+                        <span className="hidden xl:inline text-[9px] opacity-75 font-mono">(Ctrl+Enter)</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleRunSqlTests}
+                        disabled={isExecutingSql}
+                        title="Uji Otomatis Kriteria Soal"
+                        className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded flex items-center gap-1 shadow-xs transition-all active:scale-95 disabled:opacity-50"
+                      >
+                        <span className="material-symbols-outlined text-[15px]">fact_check</span>
+                        <span>Uji Hasil</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleResetSqlDatabase}
+                        disabled={isExecutingSql}
+                        title="Reset Database Virtual ke Kondisi Awal"
+                        className="p-1 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded text-xs transition-colors"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">restart_alt</span>
+                      </button>
+                    </div>
+                  ) : isPhpMode ? (
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={handleRunPhp}
+                        disabled={isExecutingPhp}
+                        title="Jalankan Script PHP (Shortcut: Ctrl + Enter)"
+                        className="px-3 py-1 bg-purple-500 hover:bg-purple-400 text-black text-xs font-black rounded flex items-center gap-1 shadow-xs transition-all active:scale-95 disabled:opacity-50"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">{isExecutingPhp ? 'sync' : 'play_arrow'}</span>
+                        <span>Run PHP</span>
+                        <span className="hidden xl:inline text-[9px] opacity-75 font-mono">(Ctrl+Enter)</span>
+                      </button>
+                      {currentQ.testCases && (
+                        <button
+                          type="button"
+                          onClick={handleRunPhpTests}
+                          disabled={isExecutingPhp}
+                          title="Uji Otomatis Kriteria Soal"
+                          className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded flex items-center gap-1 shadow-xs transition-all active:scale-95 disabled:opacity-50"
+                        >
+                          <span className="material-symbols-outlined text-[15px]">fact_check</span>
+                          <span>Uji Test Cases</span>
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={handleResetPhpCode}
+                        disabled={isExecutingPhp}
+                        title="Reset Kode PHP ke Kondisi Awal"
+                        className="p-1 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded text-xs transition-colors"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">restart_alt</span>
+                      </button>
+                    </div>
                   ) : currentQ.codeLanguage === 'javascript' ? (
                     <button
                       type="button"
@@ -1830,7 +2180,7 @@ export default function CodeChallengeModal({
                       height="100%"
                       language={isHtmlMode ? getFileLanguage(activeFile) : currentQ.codeLanguage || 'javascript'}
                       theme={editorTheme}
-                      value={isHtmlMode ? (currentFiles[activeFile] ?? '') : (answers[currentQ.id] ?? currentQ.initialCode ?? '')}
+                      value={isHtmlMode ? (currentFiles[activeFile] ?? '') : (answers[currentQ.id] ?? currentQ.initialCode ?? (isPhpMode ? DEFAULT_PHP_SCRIPT : ''))}
                       onChange={(val) => handleEditorChange(val || '')}
                       onMount={(editor, monaco) => {
                         editorInstanceRef.current = editor;
@@ -1936,7 +2286,7 @@ export default function CodeChallengeModal({
               {/* Right Panel Tabs & Mobile Re-Run */}
               <div className="h-10 bg-[#18181b] border-b border-black px-3 flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-1 overflow-x-auto scrollbar-none">
-                  {isHtmlMode && (
+                  {(isHtmlMode || isPhpMode) && (
                     <button
                       type="button"
                       onClick={() => setActiveRightTab('preview')}
@@ -1951,6 +2301,45 @@ export default function CodeChallengeModal({
                     </button>
                   )}
 
+                  {isSqlMode && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setActiveRightTab('grid')}
+                        className={`h-7 px-3 text-xs font-bold rounded flex items-center gap-1.5 transition-colors ${
+                          activeRightTab === 'grid'
+                            ? 'bg-[#00E599] text-black shadow-xs'
+                            : 'text-zinc-400 hover:text-white'
+                        }`}
+                      >
+                        <span className="material-symbols-outlined text-[15px]">table_rows</span>
+                        <span>Hasil Query</span>
+                        {sqlOutput[currentQ.id]?.results && sqlOutput[currentQ.id].results.length > 0 && (
+                          <span className="bg-[#00c784] text-black text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold">
+                            {sqlOutput[currentQ.id].results.length}
+                          </span>
+                        )}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setActiveRightTab('tables')}
+                        className={`h-7 px-3 text-xs font-bold rounded flex items-center gap-1.5 transition-colors ${
+                          activeRightTab === 'tables'
+                            ? 'bg-[#00E599] text-black shadow-xs'
+                            : 'text-zinc-400 hover:text-white'
+                        }`}
+                      >
+                        <span className="material-symbols-outlined text-[15px]">database</span>
+                        <span>Struktur Tabel</span>
+                        {sqlOutput[currentQ.id]?.activeTables && (
+                          <span className="bg-zinc-700 text-zinc-200 text-[10px] px-1.5 py-0.2 rounded-full font-mono">
+                            {sqlOutput[currentQ.id].activeTables.length}
+                          </span>
+                        )}
+                      </button>
+                    </>
+                  )}
+
                   <button
                     type="button"
                     onClick={() => setActiveRightTab('console')}
@@ -1961,15 +2350,17 @@ export default function CodeChallengeModal({
                     }`}
                   >
                     <span className="material-symbols-outlined text-[15px]">terminal</span>
-                    <span>Console</span>
-                    {currentConsoleLogs.length > 0 && (
-                      <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.2 rounded-full font-mono">
-                        {currentConsoleLogs.length}
+                    <span>{isSqlMode ? 'Terminal MySQL' : isPhpMode ? 'Terminal PHP' : 'Console'}</span>
+                    {(currentConsoleLogs.length > 0 || (isSqlMode && sqlOutput[currentQ.id]?.error) || (isPhpMode && phpOutput[currentQ.id]?.error)) && (
+                      <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ${
+                        (isSqlMode && sqlOutput[currentQ.id]?.error) || (isPhpMode && phpOutput[currentQ.id]?.error) ? 'bg-red-500 text-white animate-pulse' : 'bg-red-500 text-white'
+                      }`}>
+                        {(isSqlMode && sqlOutput[currentQ.id]?.error) || (isPhpMode && phpOutput[currentQ.id]?.error) ? '!' : currentConsoleLogs.length}
                       </span>
                     )}
                   </button>
 
-                  {!isHtmlMode && (
+                  {(!isHtmlMode || isSqlMode || isPhpMode) && (
                     <button
                       type="button"
                       onClick={() => setActiveRightTab('tests')}
@@ -1980,7 +2371,25 @@ export default function CodeChallengeModal({
                       }`}
                     >
                       <span className="material-symbols-outlined text-[15px]">fact_check</span>
-                      <span>Test Cases</span>
+                      <span>Hasil Uji</span>
+                      {isSqlMode && sqlTestReport[currentQ.id] && (
+                        <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ${
+                          sqlTestReport[currentQ.id].passedCount === sqlTestReport[currentQ.id].totalCount && sqlTestReport[currentQ.id].totalCount > 0
+                            ? 'bg-emerald-400 text-black'
+                            : 'bg-amber-400 text-black'
+                        }`}>
+                          {sqlTestReport[currentQ.id].passedCount}/{sqlTestReport[currentQ.id].totalCount}
+                        </span>
+                      )}
+                      {isPhpMode && phpTestReport[currentQ.id] && (
+                        <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ${
+                          phpTestReport[currentQ.id].passedCount === phpTestReport[currentQ.id].totalCount && phpTestReport[currentQ.id].totalCount > 0
+                            ? 'bg-emerald-400 text-black'
+                            : 'bg-amber-400 text-black'
+                        }`}>
+                          {phpTestReport[currentQ.id].passedCount}/{phpTestReport[currentQ.id].totalCount}
+                        </span>
+                      )}
                     </button>
                   )}
                 </div>
@@ -1998,6 +2407,50 @@ export default function CodeChallengeModal({
                         <span className="material-symbols-outlined text-[15px]">refresh</span>
                         <span>Run</span>
                       </button>
+                    ) : isSqlMode ? (
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={handleRunSql}
+                          disabled={isExecutingSql}
+                          className="px-2 py-1 bg-[#00E599] hover:bg-[#00c784] text-black text-xs font-black rounded flex items-center gap-1 shadow-xs disabled:opacity-50"
+                        >
+                          <span className="material-symbols-outlined text-[15px]">{isExecutingSql ? 'sync' : 'play_arrow'}</span>
+                          <span>Run</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleRunSqlTests}
+                          disabled={isExecutingSql}
+                          className="px-2 py-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded flex items-center gap-1 shadow-xs disabled:opacity-50"
+                        >
+                          <span className="material-symbols-outlined text-[15px]">fact_check</span>
+                          <span>Uji</span>
+                        </button>
+                      </div>
+                    ) : isPhpMode ? (
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={handleRunPhp}
+                          disabled={isExecutingPhp}
+                          className="px-2 py-1 bg-purple-500 hover:bg-purple-400 text-black text-xs font-black rounded flex items-center gap-1 shadow-xs disabled:opacity-50"
+                        >
+                          <span className="material-symbols-outlined text-[15px]">{isExecutingPhp ? 'sync' : 'play_arrow'}</span>
+                          <span>Run</span>
+                        </button>
+                        {currentQ.testCases && (
+                          <button
+                            type="button"
+                            onClick={handleRunPhpTests}
+                            disabled={isExecutingPhp}
+                            className="px-2 py-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded flex items-center gap-1 shadow-xs disabled:opacity-50"
+                          >
+                            <span className="material-symbols-outlined text-[15px]">fact_check</span>
+                            <span>Uji</span>
+                          </button>
+                        )}
+                      </div>
                     ) : (
                       <button
                         type="button"
@@ -2011,7 +2464,7 @@ export default function CodeChallengeModal({
                   )}
 
                   {/* Device Switcher (Desktop only) */}
-                  {isHtmlMode && activeRightTab === 'preview' && (
+                  {(isHtmlMode || isPhpMode) && activeRightTab === 'preview' && (
                     <div className="hidden md:flex items-center gap-1 bg-zinc-900 p-0.5 rounded border border-zinc-700">
                       <button
                         type="button"
@@ -2061,7 +2514,78 @@ export default function CodeChallengeModal({
 
               {/* Panel Content */}
               <div className="flex-1 overflow-hidden relative bg-[#0e0e10]">
-                {activeRightTab === 'preview' && isHtmlMode ? (
+                {isSqlMode && activeRightTab === 'grid' ? (
+                  /* TAB 1: SQL RESULTS DATA GRID */
+                  <div className="h-full overflow-auto p-3 space-y-4">
+                    {sqlOutput[currentQ.id]?.results && sqlOutput[currentQ.id].results.length > 0 ? (
+                      sqlOutput[currentQ.id].results.map((res, qIdx) => (
+                        <div key={qIdx} className="border border-zinc-700 bg-zinc-900 rounded overflow-hidden">
+                          <div className="bg-zinc-800 px-3 py-1.5 text-xs font-mono text-zinc-300 flex items-center justify-between border-b border-zinc-700">
+                            <span className="font-bold text-[#00E599]">Query #{qIdx + 1} Result</span>
+                            <span className="text-[11px] text-zinc-400">{res.values.length} baris data</span>
+                          </div>
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-left font-mono text-xs border-collapse">
+                              <thead>
+                                <tr className="bg-zinc-950 text-zinc-300 border-b border-zinc-700">
+                                  {res.columns.map((col, cIdx) => (
+                                    <th key={cIdx} className="px-3 py-2 border-r border-zinc-800 font-bold uppercase text-[11px] tracking-wider text-emerald-400">
+                                      {col}
+                                    </th>
+                                  ))}
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {res.values.map((row, rIdx) => (
+                                  <tr key={rIdx} className="border-b border-zinc-800/60 hover:bg-zinc-800/40">
+                                    {row.map((val, vIdx) => (
+                                      <td key={vIdx} className="px-3 py-1.5 border-r border-zinc-800/60 text-zinc-200">
+                                        {val === null ? <span className="text-zinc-500 italic">NULL</span> : String(val)}
+                                      </td>
+                                    ))}
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="h-full flex flex-col items-center justify-center p-6 text-center text-zinc-500">
+                        <span className="material-symbols-outlined text-4xl mb-2 text-zinc-600">table_rows</span>
+                        <p className="text-sm font-medium">Belum ada data query SELECT yang dijalankan.</p>
+                        <p className="text-xs text-zinc-600 mt-1">Ketik perintah SQL (misal: <code>SELECT * FROM nama_tabel;</code>) lalu klik "Run SQL".</p>
+                      </div>
+                    )}
+                  </div>
+                ) : isSqlMode && activeRightTab === 'tables' ? (
+                  /* TAB 2: SQL ACTIVE TABLES INSPECTOR */
+                  <div className="h-full overflow-auto p-4 space-y-3 font-mono">
+                    <div className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-2 flex items-center justify-between">
+                      <span>Tabel Aktif di Database Virtual:</span>
+                      <span className="text-[#00E599] font-bold">{sqlOutput[currentQ.id]?.activeTables?.length || 0} Tabel</span>
+                    </div>
+                    {sqlOutput[currentQ.id]?.activeTables && sqlOutput[currentQ.id].activeTables.length > 0 ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        {sqlOutput[currentQ.id].activeTables.map((tbl) => (
+                          <div key={tbl} className="p-3 bg-zinc-900 border border-zinc-700 rounded-lg flex items-center gap-2.5">
+                            <span className="material-symbols-outlined text-yellow-400 text-xl">dataset</span>
+                            <div>
+                              <div className="text-sm font-bold text-white">{tbl}</div>
+                              <div className="text-[10px] text-zinc-400">Tabel pengguna</div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="p-4 bg-zinc-900/50 border border-zinc-800 rounded text-xs text-zinc-400 text-center py-8">
+                        <span className="material-symbols-outlined text-3xl mb-1 text-zinc-600">dns</span>
+                        <p>Belum ada tabel yang dibuat.</p>
+                        <p className="text-[11px] text-zinc-600 mt-0.5">Jalankan perintah <code>CREATE TABLE ...</code> untuk membuat tabel.</p>
+                      </div>
+                    )}
+                  </div>
+                ) : activeRightTab === 'preview' && (isHtmlMode || isPhpMode) ? (
                   <div className="w-full h-full flex items-center justify-center p-2 overflow-auto bg-zinc-900/60">
                     <div
                       className={`h-full transition-all duration-200 bg-white rounded shadow-md overflow-hidden ${
@@ -2072,28 +2596,79 @@ export default function CodeChallengeModal({
                           : 'w-full'
                       }`}
                     >
-                      {currentPreviewOutput ? (
-                        <iframe
-                          key={`preview-${currentQ.id}`}
-                          srcDoc={currentPreviewOutput}
-                          sandbox="allow-scripts"
-                          className="w-full h-full border-none bg-white"
-                          title={`Web Preview Soal ${currentIdx + 1}`}
-                        />
-                      ) : (
-                        <div className="w-full h-full flex flex-col items-center justify-center text-zinc-400 text-xs font-semibold p-4 text-center">
-                          <span className="material-symbols-outlined text-4xl mb-2 text-zinc-300">play_circle</span>
-                          <span>Klik tombol "Run" untuk melihat hasil halaman web</span>
-                        </div>
-                      )}
+                      {isHtmlMode ? (
+                        currentPreviewOutput ? (
+                          <iframe
+                            key={`preview-${currentQ.id}`}
+                            srcDoc={currentPreviewOutput}
+                            sandbox="allow-scripts"
+                            className="w-full h-full border-none bg-white"
+                            title={`Web Preview Soal ${currentIdx + 1}`}
+                          />
+                        ) : (
+                          <div className="w-full h-full flex flex-col items-center justify-center text-zinc-400 text-xs font-semibold p-4 text-center">
+                            <span className="material-symbols-outlined text-4xl mb-2 text-zinc-300">play_circle</span>
+                            <span>Klik tombol "Run" untuk melihat hasil halaman web</span>
+                          </div>
+                        )
+                      ) : isPhpMode ? (
+                        phpOutput[currentQ.id]?.stdout ? (
+                          <iframe
+                            key={`preview-php-${currentQ.id}`}
+                            srcDoc={phpOutput[currentQ.id]?.stdout}
+                            sandbox="allow-scripts"
+                            className="w-full h-full border-none bg-white"
+                            title={`Web Preview PHP Soal ${currentIdx + 1}`}
+                          />
+                        ) : (
+                          <div className="w-full h-full flex flex-col items-center justify-center text-zinc-400 text-xs font-semibold p-4 text-center">
+                            <span className="material-symbols-outlined text-4xl mb-2 text-purple-400">code</span>
+                            <span>Klik tombol "Run PHP" untuk merender tampilan halaman web</span>
+                          </div>
+                        )
+                      ) : null}
                     </div>
                   </div>
                 ) : activeRightTab === 'console' ? (
                   <div className="h-full bg-[#0a0a0c] text-zinc-200 font-mono text-xs p-3 overflow-y-auto">
-                    {currentConsoleLogs.length === 0 ? (
+                    {/* Educational Syntax Error Alert Box (SQL Mode) */}
+                    {isSqlMode && sqlOutput[currentQ.id]?.error && (
+                      <div className="mb-3 p-3 bg-red-950/40 border border-red-700/80 rounded-lg text-xs font-mono">
+                        <div className="flex items-center gap-1.5 font-bold text-red-400 mb-1">
+                          <span className="material-symbols-outlined text-base">error</span>
+                          <span>Kesalahan Sintaks {sqlOutput[currentQ.id].error?.line ? `pada Baris ${sqlOutput[currentQ.id].error?.line}` : ''}</span>
+                        </div>
+                        <div className="text-red-200 mb-2">{sqlOutput[currentQ.id].error?.message}</div>
+                        {sqlOutput[currentQ.id].error?.hint && (
+                          <div className="p-2 bg-amber-950/40 border border-amber-800/60 rounded text-amber-200 text-[11px] flex items-start gap-1.5">
+                            <span className="material-symbols-outlined text-sm text-amber-400 shrink-0 mt-0.5">lightbulb</span>
+                            <span><strong>Petunjuk Mandiri:</strong> {sqlOutput[currentQ.id].error?.hint}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Educational Syntax Error Alert Box (PHP Mode) */}
+                    {isPhpMode && phpOutput[currentQ.id]?.error && (
+                      <div className="mb-3 p-3 bg-red-950/40 border border-red-700/80 rounded-lg text-xs font-mono">
+                        <div className="flex items-center gap-1.5 font-bold text-red-400 mb-1">
+                          <span className="material-symbols-outlined text-base">error</span>
+                          <span>Kesalahan PHP {phpOutput[currentQ.id].error?.line ? `pada Baris ${phpOutput[currentQ.id].error?.line}` : ''}</span>
+                        </div>
+                        <div className="text-red-200 mb-2">{phpOutput[currentQ.id].error?.message}</div>
+                        {phpOutput[currentQ.id].error?.hint && (
+                          <div className="p-2 bg-amber-950/40 border border-amber-800/60 rounded text-amber-200 text-[11px] flex items-start gap-1.5">
+                            <span className="material-symbols-outlined text-sm text-amber-400 shrink-0 mt-0.5">lightbulb</span>
+                            <span><strong>Petunjuk Mandiri:</strong> {phpOutput[currentQ.id].error?.hint}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {currentConsoleLogs.length === 0 && (!isSqlMode || !sqlOutput[currentQ.id]?.error) && (!isPhpMode || !phpOutput[currentQ.id]?.error) ? (
                       <div className="text-zinc-500 text-center py-12 flex flex-col items-center gap-2">
                         <span className="material-symbols-outlined text-3xl">terminal</span>
-                        <span>Belum ada log console untuk Soal #{currentIdx + 1}. Pesan `console.log(...)` atau error akan muncul di sini.</span>
+                        <span>{isSqlMode ? 'Belum ada log Terminal MySQL. Jalankan script SQL untuk melihat riwayat eksekusi.' : isPhpMode ? 'Belum ada log Terminal PHP. Jalankan script PHP untuk melihat output.' : `Belum ada log console untuk Soal #${currentIdx + 1}.`}</span>
                       </div>
                     ) : (
                       currentConsoleLogs.map((log, idx) => (
@@ -2109,7 +2684,7 @@ export default function CodeChallengeModal({
                         >
                           <span className="text-[10px] text-zinc-500 shrink-0 select-none">[{log.timestamp}]</span>
                           <span className="uppercase text-[9px] px-1.5 py-0.2 rounded font-bold shrink-0 bg-zinc-800 text-zinc-300">
-                            {log.type}
+                            {isSqlMode ? 'mysql' : isPhpMode ? 'php' : log.type}
                           </span>
                           <span className="whitespace-pre-wrap break-all">{log.message}</span>
                         </div>
@@ -2119,33 +2694,123 @@ export default function CodeChallengeModal({
                 ) : (
                   /* Test Cases Panel */
                   <div className="h-full bg-[#0a0a0c] text-white p-4 font-mono text-sm overflow-y-auto">
-                    <div className="mb-3 font-bold text-zinc-300 border-b border-zinc-800 pb-2 flex items-center justify-between">
-                      <span>Hasil Pengujian Soal #{currentIdx + 1}</span>
-                      {currentTestResults && (
-                        <span className={`text-xs px-2 py-0.5 rounded font-bold ${
-                          currentTestResults.passed === currentTestResults.total ? 'bg-emerald-500 text-black' : 'bg-red-500 text-white'
-                        }`}>
-                          {currentTestResults.passed} / {currentTestResults.total} Passed
-                        </span>
-                      )}
-                    </div>
-                    {currentTestResults?.results ? (
-                      currentTestResults.results.map((res: any, idx: number) => (
-                        <div
-                          key={idx}
-                          className={`mb-2 p-2.5 rounded border text-xs ${
-                            res.passed
-                              ? 'bg-emerald-950/30 border-emerald-800 text-emerald-300'
-                              : 'bg-red-950/30 border-red-800 text-red-300'
-                          }`}
-                        >
-                          <div className="font-bold">Test Case #{res.testCase}: {res.passed ? 'PASSED ✅' : 'FAILED ❌'}</div>
-                          {res.error && <div className="text-[11px] text-red-400 mt-1">{res.error}</div>}
+                    {isPhpMode ? (
+                      <div>
+                        <div className="mb-3 font-bold text-zinc-300 border-b border-zinc-800 pb-2 flex items-center justify-between">
+                          <span>Hasil Pengujian PHP Soal #{currentIdx + 1}</span>
+                          {phpTestReport[currentQ.id] && (
+                            <span className={`text-xs px-2.5 py-0.5 rounded font-bold ${
+                              phpTestReport[currentQ.id].passedCount === phpTestReport[currentQ.id].totalCount && phpTestReport[currentQ.id].totalCount > 0
+                                ? 'bg-emerald-500 text-black'
+                                : 'bg-red-500 text-white'
+                            }`}>
+                              {phpTestReport[currentQ.id].passedCount} / {phpTestReport[currentQ.id].totalCount} Passed ({phpTestReport[currentQ.id].totalPoints}/{phpTestReport[currentQ.id].maxPoints} Poin)
+                            </span>
+                          )}
                         </div>
-                      ))
+                        {phpTestReport[currentQ.id]?.results && phpTestReport[currentQ.id].results.length > 0 ? (
+                          phpTestReport[currentQ.id].results.map((res, idx) => (
+                            <div
+                              key={idx}
+                              className={`mb-2.5 p-3 rounded border text-xs ${
+                                res.passed
+                                  ? 'bg-emerald-950/30 border-emerald-800 text-emerald-300'
+                                  : 'bg-red-950/30 border-red-800 text-red-300'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between font-bold">
+                                <span>{res.passed ? '✅' : '❌'} {res.description}</span>
+                                <span className="text-[11px] font-mono px-1.5 py-0.5 rounded bg-black/40">
+                                  {res.points} / {res.maxPoints} Poin
+                                </span>
+                              </div>
+                              {res.message && (
+                                <div className={`text-[11px] mt-1.5 ${res.passed ? 'text-emerald-400/90' : 'text-red-300'}`}>
+                                  {res.message}
+                                </div>
+                              )}
+                            </div>
+                          ))
+                        ) : (
+                          <div className="text-zinc-500 text-center py-8 text-xs">
+                            Klik "Uji Test Cases" di toolbar editor untuk mengevaluasi kode PHP terhadap kriteria soal.
+                          </div>
+                        )}
+                      </div>
+                    ) : isSqlMode ? (
+                      <div>
+                        <div className="mb-3 font-bold text-zinc-300 border-b border-zinc-800 pb-2 flex items-center justify-between">
+                          <span>Hasil Pengujian SQL Soal #{currentIdx + 1}</span>
+                          {sqlTestReport[currentQ.id] && (
+                            <span className={`text-xs px-2.5 py-0.5 rounded font-bold ${
+                              sqlTestReport[currentQ.id].passedCount === sqlTestReport[currentQ.id].totalCount && sqlTestReport[currentQ.id].totalCount > 0
+                                ? 'bg-emerald-500 text-black'
+                                : 'bg-red-500 text-white'
+                            }`}>
+                              {sqlTestReport[currentQ.id].passedCount} / {sqlTestReport[currentQ.id].totalCount} Passed ({sqlTestReport[currentQ.id].totalPoints}/{sqlTestReport[currentQ.id].maxPoints} Poin)
+                            </span>
+                          )}
+                        </div>
+                        {sqlTestReport[currentQ.id]?.results && sqlTestReport[currentQ.id].results.length > 0 ? (
+                          sqlTestReport[currentQ.id].results.map((res, idx) => (
+                            <div
+                              key={idx}
+                              className={`mb-2.5 p-3 rounded border text-xs ${
+                                res.passed
+                                  ? 'bg-emerald-950/30 border-emerald-800 text-emerald-300'
+                                  : 'bg-red-950/30 border-red-800 text-red-300'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between font-bold">
+                                <span>{res.passed ? '✅' : '❌'} {res.description}</span>
+                                <span className="text-[11px] font-mono px-1.5 py-0.5 rounded bg-black/40">
+                                  {res.points} / {res.maxPoints} Poin
+                                </span>
+                              </div>
+                              {res.message && (
+                                <div className={`text-[11px] mt-1.5 ${res.passed ? 'text-emerald-400/90' : 'text-red-300'}`}>
+                                  {res.message}
+                                </div>
+                              )}
+                            </div>
+                          ))
+                        ) : (
+                          <div className="text-zinc-500 text-center py-8 text-xs">
+                            Klik "Uji Hasil" di toolbar editor untuk mengevaluasi script SQL terhadap kriteria soal.
+                          </div>
+                        )}
+                      </div>
                     ) : (
-                      <div className="text-zinc-500 text-center py-8 text-xs">
-                        Klik "Run Tests" di toolbar editor untuk mengevaluasi kode.
+                      <div>
+                        <div className="mb-3 font-bold text-zinc-300 border-b border-zinc-800 pb-2 flex items-center justify-between">
+                          <span>Hasil Pengujian Soal #{currentIdx + 1}</span>
+                          {currentTestResults && (
+                            <span className={`text-xs px-2 py-0.5 rounded font-bold ${
+                              currentTestResults.passed === currentTestResults.total ? 'bg-emerald-500 text-black' : 'bg-red-500 text-white'
+                            }`}>
+                              {currentTestResults.passed} / {currentTestResults.total} Passed
+                            </span>
+                          )}
+                        </div>
+                        {currentTestResults?.results ? (
+                          currentTestResults.results.map((res: any, idx: number) => (
+                            <div
+                              key={idx}
+                              className={`mb-2 p-2.5 rounded border text-xs ${
+                                res.passed
+                                  ? 'bg-emerald-950/30 border-emerald-800 text-emerald-300'
+                                  : 'bg-red-950/30 border-red-800 text-red-300'
+                              }`}
+                            >
+                              <div className="font-bold">Test Case #{res.testCase}: {res.passed ? 'PASSED ✅' : 'FAILED ❌'}</div>
+                              {res.error && <div className="text-[11px] text-red-400 mt-1">{res.error}</div>}
+                            </div>
+                          ))
+                        ) : (
+                          <div className="text-zinc-500 text-center py-8 text-xs">
+                            Klik "Run Tests" di toolbar editor untuk mengevaluasi kode.
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
