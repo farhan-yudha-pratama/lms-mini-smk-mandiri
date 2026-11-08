@@ -57,6 +57,18 @@ const TEMPLATE_ESSAY = `[
   }
 ]`;
 
+const TEMPLATE_HTML = `[
+  {
+    "questionText": "Buatlah kartu profil produk toko online berbasis HTML & CSS dengan border, padding rapi, dan tombol beli.",
+    "questionType": "CODE_CHALLENGE",
+    "codeLanguage": "html",
+    "points": 20,
+    "initialCode": "<!DOCTYPE html>\\n<html>\\n<head>\\n  <style>\\n    /* Tulis CSS di sini */\\n  </style>\\n</head>\\n<body>\\n  <!-- Tulis struktur HTML di sini -->\\n</body>\\n</html>",
+    "solutionCode": "<!DOCTYPE html>\\n<html>\\n<head>\\n  <style>\\n    .card { border: 2px solid #000; padding: 16px; border-radius: 8px; max-width: 320px; }\\n  </style>\\n</head>\\n<body>\\n  <div class=\\"card\\">\\n    <h3>Keyboard Mechanical</h3>\\n    <p>Rp 450.000</p>\\n  </div>\\n</body>\\n</html>",
+    "testCases": []
+  }
+]`;
+
 const TEMPLATE_PHP_MANUAL = `[
   {
     "questionText": "Buatlah halaman profil biodata siswa sederhana menggunakan PHP yang menampilkan Nama, NISN, Jurusan, dan status kelulusan dalam kartu HTML dengan styling CSS bersih.",
@@ -228,6 +240,14 @@ export default function JsonQuestionImporterModal({
                 title="Template soal logika algoritma PHP (dinilai otomatis via Test Cases)"
               >
                 <span>PHP Logika (Auto-Grading)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setJsonText(TEMPLATE_HTML)}
+                className="px-2.5 py-1.5 bg-orange-50 hover:bg-orange-100 text-orange-700 font-semibold rounded-lg border border-orange-200 transition-colors flex items-center gap-1 cursor-pointer"
+                title="Template soal tantangan web frontend HTML & CSS (dinilai manual oleh Guru via Live Preview)"
+              >
+                <span>HTML/CSS/JS (Web)</span>
               </button>
               <button
                 type="button"

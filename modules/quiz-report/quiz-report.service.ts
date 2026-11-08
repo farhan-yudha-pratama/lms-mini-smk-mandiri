@@ -949,6 +949,7 @@ export async function getQuizAttemptDetail(attemptId: string) {
       questionText: q.questionText,
       questionType: q.questionType,
       codeLanguage: q.codeLanguage,
+      testCases: (q as any).testCases,
       points: Number(q.points) || 1,
       options,
       studentAnswer: studentAns ? {
