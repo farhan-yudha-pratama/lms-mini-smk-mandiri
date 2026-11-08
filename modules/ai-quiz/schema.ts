@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const generateQuizFormSchema = z.object({
   questionType: z.enum(["PILIHAN_GANDA", "ESSAY", "CODE_CHALLENGE"]),
-  codeLanguage: z.enum(["sql", "php"]).optional().default("sql"),
+  codeLanguage: z.enum(["sql", "php", "html"]).optional().default("sql"),
   phpMode: z.enum(["LOGIC", "WEB", "MIXED"]).optional().default("LOGIC"),
   totalQuestions: z.number().min(1).max(50),
   difficultyDistribution: z.object({

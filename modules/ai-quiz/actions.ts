@@ -11,7 +11,7 @@ export async function generateQuizAction(
   summaryText: string,
   formData: {
     questionType: "PILIHAN_GANDA" | "ESSAY" | "CODE_CHALLENGE";
-    codeLanguage?: "sql" | "php";
+    codeLanguage?: "sql" | "php" | "html";
     phpMode?: "LOGIC" | "WEB" | "MIXED";
     totalQuestions: number;
     difficultyDistribution: { easy: number; medium: number; hard: number };
@@ -19,6 +19,7 @@ export async function generateQuizAction(
     customPrompt?: string;
     alignWithMaterial?: boolean;
     materialTitle?: string;
+    previousQuestions?: string[];
   }
 ) {
   // Validate input
@@ -36,7 +37,7 @@ export async function generateQuizAction(
   return generateQuizDraft({
     summaryText,
     questionType: validatedData.questionType,
-    codeLanguage: validatedData.codeLanguage,
+    codeLanguage: validatedData.codeLanguage as any,
     phpMode: validatedData.phpMode,
     totalQuestions: validatedData.totalQuestions,
     difficultyDistribution: validatedData.difficultyDistribution,
@@ -44,7 +45,76 @@ export async function generateQuizAction(
     customPrompt: validatedData.customPrompt,
     alignWithMaterial: validatedData.alignWithMaterial,
     materialTitle: validatedData.materialTitle,
+    previousQuestions: formData.previousQuestions,
   });
+}
+
+export async function getManualQuizPromptAction({
+  pageId,
+  formData,
+}: {
+  pageId: string;
+  formData: {
+    questionType: "PILIHAN_GANDA" | "ESSAY" | "CODE_CHALLENGE";
+    codeLanguage?: "sql" | "php" | "html";
+    phpMode?: "LOGIC" | "WEB" | "MIXED";
+    totalQuestions: number;
+    difficultyDistribution: { easy: number; medium: number; hard: number };
+    customPrompt?: string;
+  };
+}) {
+  try {
+    const page = await db.orm.public.Page.where({ id: pageId }).first();
+    const materialTitle = page?.title || "Materi Pembelajaran";
+
+    const summaries = await db.orm.public.PageSummary.where({ pageId }).all();
+    summaries.sort((a: any, b: any) => a.orderIndex - b.orderIndex);
+    const summaryText = summaries.map((s: any) => `[${s.title}]\n${s.content}`).join("\n\n");
+
+    // Ambil daftar butir soal dari paket-paket terdahulu pada materi ini
+    const previousQuestions: string[] = [];
+    const pkg = await db.orm.public.QuizPackage.where({ pageId }).first();
+    if (pkg) {
+      const variants = await db.orm.public.QuizVariant.where({ quizPackageId: pkg.id }).all();
+      for (const variant of variants) {
+        const questions = await db.orm.public.Question.where({ quizVariantId: variant.id }).all();
+        for (const q of questions) {
+          if (q.questionText?.trim()) {
+            previousQuestions.push(`${q.questionText.trim()} (${variant.name})`);
+          }
+        }
+      }
+    }
+
+    const { buildQuizPrompt } = await import("./prompt-builder");
+    const built = buildQuizPrompt({
+      summaryText,
+      materialTitle,
+      questionType: formData.questionType,
+      codeLanguage: formData.codeLanguage,
+      phpMode: formData.phpMode,
+      totalQuestions: formData.totalQuestions,
+      difficultyDistribution: formData.difficultyDistribution,
+      customPrompt: formData.customPrompt,
+      previousQuestions,
+    });
+
+    return {
+      success: true,
+      data: {
+        prompt: built.fullPrompt,
+        summaryLength: summaryText.length,
+        previousQuestionsCount: previousQuestions.length,
+        materialTitle,
+      },
+    };
+  } catch (error: any) {
+    console.error("Get Manual Quiz Prompt Error:", error);
+    return {
+      success: false,
+      message: error?.message || "Gagal menyusun prompt manual.",
+    };
+  }
 }
 
 export async function saveQuizPackageAction(data: any) {
