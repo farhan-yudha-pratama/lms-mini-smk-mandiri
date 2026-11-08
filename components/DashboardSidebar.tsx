@@ -34,6 +34,7 @@ export default function DashboardSidebar({
     { label: 'Kelola Materi', icon: 'menu_book', href: '/dashboard/materi', roles: ['SUPERADMIN', 'GURU'] },
     { label: 'Summary AI', icon: 'summarize', href: '/dashboard/summaries', roles: ['SUPERADMIN'] },
     { label: 'Akses Siswa', icon: 'lock_open', href: '/dashboard/student-access', roles: ['SUPERADMIN', 'GURU'] },
+    { label: 'Project Siswa', icon: 'terminal', href: '/dashboard/student-projects', roles: ['SUPERADMIN', 'GURU'] },
     { label: 'Manajemen Kuis', icon: 'quiz', href: '/dashboard/quizzes', roles: ['SUPERADMIN'] },
     { label: 'Evaluasi & Kuis', icon: 'quiz', href: '/dashboard/quizzes', roles: ['GURU'] },
     { label: 'Buku Nilai (Matrix)', icon: 'grading', href: '/dashboard/gradebook', roles: ['SUPERADMIN', 'GURU'] },

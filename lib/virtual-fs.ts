@@ -121,12 +121,30 @@ export function normalizeVirtualPath(path: string): string {
 }
 
 /**
- * Parsing teks jawaban siswa atau initialCode:
- * Jika JSON valid berisi Record<string, string>, parse sebagai file proyek.
- * Jika teks biasa (HTML legacy atau kosong), bungkus dalam 'index.html'.
+ * Parsing teks jawaban siswa, objek files Prisma, atau initialCode:
+ * Jika JSON string atau Record<string, string>, parse sebagai file proyek.
+ * Jika teks biasa (HTML legacy atau string HTML), bungkus dalam 'index.html'.
  */
-export function parseProjectFiles(raw: string | null | undefined): VirtualProjectFiles {
-  if (!raw || !raw.trim()) {
+export function parseProjectFiles(raw: unknown): VirtualProjectFiles {
+  if (!raw) {
+    return { ...DEFAULT_WEB_PROJECT };
+  }
+
+  // 1. Dukungan jika raw sudah berupa Object ter-parse (misal dari kolom Json Prisma)
+  if (typeof raw === 'object' && !Array.isArray(raw)) {
+    const result: VirtualProjectFiles = {};
+    for (const [key, val] of Object.entries(raw as Record<string, unknown>)) {
+      if (typeof val === 'string') {
+        result[normalizeVirtualPath(key)] = val;
+      }
+    }
+    if (Object.keys(result).length > 0) {
+      return result;
+    }
+    return { ...DEFAULT_WEB_PROJECT };
+  }
+
+  if (typeof raw !== 'string' || !raw.trim()) {
     return { ...DEFAULT_WEB_PROJECT };
   }
 
@@ -142,13 +160,6 @@ export function parseProjectFiles(raw: string | null | undefined): VirtualProjec
           }
         }
         if (Object.keys(result).length > 0) {
-          // Pastikan setidaknya ada index.html
-          if (!result['index.html']) {
-            const firstHtml = Object.keys(result).find(k => k.endsWith('.html'));
-            if (!firstHtml) {
-              result['index.html'] = '<!DOCTYPE html><html><body><h1>Proyek Siswa</h1></body></html>';
-            }
-          }
           return result;
         }
       }
@@ -159,9 +170,11 @@ export function parseProjectFiles(raw: string | null | undefined): VirtualProjec
 
   // Fallback untuk single-file HTML legacy
   return {
-    'index.html': raw
+    'index.html': raw,
   };
 }
+
+export const deserializeProjectFiles = parseProjectFiles;
 
 /**
  * Serialisasi file proyek ke string JSON untuk disimpan di database
