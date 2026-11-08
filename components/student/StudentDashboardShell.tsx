@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import StudentSidebar from '@/components/dashboard/StudentSidebar';
 import { logoutAction } from '@/app/actions';
 
@@ -19,6 +19,7 @@ export default function StudentDashboardShell({
 }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const router = useRouter();
+  const pathname = usePathname();
 
   const handleLogout = async () => {
     await logoutAction();
@@ -28,6 +29,11 @@ export default function StudentDashboardShell({
   const isSuperAdmin = roleLabel.toUpperCase() === 'SUPERADMIN';
   const isTeacher = roleLabel.toUpperCase() === 'GURU';
   const canAccessAdmin = isSuperAdmin || isTeacher;
+
+  // Layar penuh untuk workspace IDE Sandbox
+  if (pathname.startsWith('/student/sandbox/') && pathname !== '/student/sandbox') {
+    return <div className="h-screen w-screen overflow-hidden bg-[#EAF4ED]">{children}</div>;
+  }
 
   return (
     <div className="h-screen bg-[#EAF4ED] font-sans selection:bg-[#2A835F] selection:text-white flex flex-col overflow-hidden">

@@ -84,6 +84,10 @@
       "model": "StudentAnswer",
       "namespace": "public"
     },
+    "studentProject": {
+      "model": "StudentProject",
+      "namespace": "public"
+    },
     "studentScoreSummary": {
       "model": "StudentScoreSummary",
       "namespace": "public"
@@ -175,6 +179,27 @@
               {
                 "name": "MURID",
                 "value": "MURID"
+              }
+            ]
+          },
+          "SandboxType": {
+            "codecId": "pg/text@1",
+            "members": [
+              {
+                "name": "WEB",
+                "value": "WEB"
+              },
+              {
+                "name": "SQL",
+                "value": "SQL"
+              },
+              {
+                "name": "PHP",
+                "value": "PHP"
+              },
+              {
+                "name": "FULLSTACK",
+                "value": "FULLSTACK"
               }
             ]
           }
@@ -474,6 +499,21 @@
                 },
                 "to": {
                   "model": "MaterialCategory",
+                  "namespace": "public"
+                }
+              },
+              "projects": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "courseId"
+                  ]
+                },
+                "to": {
+                  "model": "StudentProject",
                   "namespace": "public"
                 }
               },
@@ -943,6 +983,21 @@
                 },
                 "to": {
                   "model": "PageAccess",
+                  "namespace": "public"
+                }
+              },
+              "projects": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "pageId"
+                  ]
+                },
+                "to": {
+                  "model": "StudentProject",
                   "namespace": "public"
                 }
               },
@@ -2827,6 +2882,192 @@
               "table": "studentAnswer"
             }
           },
+          "StudentProject": {
+            "fields": {
+              "activeFile": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "courseId": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "createdAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "description": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "files": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "notes": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "pageId": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "studentId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "title": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "type": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                },
+                "valueSet": {
+                  "entityKind": "enum",
+                  "entityName": "SandboxType",
+                  "namespaceId": "public",
+                  "plane": "domain"
+                }
+              },
+              "updatedAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {
+              "course": {
+                "cardinality": "N:1",
+                "nullable": true,
+                "on": {
+                  "localFields": [
+                    "courseId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "Course",
+                  "namespace": "public"
+                }
+              },
+              "page": {
+                "cardinality": "N:1",
+                "nullable": true,
+                "on": {
+                  "localFields": [
+                    "pageId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "Page",
+                  "namespace": "public"
+                }
+              },
+              "student": {
+                "cardinality": "N:1",
+                "nullable": false,
+                "on": {
+                  "localFields": [
+                    "studentId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "User",
+                  "namespace": "public"
+                }
+              }
+            },
+            "storage": {
+              "fields": {
+                "activeFile": {
+                  "column": "activeFile"
+                },
+                "courseId": {
+                  "column": "courseId"
+                },
+                "createdAt": {
+                  "column": "createdAt"
+                },
+                "description": {
+                  "column": "description"
+                },
+                "files": {
+                  "column": "files"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "notes": {
+                  "column": "notes"
+                },
+                "pageId": {
+                  "column": "pageId"
+                },
+                "studentId": {
+                  "column": "studentId"
+                },
+                "title": {
+                  "column": "title"
+                },
+                "type": {
+                  "column": "type"
+                },
+                "updatedAt": {
+                  "column": "updatedAt"
+                }
+              },
+              "namespaceId": "public",
+              "table": "studentProject"
+            }
+          },
           "StudentScoreSummary": {
             "fields": {
               "averageAssignmentScore": {
@@ -3188,6 +3429,21 @@
                 },
                 "to": {
                   "model": "PageAccess",
+                  "namespace": "public"
+                }
+              },
+              "projects": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "studentId"
+                  ]
+                },
+                "to": {
+                  "model": "StudentProject",
                   "namespace": "public"
                 }
               },
@@ -5347,6 +5603,176 @@
               },
               "uniques": []
             },
+            "studentProject": {
+              "checks": [
+                {
+                  "expression": "\"type\" IN ('WEB', 'SQL', 'PHP', 'FULLSTACK')",
+                  "name": "studentProject_type_check_6199f5f8",
+                  "prefix": "studentProject_type_check"
+                }
+              ],
+              "columns": {
+                "activeFile": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "courseId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "createdAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "description": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "files": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "id": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "notes": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "pageId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "studentId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "title": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "type": {
+                  "codecId": "pg/text@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": "WEB"
+                  },
+                  "nativeType": "text",
+                  "nullable": false,
+                  "valueSet": {
+                    "entityKind": "valueSet",
+                    "entityName": "SandboxType",
+                    "namespaceId": "public",
+                    "plane": "storage"
+                  }
+                },
+                "updatedAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [
+                {
+                  "onDelete": "cascade",
+                  "source": {
+                    "columns": [
+                      "studentId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "studentProject"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "user"
+                  }
+                },
+                {
+                  "onDelete": "setNull",
+                  "source": {
+                    "columns": [
+                      "courseId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "studentProject"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "course"
+                  }
+                },
+                {
+                  "onDelete": "setNull",
+                  "source": {
+                    "columns": [
+                      "pageId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "studentProject"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "page"
+                  }
+                }
+              ],
+              "indexes": [
+                {
+                  "columns": [
+                    "courseId"
+                  ],
+                  "name": "studentProject_courseId_idx_12f72d2a",
+                  "prefix": "studentProject_courseId_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "pageId"
+                  ],
+                  "name": "studentProject_pageId_idx_8caaba4f",
+                  "prefix": "studentProject_pageId_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "studentId"
+                  ],
+                  "name": "studentProject_studentId_idx_bf255322",
+                  "prefix": "studentProject_studentId_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": []
+            },
             "studentScoreSummary": {
               "columns": {
                 "averageAssignmentScore": {
@@ -5679,6 +6105,15 @@
                 "GURU",
                 "MURID"
               ]
+            },
+            "SandboxType": {
+              "kind": "valueSet",
+              "values": [
+                "WEB",
+                "SQL",
+                "PHP",
+                "FULLSTACK"
+              ]
             }
           }
         },
@@ -5686,10 +6121,10 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "a60c8c66f51c6585b344ffe46e95d287cd5860eb95501fada8e870eed62e55eb"
+    "storageHash": "da7a0ca4c97175f1dd1037585b40df2264a59f5a3668bfd2edf4da4632779d27"
   },
   "execution": {
-    "executionHash": "80b9d2ad69a0d749249fdab19815222739bf9f96f05e9d3ac0278ddb7e9be7c9",
+    "executionHash": "a61ac5726f09364b08f1850d03dcc415f09f1541faa5644645eca690f218f9ac",
     "mutations": {
       "defaults": [
         {
@@ -6034,6 +6469,32 @@
             "column": "id",
             "namespace": "public",
             "table": "studentAnswer"
+          }
+        },
+        {
+          "onCreate": {
+            "id": "uuidv4",
+            "kind": "generator"
+          },
+          "ref": {
+            "column": "id",
+            "namespace": "public",
+            "table": "studentProject"
+          }
+        },
+        {
+          "onCreate": {
+            "id": "timestampNow",
+            "kind": "generator"
+          },
+          "onUpdate": {
+            "id": "timestampNow",
+            "kind": "generator"
+          },
+          "ref": {
+            "column": "updatedAt",
+            "namespace": "public",
+            "table": "studentProject"
           }
         },
         {

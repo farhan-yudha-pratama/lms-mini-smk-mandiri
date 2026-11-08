@@ -1,5 +1,12 @@
 // use prisma-8
 
+enum SandboxType {
+  WEB
+  SQL
+  PHP
+  FULLSTACK
+}
+
 enum Role {
   SUPERADMIN
   GURU
@@ -61,6 +68,7 @@ model User {
   scoreSummary    StudentScoreSummary?
   completionRecords QuizCompletionRecord[]
   givenFeedbacks  StudentAnswer[]   @relation("AnswerFeedbackAuthor")
+  projects        StudentProject[]
 }
 
 model MaterialCategory {
@@ -101,6 +109,7 @@ model Page {
   sequence    PageSequence? @relation("PageToUnlock")
   // For sequences where this page is the prerequisite
   isPrerequisiteFor PageSequence[] @relation("PrerequisitePage")
+  projects          StudentProject[]
 
   @@unique([categoryId, orderIndex])
 }
@@ -392,6 +401,7 @@ model Course {
   categories  MaterialCategory[]
   teachers    CourseTeacher[]
   students    CourseStudent[]
+  projects    StudentProject[]
 }
 
 model CourseTeacher {
@@ -412,4 +422,29 @@ model CourseStudent {
   course  Course @relation(fields: [courseId], references: [id])
   student User   @relation(fields: [studentId], references: [id])
   @@unique([courseId, studentId])
+}
+
+// ============================================================
+// TAMBAHAN v1.2.0 - Student Sandbox Coding Playground
+// ============================================================
+model StudentProject {
+  id          String            @id @default(uuid())
+  studentId   String
+  title       String
+  description String?
+  type        SandboxType       @default(WEB)
+  files       String            // Serialized JSON Record<string, string> (VirtualProjectFiles)
+  activeFile  String?           // File aktif terakhir untuk resume otomatis (misal 'index.html')
+  notes       String?           // Catatan belajar siswa / scratchpad markdown
+  courseId    String?
+  pageId      String?
+  createdAt   TimestamptzString @default(now())
+  updatedAt   temporal.updatedAtString()
+
+  student     User              @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  course      Course?           @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  page        Page?             @relation(fields: [pageId], references: [id], onDelete: SetNull)
+
+  @@index([studentId])
+  @@index([pageId])
 }
