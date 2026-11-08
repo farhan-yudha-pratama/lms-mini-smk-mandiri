@@ -225,7 +225,8 @@ export async function executeVirtualPhp(
 
       // Coba load dari vendor lokal /vendor/php-wasm/PhpWeb.mjs
       try {
-        const mod = await import(/* webpackIgnore: true */ '/vendor/php-wasm/PhpWeb.mjs');
+        const localPath = '/vendor/php-wasm/PhpWeb.mjs';
+        const mod = await import(/* webpackIgnore: true */ localPath);
         PhpWebClass = mod.PhpWeb;
       } catch (localErr) {
         console.warn('Gagal memuat local php-wasm, beralih ke CDN jsDelivr...', localErr);
@@ -233,7 +234,8 @@ export async function executeVirtualPhp(
 
       // Fallback ke CDN
       if (!PhpWebClass) {
-        const mod = await import(/* webpackIgnore: true */ 'https://cdn.jsdelivr.net/npm/php-wasm/PhpWeb.mjs');
+        const cdnPath = 'https://cdn.jsdelivr.net/npm/php-wasm/PhpWeb.mjs';
+        const mod = await import(/* webpackIgnore: true */ cdnPath);
         PhpWebClass = mod.PhpWeb;
       }
 
