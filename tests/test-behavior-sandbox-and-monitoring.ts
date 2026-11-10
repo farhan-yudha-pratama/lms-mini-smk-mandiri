@@ -306,7 +306,7 @@ ping 192.168.1.1
       targetProject.activeFile === 'database/query.sql'
     );
     assert('6.3 Guru dapat membaca catatan Markdown siswa',
-      targetProject.notes?.includes('# Catatan Laboratorium Siswa')
+      Boolean(targetProject.notes?.includes('# Catatan Laboratorium Siswa'))
     );
 
     // Guru menguji eksekusi query siswa
