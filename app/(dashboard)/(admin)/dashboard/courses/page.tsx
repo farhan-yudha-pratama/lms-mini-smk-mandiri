@@ -1,9 +1,17 @@
 import { getCourses } from '@/app/actions/course';
 import CourseListClient from './CourseListClient';
+import { getSession } from '@/lib/session';
+import { hasPermission } from '@/lib/permissions';
+import { redirect } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
 
 export default async function CoursesPage() {
+  const session = await getSession();
+  if (!session || !hasPermission(session, 'COURSES_MANAGE')) {
+    redirect('/dashboard');
+  }
+
   const courses = await getCourses();
 
   return (

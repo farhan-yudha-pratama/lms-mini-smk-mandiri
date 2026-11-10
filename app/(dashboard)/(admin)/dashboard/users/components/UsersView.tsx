@@ -12,6 +12,7 @@ import ConfirmModal from './ConfirmModal';
 import EditNameModal from './EditNameModal';
 import FloatingActionBar from './FloatingActionBar';
 import UserQuizHistoryModal from './UserQuizHistoryModal';
+import ManagePermissionsModal from './ManagePermissionsModal';
 
 interface UsersViewProps {
   initialUsers: UserRow[];
@@ -47,6 +48,7 @@ export default function UsersView({ initialUsers }: UsersViewProps) {
   } | null>(null);
 
   const [quizHistoryUser, setQuizHistoryUser] = useState<UserRow | null>(null);
+  const [managePermissionUser, setManagePermissionUser] = useState<UserRow | null>(null);
 
   // Real-time synchronization via WebSocket
   useEffect(() => {
@@ -353,6 +355,7 @@ export default function UsersView({ initialUsers }: UsersViewProps) {
           onViewQuizHistory={(u) => setQuizHistoryUser(u)}
           onToggleActiveUser={onToggleActiveSingle}
           onRevokeUserSession={onRevokeSingle}
+          onManagePermissions={(u) => setManagePermissionUser(u)}
         />
 
         <UsersPagination
@@ -394,6 +397,21 @@ export default function UsersView({ initialUsers }: UsersViewProps) {
             setMessage({
               type: 'success',
               text: `Riwayat kuis untuk "${quizHistoryUser.name}" berhasil dibersihkan. Sekarang pengguna siap untuk dihapus.`
+            });
+          }}
+        />
+      )}
+
+      {/* Modal Kelola Hak Akses (Multi-Permission) */}
+      {managePermissionUser && (
+        <ManagePermissionsModal
+          user={managePermissionUser}
+          isOpen={!!managePermissionUser}
+          onClose={() => setManagePermissionUser(null)}
+          onSuccess={() => {
+            setMessage({
+              type: 'success',
+              text: `Hak akses untuk "${managePermissionUser.name}" berhasil diperbarui.`,
             });
           }}
         />

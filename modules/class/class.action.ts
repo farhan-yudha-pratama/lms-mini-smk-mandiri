@@ -5,9 +5,11 @@ import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { createClass, updateClass, deleteClass, joinClass, kickStudent } from './class.service';
 import { createClassSchema, updateClassSchema, joinClassSchema } from './class.schema';
+import { requirePermission } from '@/lib/permissions-server';
 
 export async function createClassAction(formData: FormData) {
   try {
+    await requirePermission('CLASSES_MANAGE');
     const rawData = {
       name: formData.get('name'),
       maxStudents: formData.get('maxStudents') || 32,
@@ -27,6 +29,7 @@ export async function createClassAction(formData: FormData) {
 
 export async function updateClassAction(formData: FormData) {
   try {
+    await requirePermission('CLASSES_MANAGE');
     const rawData = {
       id: formData.get('id'),
       name: formData.get('name'),
@@ -49,6 +52,7 @@ export async function updateClassAction(formData: FormData) {
 
 export async function deleteClassAction(classId: string) {
   try {
+    await requirePermission('CLASSES_MANAGE');
     if (!classId) throw new Error('ID kelas tidak valid');
     await deleteClass(classId);
     revalidatePath('/dashboard/classes');
@@ -61,6 +65,7 @@ export async function deleteClassAction(classId: string) {
 
 export async function kickStudentAction(studentId: string, classId: string) {
   try {
+    await requirePermission('CLASSES_MANAGE');
     await kickStudent(studentId, classId);
     revalidatePath('/dashboard/classes');
     revalidatePath('/(dashboard)/dashboard/classes');

@@ -1,4 +1,4 @@
-import { executeVirtualPhp, runPhpTestCases, parsePhpFriendlyError } from '../lib/virtual-php.ts';
+import { executeVirtualPhp, runPhpTestCases, parsePhpFriendlyError } from '../lib/virtual-php.js';
 
 async function runComprehensiveTests() {
   console.log('================================================================');

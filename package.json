@@ -10,6 +10,8 @@
     "start": "node server.js",
     "start:next": "next start",
     "lint": "eslint",
+    "test:permissions": "npx tsx tests/test-unit-permissions.ts && npx tsx --env-file=.env tests/test-e2e-permissions.ts && npx tsx --env-file=.env tests/test-package-crud.ts",
+    "seed:permissions:prod": "npx tsx --env-file=.env scripts/seed-permissions-production.ts",
     "contract:emit": "prisma contract emit",
     "postinstall": "prisma skills sync || exit 0"
   },

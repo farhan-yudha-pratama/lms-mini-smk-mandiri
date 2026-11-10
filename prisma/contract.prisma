@@ -69,6 +69,7 @@ model User {
   completionRecords QuizCompletionRecord[]
   givenFeedbacks  StudentAnswer[]   @relation("AnswerFeedbackAuthor")
   projects        StudentProject[]
+  permissions     UserPermission[]
 }
 
 model MaterialCategory {
@@ -447,4 +448,43 @@ model StudentProject {
 
   @@index([studentId])
   @@index([pageId])
+}
+
+
+// ============================================================
+// Multi-Permission System (v1.3.0)
+// ============================================================
+model Permission {
+  id          String            @id @default(uuid())
+  code        String            @unique
+  name        String
+  category    String
+  description String?
+  createdAt   TimestamptzString @default(now())
+
+  users       UserPermission[]
+}
+
+model UserPermission {
+  id           String            @id @default(uuid())
+  userId       String
+  permissionId String
+  createdAt    TimestamptzString @default(now())
+
+  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  permission   Permission        @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, permissionId])
+}
+
+model PermissionPackage {
+  id          String            @id @default(uuid())
+  name        String            @unique
+  category    String            @default("Umum")
+  badge       String            @default("Custom")
+  description String?
+  permissions String            // Serialized JSON: PermissionCode[]
+  isSystem    Boolean           @default(false)
+  createdAt   TimestamptzString @default(now())
+  updatedAt   TimestamptzString @default(now())
 }

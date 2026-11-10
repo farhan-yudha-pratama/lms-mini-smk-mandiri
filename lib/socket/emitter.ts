@@ -215,3 +215,28 @@ export function emitCourseTeacherRemoved(payload: CourseTeacherRemovedEvent) {
     console.error('[SocketEmitter] Failed to emit course:teacher_removed:', error);
   }
 }
+
+
+export interface UserPermissionsUpdatedEvent {
+  userId: string;
+  permissionCodes: string[];
+  updatedAt: string;
+}
+
+/**
+ * Emit event ketika hak akses (permissions) pengguna diperbarui oleh Admin.
+ */
+export function emitUserPermissionsUpdated(payload: UserPermissionsUpdatedEvent) {
+  try {
+    const io = (globalThis as any).__io;
+    if (io) {
+      if (payload.userId) {
+        io.to(`user:${payload.userId}`).emit('user:permissions_updated', payload);
+      }
+      io.emit('user:permissions_updated', payload);
+      io.emit('users:updated', { type: 'PERMISSIONS_UPDATED', ...payload });
+    }
+  } catch (error) {
+    console.error('[SocketEmitter] Failed to emit user:permissions_updated:', error);
+  }
+}

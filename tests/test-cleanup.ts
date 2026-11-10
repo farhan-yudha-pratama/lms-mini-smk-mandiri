@@ -7,7 +7,7 @@ async function main() {
     const log = allLogs[0] as any;
     console.log(`First log createdAt: ${log.createdAt} (type: ${typeof log.createdAt})`);
     console.log(`Parsed Date: ${new Date(String(log.createdAt))}`);
-    
+
     // Check if there are logs older than 7 days
     const date = new Date();
     date.setDate(date.getDate() - 7);

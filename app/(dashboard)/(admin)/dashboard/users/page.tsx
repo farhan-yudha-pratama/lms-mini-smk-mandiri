@@ -3,11 +3,12 @@ import { redirect } from 'next/navigation';
 import { userService } from './modules/user.service';
 import UsersView from './components/UsersView';
 import { UserRow } from './types';
+import { hasPermission } from '@/lib/permissions';
 
 export default async function UsersPage() {
   const session = await getSession();
   
-  if (!session || session.role !== 'SUPERADMIN') {
+  if (!session || !hasPermission(session, 'USERS_MANAGE')) {
     redirect('/dashboard');
   }
 
@@ -15,8 +16,6 @@ export default async function UsersPage() {
   const rawUsers = await userService.getAllUsers();
   
   // Mapping raw data to strongly typed UserRow
-  // Removed `any` casting by relying on the service return type 
-  // (Assuming db.orm.public.User.all() returns an array of user objects)
   const initialUsers: UserRow[] = rawUsers.map((user) => ({
     id: user.id as string,
     name: user.name as string,

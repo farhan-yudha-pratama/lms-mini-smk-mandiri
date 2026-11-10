@@ -1,6 +1,6 @@
 import { SignJWT, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
-import { NextRequest } from 'next/server';
+import { cache } from 'react';
 
 const secretKey = process.env.JWT_SECRET || 'super-secret-key-development';
 const key = new TextEncoder().encode(secretKey);
@@ -11,6 +11,9 @@ export interface SessionPayload {
   email: string;
   role: string;
   sessionId: string;
+  name?: string;
+  classId?: string | null;
+  permissions?: string[];
   [key: string]: any;
 }
 
@@ -47,19 +50,17 @@ export async function setToken(payload: SessionPayload) {
   });
 }
 
-import { cache } from 'react';
-
-export const getSession = cache(async () => {
+export const getSession = cache(async (): Promise<SessionPayload | null> => {
   const cookieStore = await cookies();
   const session = cookieStore.get('session')?.value;
   if (!session) return null;
-  
+
   const payload = await decrypt(session);
   if (!payload || !payload.sessionId) return null;
 
   try {
     const { db } = await import('@/prisma/db');
-    
+
     // Cek apakah sesi ini masih ada di database (belum di-revoke atau ditimpa device lain)
     const sessionRecord = await db.orm.public.Session.where({ id: payload.sessionId }).first();
     if (!sessionRecord) {
@@ -67,7 +68,7 @@ export const getSession = cache(async () => {
     }
 
     const user = await db.orm.public.User.where({ id: payload.userId }).first();
-    
+
     // Jika user tidak ada atau tidak aktif, tolak sesi
     if (!user || !user.isActive) {
       return null;
@@ -78,9 +79,30 @@ export const getSession = cache(async () => {
       return null;
     }
 
-    return payload;
+    // Ambil daftar permission aktif secara real-time dari database
+    let permissions: string[] = [];
+    if (user.role === 'SUPERADMIN') {
+      const { ALL_PERMISSION_CODES } = await import('@/lib/permissions');
+      permissions = [...ALL_PERMISSION_CODES];
+    } else {
+      const userPerms = await db.orm.public.UserPermission.where({ userId: user.id }).all();
+      if (userPerms.length > 0) {
+        const allPerms = await db.orm.public.Permission.all();
+        const permMap = new Map(allPerms.map((p) => [p.id, p.code]));
+        permissions = userPerms
+          .map((up) => permMap.get(up.permissionId))
+          .filter((code): code is string => Boolean(code));
+      }
+    }
+
+    return {
+      ...payload,
+      name: user.name,
+      classId: user.classId,
+      permissions,
+    };
   } catch (error) {
-    console.error("Session validation error:", error);
+    console.error('Session validation error:', error);
     return null;
   }
 });
@@ -102,4 +124,3 @@ export async function setRefreshToken(token: string) {
     path: '/',
   });
 }
-

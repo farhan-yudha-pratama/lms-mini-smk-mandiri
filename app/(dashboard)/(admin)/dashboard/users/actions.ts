@@ -7,23 +7,22 @@ import { ActionResponse, Role } from './types';
 import { BulkUserActionSchema, BulkChangeRoleSchema, BulkToggleActiveSchema, EditUserNameSchema } from './modules/user.schema';
 import { userService } from './modules/user.service';
 
+import { requirePermission } from '@/lib/permissions-server';
+
 /**
- * Validasi otorisasi Superadmin.
+ * Validasi otorisasi Pengelola Pengguna (USERS_MANAGE / Superadmin).
  * Dilempar sebagai error jika gagal, dan ditangkap oleh blok try-catch di setiap action.
  */
 async function requireSuperAdmin() {
-  const session = await getSession();
-  if (!session || session.role !== 'SUPERADMIN') {
-    throw new Error('UNAUTHORIZED');
-  }
+  await requirePermission('USERS_MANAGE');
 }
 
 /**
  * Helper untuk format error handling berbahasa Indonesia.
  */
 function handleActionError(error: unknown): ActionResponse {
-  if (error instanceof Error && error.message === 'UNAUTHORIZED') {
-    return { success: false, error: 'Akses ditolak. Sesi Anda telah berakhir atau Anda tidak memiliki izin sebagai Admin.' };
+  if (error instanceof Error && (error.message === 'UNAUTHORIZED' || error.message === 'FORBIDDEN')) {
+    return { success: false, error: 'Akses ditolak. Sesi Anda telah berakhir atau Anda tidak memiliki izin untuk mengelola pengguna.' };
   }
   
   if (error instanceof Error) {

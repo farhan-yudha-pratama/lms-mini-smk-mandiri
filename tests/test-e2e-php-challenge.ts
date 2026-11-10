@@ -1,6 +1,6 @@
-import { executeVirtualPhp, runPhpTestCases, parsePhpFriendlyError } from '../lib/virtual-php.ts';
-import { questionFormSchema } from '../modules/quiz/quiz.schema.ts';
-import { generateQuizFormSchema, aiPhpChallengeSchema } from '../modules/ai-quiz/schema.ts';
+import { executeVirtualPhp, runPhpTestCases, parsePhpFriendlyError } from '../lib/virtual-php.js';
+import { questionFormSchema } from '../modules/quiz/quiz.schema.js';
+import { generateQuizFormSchema, aiPhpChallengeSchema } from '../modules/ai-quiz/schema.js';
 
 async function runEndToEndTests() {
   console.log('================================================================');
@@ -208,7 +208,7 @@ echo hitungDiskon(100000, 10);
 ?>`;
   const syntaxRun = await executeVirtualPhp(studentMistakeSyntax);
   assert('2.2.A.1 Siswa: Syntax error terdeteksi (success === false)', !syntaxRun.success);
-  assert('2.2.A.2 Siswa: Petunjuk edukatif berbahasa Indonesia memberi tahu titik koma (;)', 
+  assert('2.2.A.2 Siswa: Petunjuk edukatif berbahasa Indonesia memberi tahu titik koma (;)',
     syntaxRun.error?.hint?.includes('titik koma') || syntaxRun.stderr.includes('syntax error'));
 
   // 2.2.B Kesalahan 2: Nama Fungsi Salah (Typo Siswa)
@@ -220,7 +220,7 @@ echo "Total Belanja: Rp 100000\\n";
 echo "Total Bayar: Rp 90000\\n";
 ?>`;
   const nameRun = await runPhpTestCases(studentMistakeName, testCasesLogic);
-  assert('2.2.B.1 Siswa: CODE_ANALYSIS gagal karena nama fungsi tidak sesuai', 
+  assert('2.2.B.1 Siswa: CODE_ANALYSIS gagal karena nama fungsi tidak sesuai',
     nameRun.results.some(r => r.description.includes('hitungDiskon') && !r.passed));
   assert('2.2.B.2 Siswa: Skor parsial hanya untuk teks output (50 / 100 poin)', nameRun.totalPoints === 50);
 
@@ -260,7 +260,7 @@ echo "Total Bayar: Rp " . $bayar . "\\n";
 
   // 3.1 Evaluasi Otomatis Saat Siswa Mengumpulkan Jawaban (Submit Quiz)
   console.log('\n[3.1] Sistem memproses kalkulasi nilai submission kuis');
-  
+
   // Soal 2 (Logika, Bobot: 35 Poin)
   const q2EarnedRatio = perfectRun.maxPoints > 0 ? perfectRun.totalPoints / perfectRun.maxPoints : 0;
   const q2PointsEarned = Math.round(q2EarnedRatio * questionLogicData.points * 100) / 100;
@@ -279,7 +279,7 @@ echo "Total Bayar: Rp " . $bayar . "\\n";
 
   // 3.2 Guru Membuka Modal Review Jawaban Siswa (CodeAnswerPreview)
   console.log('\n[3.2] Guru melakukan peninjauan jawaban di Menu Laporan Kuis / Gradebook');
-  
+
   // Guru menguji eksekusi kode siswa Soal 1 via tombol "Uji Skrip PHP"
   const teacherReviewRun = await executeVirtualPhp(studentWebAnswer);
   assert('3.2.1 Guru: Tombol "Uji Skrip PHP" merender output HTML siswa', teacherReviewRun.success && teacherReviewRun.isHtml);

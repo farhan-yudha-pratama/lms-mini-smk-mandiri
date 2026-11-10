@@ -1,5 +1,8 @@
 import { getPagesWithSummaryStatus, getAllCategories } from '@/modules/summary/summary.service';
 import SummariesTable from './components/SummariesTable';
+import { getSession } from '@/lib/session';
+import { hasPermission } from '@/lib/permissions';
+import { redirect } from 'next/navigation';
 
 export const metadata = {
   title: 'Manajemen Summary Materi',
@@ -10,6 +13,10 @@ export default async function SummariesPage({
 }: {
   searchParams?: Promise<{ categoryId?: string }>;
 }) {
+  const session = await getSession();
+  if (!session || !hasPermission(session, 'SUMMARIES_MANAGE')) {
+    redirect('/dashboard');
+  }
   const params = await searchParams;
   const initialCategoryId = params?.categoryId;
 

@@ -1,4 +1,4 @@
-import { executeVirtualPhp, runPhpTestCases, parsePhpFriendlyError } from '../lib/virtual-php.ts';
+import { executeVirtualPhp, runPhpTestCases, parsePhpFriendlyError } from '../lib/virtual-php.js';
 
 async function runUnitTests() {
   console.log('================================================================');
@@ -226,7 +226,7 @@ echo "Output Kosong";
   ?>`;
   const resMissingSemi = await executeVirtualPhp(codeMissingSemi);
   assert('4.1.1 Script tanpa titik koma terdeteksi gagal', !resMissingSemi.success);
-  assert('4.1.2 Petunjuk edukatif menyarankan memeriksa titik koma (;)', 
+  assert('4.1.2 Petunjuk edukatif menyarankan memeriksa titik koma (;)',
     resMissingSemi.error?.hint?.includes('titik koma') || resMissingSemi.stderr.includes('syntax error'));
 
   // 4.2 Fatal Error: Call to Undefined Function
@@ -235,7 +235,7 @@ echo "Output Kosong";
   ?>`;
   const resUndefFunc = await executeVirtualPhp(codeUndefFunc);
   assert('4.2.1 Panggilan fungsi yang belum dibuat terdeteksi gagal', !resUndefFunc.success);
-  assert('4.2.2 Pesan error mendeteksi fungsi "hitungNilaiRataRata()"', 
+  assert('4.2.2 Pesan error mendeteksi fungsi "hitungNilaiRataRata()"',
     resUndefFunc.error?.message?.includes('hitungNilaiRataRata') || resUndefFunc.stderr.includes('hitungNilaiRataRata'));
 
   // 4.3 Parser Langsung: Kurung Kurawal Tidak Lengkap

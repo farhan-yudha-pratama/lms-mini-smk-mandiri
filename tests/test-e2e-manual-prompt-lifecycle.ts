@@ -32,7 +32,7 @@ async function runEndToEndTests() {
     // LANGKAH 1: PERSIAPAN DATA TESTING (Setup Page & Summary di Database)
     // -------------------------------------------------------------------------
     console.log('--- LANGKAH 1: Setup Materi & Rangkuman di Database ---');
-    
+
     // 1.1 Ambil kategori yang ada atau buat kategori testing
     const existingCats = await db.orm.public.MaterialCategory.all();
     let targetCategoryId = testCategoryId;
@@ -83,7 +83,7 @@ async function runEndToEndTests() {
     // LANGKAH 2: GURU KLIK GENERATE MANUAL -> PANGGIL getManualQuizPromptAction
     // -------------------------------------------------------------------------
     console.log('\n--- LANGKAH 2: Guru Mengklik "Generate Manual (Salin Prompt AI)" ---');
-    
+
     const promptRes1 = await getManualQuizPromptAction({
       pageId: testPageId,
       formData: {
@@ -97,11 +97,11 @@ async function runEndToEndTests() {
 
     assert('2.1 Server action getManualQuizPromptAction mengembalikan status success', promptRes1.success === true);
     assert('2.2 Prompt memuat judul materi asli', promptRes1.data?.materialTitle === testPage.title);
-    assert('2.3 Prompt memuat seluruh rangkuman materi dari kedua topik', 
+    assert('2.3 Prompt memuat seluruh rangkuman materi dari kedua topik',
       promptRes1.data?.prompt.includes('Web server melayani HTTP request') &&
       promptRes1.data?.prompt.includes('Metode GET digunakan untuk membaca data')
     );
-    assert('2.4 Prompt memuat instruksi spesifik Web Frontend (HTML/CSS/JS)', 
+    assert('2.4 Prompt memuat instruksi spesifik Web Frontend (HTML/CSS/JS)',
       promptRes1.data?.prompt.includes('WEB FRONTEND (HTML, CSS, JAVASCRIPT)') &&
       promptRes1.data?.prompt.includes('"testCases": []')
     );
