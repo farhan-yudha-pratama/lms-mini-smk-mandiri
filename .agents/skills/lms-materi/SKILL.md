@@ -37,35 +37,35 @@ Setiap materi yang diproses **WAJIB** mematuhi batasan berikut:
 
 ## 2. Struktur 5 Blok Halaman Materi (Standard Blueprint)
 
-Setiap file `app/course/.../page.tsx` **HARUS** mengikuti urutan 5 blok ini:
+Setiap file `app/course/.../page.tsx` **HARUS** mengikuti urutan 5 blok ini (tanpa ticker ribbon agar ruang vertikal lega):
 
 ```
-[Headbar]
-[Live System Ticker Ribbon] (bg-[#2A835F] border-b-4 border-black font-mono)
+[Headbar] (pt-[88px])
 [Sidebar courseSlug="..."]
-<main>
-  1. BLOK 1: HERO PUNCHY BANNER
-     - Badge durasi baca (DURASI 3 MENIT BACA) + Badge modul
-     - Judul tegas, besar, uppercase
-     - 1 Kalimat Tagline: Fungsi alat/konsep ini di dunia kerja nyata
-     - Rotated Emblem Box (-rotate-2 hover:rotate-0)
+<main> (space-y-12 md:space-y-16)
+  1. BLOK 1: HERO RAKSASA HITAM IMMERSIF (bg-black text-white p-6 md:p-12 shadow-neo-xl)
+     - Badge modul di sudut kiri atas (absolute top-0 left-0 bg-white text-black)
+     - Watermark Ikon Raksasa di background (opacity-20 text-[150px] md:text-[250px])
+     - Judul tegas raksasa (text-4xl sm:text-5xl md:text-7xl font-black text-mint-soft)
+     - 1 Kalimat Tagline Inset Putih: Fungsi alat/konsep ini di dunia kerja nyata
+     - Tombol Aksi / Simulator Interaktif Besar (bg-jade-vibrant text-white text-xl md:text-3xl)
 
-  2. BLOK 2: ANALOGI 1 DETIK (bg-[#8BBB92] border-4 border-black)
-     - 1 Masalah konkret harian (lab/komputer) & solusi cepatnya
+  2. BLOK 2: ANALOGI 1 DETIK (SPLIT BOX ASIMETRIS) (bg-white border-4 border-black p-6 md:p-12)
+     - Sisi Kiri: 1 Masalah konkret harian & kotak penjelasan analogi barang fisik
+     - Sisi Kanan: Box hitam miring (-rotate-2) dengan ikon besar 80px & label nama benda
 
-  3. BLOK 3: ANATOMI / 3 PILAR KUNCI (bg-white border-4 border-black)
-     - 3 Kartu bernomor (01 // THINKING, 02 // DOING, 03 // SELLING atau TAHAP 01-03)
-     - Setiap kartu: Judul + Penjelasan 1 kalimat + Kotak Fokus/Output
+  3. BLOK 3: PERINTAH INTI / ANATOMI (KARTU HORIZONTAL LEBAR) (bg-mint-soft border-4 border-black)
+     - Hindari 3 kolom sempit! Gunakan kartu horizontal bertingkat atau 2 kolom lapang
+     - Kode syntax font-mono tebal di kiri, penjelasan aksi 1 kalimat di kanan
 
-  4. BLOK 4: KASUS LAPANGAN & TABEL HEAD-TO-HEAD
-     - Box Masalah Lapangan Singkat (misal: kasus di lab sekolah)
-     - Tabel Komparasi Tegas: "Siswa Pasif (Konsumen)" vs "Siswa Berjiwa KIK/Solutif (Inovator)"
+  4. BLOK 4: KOMPARASI & KOTAK BAHAYA MAUT
+     - 2 Kolom Komparasi Bersanding (Wadah vs Isi / Konsep A vs B)
+     - Kotak Bahaya Maut Merah (bg-[#FF0000] border-4 border-black shadow-neo-lg -rotate-1)
+     - Ikon bouncing warning + kotak putih inset dampak fatal jika salah perintah
 
-  5. BLOK 5: RANGKUMAN 3 BENTO & EVALUASI KUIS
-     - 3 Kartu Bento Golden Takeaway (Ingat 01, Ingat 02, Ingat 03)
-     - Callout Kuis Evaluasi (bg-[#092328] / bg-[#12544F])
+  5. BLOK 5: EVALUASI KUIS & FOOTER NAVIGASI
      - <QuizTrigger pageSlug="..." />
-     - Tactile Footer Navigation (Kembali ke Silabus & Lanjut ke Bab Berikutnya)
+     - Tactile Footer Navigation (Kembali ke Bab Sebelumnya & Lanjut ke Bab Berikutnya)
 </main>
 ```
 

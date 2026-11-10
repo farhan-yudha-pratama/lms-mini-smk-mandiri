@@ -3,276 +3,277 @@
 import Headbar from '@/components/Headbar';
 import Sidebar from '@/components/Sidebar';
 import QuizTrigger from '@/components/quiz-engine/QuizTrigger';
-import Link from 'next/link';
+import { useState } from 'react';
 
 export default function QuerySqlPage() {
+  const [isReady, setIsReady] = useState(false);
+
   return (
     <>
       <Headbar
         links={[
-          { label: 'Silabus', href: '/course/pemrograman-web-dasar', isActive: false },
           { label: 'Materi', href: '/course/pemrograman-web-dasar/query-sql', isActive: true },
         ]}
       />
 
-      {/* TICKER RIBBON */}
-      <div className="fixed top-[64px] left-0 w-full z-40 bg-[#2A835F] border-b-4 border-black py-1.5 px-4 overflow-hidden select-none">
-        <div className="flex items-center gap-4 text-xs font-black uppercase text-white font-mono tracking-wider">
-          <span>■ MODUL: DATABASE</span>
-          <span>● KELAS XI/XII SMK</span>
-          <span className="bg-black text-[#8BBB92] px-2 py-0.5 border border-black shadow-[2px_2px_0px_0px_#000]">
-            ★ QUERY SQL & NAVIGASI MYSQL
-          </span>
-        </div>
-      </div>
-
-      <div
-        className="flex pt-[104px] min-h-screen bg-[#EAF4ED] text-black font-sans"
-        style={{
-          backgroundImage: 'radial-gradient(#000000 1px, transparent 1px)',
-          backgroundSize: '24px 24px',
-        }}
-      >
+      <div className="flex pt-[88px] min-h-screen">
         <Sidebar courseSlug="pemrograman-web-dasar" />
 
-        <main className="md:ml-[280px] w-full p-4 sm:p-6 md:p-8 relative">
-          <div className="max-w-5xl mx-auto space-y-8 md:space-y-10">
+        <main
+          className="md:ml-[280px] w-full p-4 md:p-10 bg-canvas relative"
+          style={{
+            backgroundImage: 'radial-gradient(var(--color-outline) 1px, transparent 1px)',
+            backgroundSize: '24px 24px',
+          }}
+        >
+          <div className="max-w-5xl mx-auto space-y-12 md:space-y-16">
 
-            {/* BLOK 1: HERO SECTION */}
-            <section className="bg-white border-4 border-black shadow-[8px_8px_0px_0px_#000] p-6 sm:p-8 relative">
-              <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
-                <div className="space-y-3 max-w-2xl">
-                  <div className="flex items-center gap-2">
-                    <span className="bg-[#092328] text-white text-xs font-black uppercase px-2.5 py-1 border-2 border-black shadow-[2px_2px_0px_0px_#000]">
-                      DATABASE 06
-                    </span>
-                    <span className="bg-[#8BBB92] text-black text-xs font-black uppercase px-2.5 py-1 border-2 border-black shadow-[2px_2px_0px_0px_#000]">
-                      DURASI 3 MENIT BACA
-                    </span>
-                  </div>
-                  <h1 className="text-3xl sm:text-5xl font-black uppercase tracking-tight text-black">
-                    Mengenal Query SQL: Bahasa Perintah Database
-                  </h1>
-                  <p className="text-sm sm:text-base font-bold text-gray-800 leading-snug">
-                    Instruksi teks standar untuk mengontrol, mengintip isi, dan memanipulasi seluruh data di server MySQL.
-                  </p>
-                </div>
-                <div className="w-24 h-24 sm:w-28 sm:h-28 bg-[#092328] border-4 border-black shadow-[6px_6px_0px_0px_#000] transform -rotate-2 hover:rotate-0 flex flex-col items-center justify-center text-white shrink-0 transition-transform">
-                  <span className="material-symbols-outlined text-4xl text-[#8BBB92]">terminal</span>
-                  <span className="text-[10px] font-mono font-black mt-1 uppercase">CLI MYSQL</span>
-                </div>
+            {/* Header & Hero Section */}
+            <section className="bg-black border-4 border-black p-6 md:p-12 shadow-neo-xl text-center relative overflow-hidden text-white">
+              <div className="absolute top-0 left-0 bg-white text-black font-black px-4 py-1 border-b-4 border-r-4 border-black shadow-neo-sm z-20 uppercase">
+                Database 06
               </div>
-            </section>
-
-            {/* BLOK 2: ANALOGI 1 DETIK */}
-            <section className="bg-[#8BBB92] border-4 border-black shadow-[6px_6px_0px_0px_#000] p-5 sm:p-6">
-              <div className="flex items-start gap-4">
-                <span className="text-3xl shrink-0">💡</span>
-                <div className="space-y-1">
-                  <h3 className="text-base sm:text-lg font-black uppercase text-black">
-                    Analogi 1 Detik: Kertas Bon Pesanan ke Koki Dapur
-                  </h3>
-                  <p className="text-xs sm:text-sm font-bold text-black leading-relaxed">
-                    Server database itu seperti koki dapur yang tidak bisa melihat layar atau klik mouse kita. Query adalah <strong>kertas bon pesanan tertulis</strong>: jika kamu tulis instruksinya dengan format jelas, koki langsung menyiapkan data yang tepat tanpa salah paham.
-                  </p>
-                </div>
-              </div>
-            </section>
-
-            {/* BLOK 3: 3 PILAR KUNCI QUERY */}
-            <section className="bg-white border-4 border-black shadow-[8px_8px_0px_0px_#000] p-6 space-y-6">
-              <h2 className="text-xl sm:text-2xl font-black uppercase tracking-tight text-black border-b-4 border-black pb-3 flex items-center gap-2">
-                <span className="bg-[#2A835F] text-white px-2 py-0.5 border-2 border-black text-sm">INTI</span>
-                3 Pilar Kunci: Navigasi, Taksonomi & CRUD
-              </h2>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {/* Pilar 1 */}
-                <div className="bg-[#EAF4ED] border-3 border-black p-4 space-y-3 shadow-[3px_3px_0px_0px_#000] flex flex-col">
-                  <span className="font-mono text-xs font-black bg-[#092328] text-[#8BBB92] px-2 py-0.5 border border-black inline-block self-start">
-                    01 // NAVIGASI AWAL
-                  </span>
-                  <h3 className="font-black text-sm uppercase text-black">Perintah Pertama di MySQL</h3>
-                  <p className="text-xs font-bold text-gray-700 leading-normal">
-                    Sebelum membuat tabel, kamu wajib memeriksa dan masuk ke dalam database aktif.
-                  </p>
-                  <div className="bg-black text-[#8BBB92] font-mono text-[11px] p-2.5 border-2 border-black space-y-1 mt-auto overflow-x-auto">
-                    <div><span className="text-pink-400">SHOW</span> DATABASES;</div>
-                    <div><span className="text-pink-400">CREATE DATABASE</span> db_sekolah;</div>
-                    <div><span className="text-yellow-400">USE</span> db_sekolah;</div>
-                    <div><span className="text-pink-400">SHOW</span> TABLES;</div>
-                    <div><span className="text-blue-300">DESCRIBE</span> siswa;</div>
-                  </div>
-                </div>
-
-                {/* Pilar 2 */}
-                <div className="bg-[#EAF4ED] border-3 border-black p-4 space-y-3 shadow-[3px_3px_0px_0px_#000] flex flex-col">
-                  <span className="font-mono text-xs font-black bg-[#092328] text-[#8BBB92] px-2 py-0.5 border border-black inline-block self-start">
-                    02 // TAKSONOMI
-                  </span>
-                  <h3 className="font-black text-sm uppercase text-black">Perbedaan DDL vs DML</h3>
-                  <p className="text-xs font-bold text-gray-700 leading-normal">
-                    SQL dibagi menjadi 2 klan besar berdasarkan apa yang sedang dimodifikasi.
-                  </p>
-                  <div className="space-y-2 text-xs font-bold mt-auto">
-                    <div className="bg-white p-2 border-2 border-black">
-                      <strong className="text-[#12544F] uppercase block">■ DDL (Definition)</strong>
-                      Membangun/meruntuhkan wadah: <code>CREATE</code>, <code>DROP</code>, <code>ALTER</code>.
-                    </div>
-                    <div className="bg-white p-2 border-2 border-black">
-                      <strong className="text-[#2A835F] uppercase block">■ DML (Manipulation)</strong>
-                      Mengelola isi di dalamnya: <code>INSERT</code>, <code>SELECT</code>, <code>UPDATE</code>, <code>DELETE</code>.
-                    </div>
-                  </div>
-                </div>
-
-                {/* Pilar 3 */}
-                <div className="bg-[#EAF4ED] border-3 border-black p-4 space-y-3 shadow-[3px_3px_0px_0px_#000] flex flex-col">
-                  <span className="font-mono text-xs font-black bg-[#092328] text-[#8BBB92] px-2 py-0.5 border border-black inline-block self-start">
-                    03 // CRUD ENGINE
-                  </span>
-                  <h3 className="font-black text-sm uppercase text-black">4 Operasi Harian (CRUD)</h3>
-                  <p className="text-xs font-bold text-gray-700 leading-normal">
-                    90% aktivitas aplikasi web berputar pada 4 kata kerja universal ini.
-                  </p>
-                  <div className="bg-black text-white font-mono text-[11px] p-2.5 border-2 border-black space-y-1 mt-auto overflow-x-auto">
-                    <div><span className="text-pink-400">INSERT INTO</span> siswa ... <span className="text-gray-400">-- Create</span></div>
-                    <div><span className="text-pink-400">SELECT</span> * <span className="text-pink-400">FROM</span> siswa; <span className="text-gray-400">-- Read</span></div>
-                    <div><span className="text-yellow-400">UPDATE</span> siswa <span className="text-pink-400">SET</span> ... <span className="text-gray-400">-- Update</span></div>
-                    <div><span className="text-red-400">DELETE FROM</span> siswa ... <span className="text-gray-400">-- Delete</span></div>
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            {/* BLOK 4: KOMPARASI HEAD-TO-HEAD & ATURAN EMAS */}
-            <section className="bg-white border-4 border-black shadow-[8px_8px_0px_0px_#000] p-6 space-y-6">
-              <h2 className="text-xl sm:text-2xl font-black uppercase tracking-tight text-black border-b-4 border-black pb-3">
-                Komparasi Praktis: DDL vs DML
-              </h2>
-
-              <div className="overflow-x-auto border-3 border-black">
-                <table className="w-full text-left border-collapse text-xs sm:text-sm font-bold">
-                  <thead>
-                    <tr className="bg-[#092328] text-white border-b-3 border-black">
-                      <th className="p-3 border-r-2 border-black">Parameter</th>
-                      <th className="p-3 border-r-2 border-black bg-[#12544F]">DDL (Data Definition)</th>
-                      <th className="p-3 bg-[#2A835F]">DML (Data Manipulation)</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y-2 divide-black bg-[#FAF8F5]">
-                    <tr>
-                      <td className="p-3 font-black bg-white border-r-2 border-black">Objek Kerja</td>
-                      <td className="p-3 border-r-2 border-black">Wadah / Lemari (Database & Tabel)</td>
-                      <td className="p-3">Isi / Konten (Baris Data / Record)</td>
-                    </tr>
-                    <tr>
-                      <td className="p-3 font-black bg-white border-r-2 border-black">Perintah Utama</td>
-                      <td className="p-3 border-r-2 border-black font-mono text-xs">CREATE, ALTER, DROP, TRUNCATE</td>
-                      <td className="p-3 font-mono text-xs">INSERT, SELECT, UPDATE, DELETE</td>
-                    </tr>
-                    <tr>
-                      <td className="p-3 font-black bg-white border-r-2 border-black">Frekuensi Jalan</td>
-                      <td className="p-3 border-r-2 border-black">Sangat jarang (saat awal bikin aplikasi)</td>
-                      <td className="p-3">Ribuan kali per detik oleh pengguna web</td>
-                    </tr>
-                    <tr>
-                      <td className="p-3 font-black bg-white border-r-2 border-black">Resiko Kesalahan</td>
-                      <td className="p-3 border-r-2 border-black text-red-600">Fatal: Seluruh tabel musnah permanen</td>
-                      <td className="p-3 text-amber-700">Sedang: Data salah edit / salah isi baris</td>
-                    </tr>
-                  </tbody>
-                </table>
+              <div className="absolute -top-10 -right-10 z-0">
+                <span className="material-symbols-outlined text-[150px] md:text-[250px] text-white opacity-20 transform rotate-12">terminal</span>
               </div>
 
-              {/* Rambu Keselamatan Penulisan Query */}
-              <div className="bg-[#092328] text-white p-4 sm:p-5 border-4 border-black space-y-3 shadow-[4px_4px_0px_0px_#000]">
-                <h3 className="text-sm sm:text-base font-black uppercase text-[#8BBB92] flex items-center gap-2">
-                  <span className="material-symbols-outlined text-xl">gavel</span>
-                  3 Aturan Mutlak Menulis Query (Anti-Gagal)
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs font-bold">
-                  <div className="bg-black/60 p-3 border-2 border-white/20">
-                    <span className="text-[#8BBB92] block mb-1 font-mono">1. TITIK KOMA (;)</span>
-                    Wajib di akhir kalimat. MySQL menolak mengeksekusi instruksi sebelum menemukan tanda titik koma.
-                  </div>
-                  <div className="bg-black/60 p-3 border-2 border-white/20">
-                    <span className="text-[#8BBB92] block mb-1 font-mono">2. TANDA KUTIP (' ')</span>
-                    Teks dan Tanggal wajib diapit kutip tunggal (<code>'Andi'</code>, <code>'2026-09-13'</code>). Angka murni tidak boleh pakai kutip.
-                  </div>
-                  <div className="bg-red-950/80 p-3 border-2 border-red-500 text-red-200">
-                    <span className="text-red-400 block mb-1 font-mono">3. JANGAN LUPA WHERE!</span>
-                    Menjalankan <code>UPDATE</code> atau <code>DELETE</code> tanpa <code>WHERE</code> akan menghapus atau mengubah <strong>SELURUH ISI TABEL</strong> seketika!
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            {/* BLOK 5: RANGKUMAN 3 BENTO & EVALUASI */}
-            <section className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-[#12544F] text-white border-4 border-black p-5 shadow-[4px_4px_0px_0px_#000]">
-                  <span className="bg-[#8BBB92] text-black text-xs font-black uppercase px-2 py-0.5 border border-black inline-block mb-2">
-                    INGAT 01
-                  </span>
-                  <h4 className="font-black text-sm uppercase mb-1">Query Adalah Bahasa Resmi</h4>
-                  <p className="text-xs font-bold text-gray-200 leading-relaxed">
-                    PHP, JavaScript, dan Python tidak bisa klik GUI. Semuanya mengirim teks query ke MySQL.
-                  </p>
-                </div>
-
-                <div className="bg-[#2A835F] text-white border-4 border-black p-5 shadow-[4px_4px_0px_0px_#000]">
-                  <span className="bg-[#092328] text-white text-xs font-black uppercase px-2 py-0.5 border border-black inline-block mb-2">
-                    INGAT 02
-                  </span>
-                  <h4 className="font-black text-sm uppercase mb-1">Wajib USE Database</h4>
-                  <p className="text-xs font-bold text-gray-200 leading-relaxed">
-                    Sebelum membuat atau membaca tabel di terminal, pastikan kamu sudah mengetik <code>USE nama_database;</code>.
-                  </p>
-                </div>
-
-                <div className="bg-white text-black border-4 border-black p-5 shadow-[4px_4px_0px_0px_#000]">
-                  <span className="bg-[#8BBB92] text-black text-xs font-black uppercase px-2 py-0.5 border border-black inline-block mb-2">
-                    INGAT 03
-                  </span>
-                  <h4 className="font-black text-sm uppercase mb-1">DDL vs DML Terpisah</h4>
-                  <p className="text-xs font-bold text-gray-700 leading-relaxed">
-                    DDL mengurus bentuk lemari (arsitektur), DML mengurus baju di dalamnya (data transaksi CRUD harian).
-                  </p>
-                </div>
-              </div>
-
-              {/* Callout Kuis Evaluasi */}
-              <div className="bg-[#092328] border-4 border-black shadow-[6px_6px_0px_0px_#000] p-6 text-white text-center space-y-2">
-                <h3 className="text-lg sm:text-xl font-black uppercase tracking-tight text-[#8BBB92]">
-                  Uji Pemahaman Perintah Query SQL
-                </h3>
-                <p className="text-xs sm:text-sm text-gray-200 font-bold max-w-lg mx-auto">
-                  Pastikan kamu sudah mengerti perbedaan DDL, DML, navigasi MySQL, dan cara penulisan CRUD sebelum lanjut ke perancangan skema relasi!
+              <div className="relative z-10 pt-8">
+                <h1 className="text-4xl sm:text-5xl md:text-7xl font-black text-mint-soft tracking-tighter uppercase mb-4 md:mb-6 drop-shadow-[4px_4px_0px_rgba(255,255,255,0.2)]">
+                  Mengenal Query SQL: <br className="hidden md:block" /> Perintah Database
+                </h1>
+                <p className="text-base md:text-xl font-bold text-black bg-white inline-block px-4 py-2 md:px-6 md:py-3 border-4 border-black mb-8 md:mb-10 shadow-neo-md uppercase tracking-tight">
+                  Cara Memerintah Server Database Menggunakan Teks Instruksi.
                 </p>
+                <div>
+                  <button
+                    onClick={() => setIsReady(!isReady)}
+                    className="bg-jade-vibrant text-white font-black text-xl md:text-3xl px-8 py-5 md:px-12 md:py-6 border-4 border-white shadow-neo-lg hover:-translate-y-2 hover:-translate-x-2 hover:shadow-[8px_8px_0px_0px_#FFF] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none transition-all uppercase tracking-widest flex items-center gap-4 mx-auto"
+                  >
+                    {isReady ? (
+                      <><span>Terminal Siap!</span> <span className="material-symbols-outlined font-black text-4xl animate-bounce">check_circle</span></>
+                    ) : (
+                      <><span>Buka Terminal Query</span> <span className="material-symbols-outlined font-black text-4xl">code</span></>
+                    )}
+                  </button>
+                </div>
               </div>
-
-              <QuizTrigger pageSlug="query-sql" />
-
-              {/* Tactile Footer Navigation */}
-              <div className="flex flex-col sm:flex-row justify-between items-center pt-4 gap-4">
-                <Link
-                  href="/course/pemrograman-web-dasar/anatomi-tipe-data-tabel"
-                  className="bg-white text-black font-black uppercase text-sm sm:text-base px-5 py-3 border-4 border-black shadow-[4px_4px_0px_0px_#000] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_#000] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none transition-all flex items-center gap-2 w-full sm:w-auto justify-center"
-                >
-                  <span className="material-symbols-outlined font-black">arrow_back</span>
-                  Kembali: Anatomi Tabel
-                </Link>
-                <Link
-                  href="/course/pemrograman-web-dasar/sql-dasar-ddl-dml"
-                  className="bg-[#2A835F] text-white font-black uppercase text-sm sm:text-base px-5 py-3 border-4 border-black shadow-[4px_4px_0px_0px_#000] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_#000] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none transition-all flex items-center gap-2 w-full sm:w-auto justify-center text-center"
-                >
-                  Lanjut: SQL Dasar DDL & DML
-                  <span className="material-symbols-outlined font-black">arrow_forward</span>
-                </Link>
-              </div>
-
             </section>
+
+            {/* Section 1: Apa itu Query? */}
+            <section className="bg-white border-4 border-black shadow-neo-xl p-6 md:p-12 rotate-1 hover:rotate-0 transition-transform">
+              <h2 className="text-2xl sm:text-3xl md:text-5xl font-black text-black uppercase mb-8 md:mb-10 border-b-4 border-black pb-4 flex items-center gap-3 md:gap-4 tracking-tighter">
+                <span className="bg-forest-teal text-white w-12 h-12 md:w-16 md:h-16 flex items-center justify-center border-4 border-black shadow-neo-sm flex-shrink-0 text-2xl md:text-4xl">01</span>
+                Apa Itu Query?
+              </h2>
+
+              <div className="flex flex-col lg:flex-row gap-8 items-stretch">
+                <div className="flex-1 space-y-6">
+                  <p className="text-lg md:text-xl font-bold text-forest-teal leading-relaxed">
+                    Di laptop atau HP, kita bisa membuka folder dengan cara <strong>klik mouse</strong>. Namun, server database di internet tidak memiliki layar monitor atau mouse.
+                  </p>
+                  <div className="bg-canvas border-4 border-black p-6 shadow-neo-md">
+                    <h3 className="text-xl font-black uppercase mb-2">Analogi Bon Pesanan:</h3>
+                    <p className="font-bold text-black text-lg">
+                      Database itu seperti koki restoran di dapur tertutup. <strong>Query adalah kertas bon pesanan</strong> tertulis: jika format pesananmu jelas, koki langsung menyiapkan menu yang tepat tanpa salah paham.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="lg:w-1/3 bg-black border-4 border-black shadow-neo-md p-6 text-white flex flex-col items-center justify-center -rotate-2 hover:rotate-0 transition-transform">
+                  <span className="material-symbols-outlined text-[80px] text-mint-soft mb-4">receipt_long</span>
+                  <p className="font-black uppercase text-center text-xl">Kertas Bon Instruksi</p>
+                </div>
+              </div>
+            </section>
+
+            {/* Section 2: Navigasi Pertama di MySQL */}
+            <section className="bg-mint-soft border-4 border-black shadow-neo-xl p-6 md:p-12 -rotate-1 hover:rotate-0 transition-transform">
+              <h2 className="text-2xl sm:text-3xl md:text-5xl font-black text-black uppercase mb-8 md:mb-10 border-b-4 border-black pb-4 flex items-center gap-3 md:gap-4 tracking-tighter">
+                <span className="bg-black text-white w-12 h-12 md:w-16 md:h-16 flex items-center justify-center border-4 border-black shadow-neo-sm flex-shrink-0 text-2xl md:text-4xl">02</span>
+                Perintah Pertama di MySQL
+              </h2>
+
+              <p className="text-lg font-bold text-black mb-8 bg-white p-4 border-4 border-black shadow-neo-sm">
+                Sebelum membuat tabel data, kamu wajib memeriksa dan memilih database aktif menggunakan 3 perintah navigasi ini:
+              </p>
+
+              <div className="space-y-6">
+                {/* Navigasi 1 */}
+                <div className="bg-white border-4 border-black p-6 shadow-neo-md flex flex-col md:flex-row items-center gap-6 hover:translate-x-2 transition-transform">
+                  <div className="w-full md:w-1/2 bg-black text-mint-soft font-mono p-4 border-2 border-black text-base md:text-lg">
+                    <span className="text-pink-400">SHOW</span> DATABASES;
+                  </div>
+                  <div className="w-full md:w-1/2">
+                    <h3 className="text-xl md:text-2xl font-black uppercase text-black mb-1">1. Intip Semua Database</h3>
+                    <p className="font-bold text-gray-700">Melihat daftar seluruh lemari database yang ada di server saat ini.</p>
+                  </div>
+                </div>
+
+                {/* Navigasi 2 */}
+                <div className="bg-white border-4 border-black p-6 shadow-neo-md flex flex-col md:flex-row items-center gap-6 hover:translate-x-2 transition-transform">
+                  <div className="w-full md:w-1/2 bg-black text-mint-soft font-mono p-4 border-2 border-black text-base md:text-lg">
+                    <span className="text-yellow-400">USE</span> db_sekolah;
+                  </div>
+                  <div className="w-full md:w-1/2">
+                    <h3 className="text-xl md:text-2xl font-black uppercase text-black mb-1">2. Masuk ke Database</h3>
+                    <p className="font-bold text-gray-700">
+                      <strong>Langkah Wajib!</strong> Memilih database aktif sebelum membuat atau mengedit tabel di dalamnya.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Navigasi 3 */}
+                <div className="bg-white border-4 border-black p-6 shadow-neo-md flex flex-col md:flex-row items-center gap-6 hover:translate-x-2 transition-transform">
+                  <div className="w-full md:w-1/2 bg-black text-mint-soft font-mono p-4 border-2 border-black text-base md:text-lg">
+                    <span className="text-pink-400">SHOW</span> TABLES;
+                  </div>
+                  <div className="w-full md:w-1/2">
+                    <h3 className="text-xl md:text-2xl font-black uppercase text-black mb-1">3. Intip Daftar Tabel</h3>
+                    <p className="font-bold text-gray-700">Melihat tabel apa saja yang tersimpan di dalam database yang sedang aktif.</p>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* Section 3: Taksonomi DDL vs DML */}
+            <section className="bg-white border-4 border-black shadow-neo-xl p-6 md:p-12">
+              <h2 className="text-2xl sm:text-3xl md:text-5xl font-black text-black uppercase mb-8 md:mb-10 border-b-4 border-black pb-4 flex items-center gap-3 md:gap-4 tracking-tighter">
+                <span className="bg-jade-vibrant text-white w-12 h-12 md:w-16 md:h-16 flex items-center justify-center border-4 border-black shadow-neo-sm flex-shrink-0 text-2xl md:text-4xl">03</span>
+                DDL vs DML (Wadah vs Isi)
+              </h2>
+
+              <p className="text-lg md:text-xl font-bold text-forest-teal mb-8">
+                Perintah SQL dibagi menjadi dua keluarga besar berdasarkan objek yang dikelolanya:
+              </p>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {/* DDL */}
+                <div className="bg-canvas border-4 border-black p-8 shadow-neo-md hover:-translate-y-2 transition-transform">
+                  <div className="flex items-center gap-4 mb-4">
+                    <span className="material-symbols-outlined text-5xl text-forest-teal bg-white border-4 border-black p-2 shadow-neo-sm">build</span>
+                    <div>
+                      <span className="bg-[#092328] text-white text-xs font-black uppercase px-2 py-0.5 border border-black inline-block">Definition</span>
+                      <h3 className="text-2xl md:text-3xl font-black uppercase text-black">DDL</h3>
+                    </div>
+                  </div>
+                  <p className="font-bold text-black text-lg bg-white p-4 border-2 border-black mb-4">
+                    Mengatur <strong>Bentuk Wadah / Lemari</strong> (Database & Tabel).
+                  </p>
+                  <div className="bg-black text-[#8BBB92] font-mono p-3 text-sm border-2 border-black">
+                    CREATE TABLE, ALTER, DROP
+                  </div>
+                </div>
+
+                {/* DML */}
+                <div className="bg-mint-soft border-4 border-black p-8 shadow-neo-md hover:-translate-y-2 transition-transform">
+                  <div className="flex items-center gap-4 mb-4">
+                    <span className="material-symbols-outlined text-5xl text-black bg-white border-4 border-black p-2 shadow-neo-sm">edit_document</span>
+                    <div>
+                      <span className="bg-[#2A835F] text-white text-xs font-black uppercase px-2 py-0.5 border border-black inline-block">Manipulation</span>
+                      <h3 className="text-2xl md:text-3xl font-black uppercase text-black">DML</h3>
+                    </div>
+                  </div>
+                  <p className="font-bold text-black text-lg bg-white p-4 border-2 border-black mb-4">
+                    Mengatur <strong>Isi / Pakaian</strong> di dalam wadah (Data baris transaksi).
+                  </p>
+                  <div className="bg-black text-[#8BBB92] font-mono p-3 text-sm border-2 border-black">
+                    INSERT, SELECT, UPDATE, DELETE
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* Section 4: 4 Operasi CRUD */}
+            <section className="bg-canvas border-4 border-black shadow-neo-xl p-6 md:p-12 rotate-1 hover:rotate-0 transition-transform">
+              <h2 className="text-2xl sm:text-3xl md:text-5xl font-black text-black uppercase mb-8 md:mb-10 border-b-4 border-black pb-4 flex items-center gap-3 md:gap-4 tracking-tighter">
+                <span className="bg-pine-deep text-white w-12 h-12 md:w-16 md:h-16 flex items-center justify-center border-4 border-black shadow-neo-sm flex-shrink-0 text-2xl md:text-4xl">04</span>
+                4 Pilar Utama Operasi CRUD
+              </h2>
+
+              <p className="text-lg md:text-xl font-bold text-forest-teal mb-8">
+                90% aktivitas aplikasi web di dunia berputar pada 4 operasi manipulasi data ini:
+              </p>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+                {/* CREATE */}
+                <div className="bg-white border-4 border-black p-6 shadow-neo-sm hover:translate-x-2 transition-transform">
+                  <div className="flex justify-between items-center mb-3">
+                    <h3 className="text-xl md:text-2xl font-black uppercase text-black">Create (C)</h3>
+                    <span className="bg-[#2A835F] text-white px-2.5 py-0.5 border-2 border-black font-black text-xs uppercase">Tambah</span>
+                  </div>
+                  <div className="bg-black text-[#8BBB92] font-mono text-sm p-3 border-2 border-black mb-2">
+                    <span className="text-pink-400">INSERT INTO</span> siswa (nama) <br />
+                    <span className="text-pink-400">VALUES</span> (<span className="text-white">'Budi'</span>);
+                  </div>
+                </div>
+
+                {/* READ */}
+                <div className="bg-white border-4 border-black p-6 shadow-neo-sm hover:translate-x-2 transition-transform">
+                  <div className="flex justify-between items-center mb-3">
+                    <h3 className="text-xl md:text-2xl font-black uppercase text-black">Read (R)</h3>
+                    <span className="bg-[#FFD700] text-black px-2.5 py-0.5 border-2 border-black font-black text-xs uppercase">Baca</span>
+                  </div>
+                  <div className="bg-black text-[#8BBB92] font-mono text-sm p-3 border-2 border-black mb-2">
+                    <span className="text-pink-400">SELECT</span> * <span className="text-pink-400">FROM</span> siswa;
+                  </div>
+                </div>
+
+                {/* UPDATE */}
+                <div className="bg-white border-4 border-black p-6 shadow-neo-sm hover:translate-x-2 transition-transform">
+                  <div className="flex justify-between items-center mb-3">
+                    <h3 className="text-xl md:text-2xl font-black uppercase text-black">Update (U)</h3>
+                    <span className="bg-blue-400 text-white px-2.5 py-0.5 border-2 border-black font-black text-xs uppercase">Edit</span>
+                  </div>
+                  <div className="bg-black text-[#8BBB92] font-mono text-sm p-3 border-2 border-black mb-2">
+                    <span className="text-pink-400">UPDATE</span> siswa <br />
+                    <span className="text-pink-400">SET</span> nama=<span className="text-white">'Andi'</span> <span className="text-yellow-400">WHERE</span> id=1;
+                  </div>
+                </div>
+
+                {/* DELETE */}
+                <div className="bg-white border-4 border-black p-6 shadow-neo-sm hover:translate-x-2 transition-transform">
+                  <div className="flex justify-between items-center mb-3">
+                    <h3 className="text-xl md:text-2xl font-black uppercase text-black">Delete (D)</h3>
+                    <span className="bg-[#FF0000] text-white px-2.5 py-0.5 border-2 border-black font-black text-xs uppercase">Hapus</span>
+                  </div>
+                  <div className="bg-black text-[#8BBB92] font-mono text-sm p-3 border-2 border-black mb-2">
+                    <span className="text-pink-400">DELETE FROM</span> siswa <br />
+                    <span className="text-yellow-400">WHERE</span> id=1;
+                  </div>
+                </div>
+              </div>
+
+              {/* Warning WHERE */}
+              <div className="bg-[#FF0000] border-4 border-black p-6 md:p-8 flex flex-col md:flex-row gap-6 items-center shadow-neo-lg transform -rotate-1 hover:rotate-0 transition-transform">
+                <span className="material-symbols-outlined text-white text-[80px] font-black drop-shadow-[4px_4px_0px_rgba(0,0,0,1)] animate-bounce">warning</span>
+                <div className="text-white">
+                  <h3 className="text-2xl md:text-4xl font-black uppercase mb-2 text-white drop-shadow-[2px_2px_0px_rgba(0,0,0,1)] tracking-tight">
+                    Awas! Bahaya Maut Tanpa "WHERE"
+                  </h3>
+                  <div className="bg-white text-black border-4 border-black p-4 mt-2 text-base md:text-lg font-bold shadow-neo-sm">
+                    Jangan pernah mengeksekusi perintah <code>UPDATE</code> atau <code>DELETE</code> tanpa menyertakan klausa <strong>WHERE</strong>. Jika lupa, seluruh ribuan data di dalam tabelmu akan terhapus atau tertimpa seketika!
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <QuizTrigger pageSlug="query-sql" />
+
+            {/* Footer Nav */}
+            <div className="flex flex-col sm:flex-row justify-between items-center pt-8 gap-4">
+              <a
+                href="/course/pemrograman-web-dasar/anatomi-tipe-data-tabel"
+                className="bg-canvas text-black font-black uppercase text-sm md:text-lg px-4 py-3 md:px-6 md:py-4 border-4 border-black shadow-neo-md hover:-translate-y-1 hover:-translate-x-1 hover:shadow-neo-lg active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all flex items-center gap-2 w-full sm:w-auto justify-center"
+              >
+                <span className="material-symbols-outlined font-black">arrow_back</span> Anatomi Tabel
+              </a>
+              <a
+                href="/course/pemrograman-web-dasar/sql-dasar-ddl-dml"
+                className="bg-white text-black font-black uppercase text-sm md:text-lg px-4 py-3 md:px-6 md:py-4 border-4 border-black shadow-neo-md hover:-translate-y-1 hover:-translate-x-1 hover:shadow-neo-lg active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all flex items-center gap-2 w-full sm:w-auto justify-center text-center"
+              >
+                Lanjut ke: SQL Dasar <span className="material-symbols-outlined font-black">arrow_forward</span>
+              </a>
+            </div>
 
           </div>
         </main>
