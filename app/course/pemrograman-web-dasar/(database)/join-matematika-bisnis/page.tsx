@@ -17,7 +17,7 @@ export default function JoinAgregasiPage() {
       />
 
       <div className="flex pt-[88px] min-h-screen">
-        <Sidebar />
+        <Sidebar courseSlug="pemrograman-web-dasar" />
 
         <main className="md:ml-[280px] w-full p-4 md:p-10 bg-canvas relative" style={{ backgroundImage: 'radial-gradient(var(--color-outline) 1px, transparent 1px)', backgroundSize: '24px 24px' }}>
           <div className="max-w-5xl mx-auto space-y-12 md:space-y-16">
@@ -25,7 +25,7 @@ export default function JoinAgregasiPage() {
             {/* Header & Hero Section */}
             <section className="bg-black border-4 border-black p-6 md:p-12 shadow-neo-xl text-center relative overflow-hidden text-white">
               <div className="absolute top-0 left-0 bg-white text-black font-black px-4 py-1 border-b-4 border-r-4 border-black shadow-neo-sm z-20 uppercase">
-                Database 08
+                Database 09
               </div>
               <div className="absolute -top-10 -right-10 z-0">
                 <span className="material-symbols-outlined text-[150px] md:text-[250px] text-white opacity-20 transform rotate-12">extension</span>
@@ -227,7 +227,7 @@ export default function JoinAgregasiPage() {
               <a href='/course/pemrograman-web-dasar/advanced-query-sql' className="bg-canvas text-black font-black uppercase text-sm md:text-lg px-4 py-3 md:px-6 md:py-4 border-4 border-black shadow-neo-md hover:-translate-y-1 hover:-translate-x-1 hover:shadow-neo-lg active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all flex items-center gap-2 w-full sm:w-auto justify-center">
                 <span className="material-symbols-outlined font-black">arrow_back</span> Advanced Query
               </a>
-              <a href='/course/pemrograman-web-dasar/project-sistem-laundry' className="bg-white text-black font-black uppercase text-sm md:text-lg px-4 py-3 md:px-6 md:py-4 border-4 border-black shadow-neo-md hover:-translate-y-1 hover:-translate-x-1 hover:shadow-neo-lg active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all flex items-center gap-2 w-full sm:w-auto justify-center text-center">
+              <a href='/course/pemrograman-web-dasar/project-laundry-db' className="bg-white text-black font-black uppercase text-sm md:text-lg px-4 py-3 md:px-6 md:py-4 border-4 border-black shadow-neo-md hover:-translate-y-1 hover:-translate-x-1 hover:shadow-neo-lg active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all flex items-center gap-2 w-full sm:w-auto justify-center text-center">
                 Mulai Proyek Akhir <span className="material-symbols-outlined font-black">arrow_forward</span>
               </a>
             </div>

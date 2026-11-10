@@ -18,6 +18,11 @@ export default async function DynamicMaterialPage({
     redirect(`/course/${courseSlug.toLowerCase()}/${pageSlug.toLowerCase()}`);
   }
 
+  // Redirect legacy /course/pemrograman-web/* to canonical /course/pemrograman-web-dasar/*
+  if (courseSlug.toLowerCase() === 'pemrograman-web') {
+    redirect(`/course/pemrograman-web-dasar/${pageSlug.toLowerCase()}`);
+  }
+
   const courses = await db.orm.public.Course.where({ slug: courseSlug, isActive: true }).all();
   const course = courses[0];
   if (!course) {

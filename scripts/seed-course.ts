@@ -6,13 +6,24 @@ async function main() {
   console.log('Starting seed...');
 
   // 1. Create Default Course
-  let course = await db.orm.public.Course.where({ slug: 'pemrograman-web' }).first();
+  let course = await db.orm.public.Course.where({ slug: 'pemrograman-web-dasar' }).first();
+  if (!course) {
+    course = await db.orm.public.Course.where({ slug: 'pemrograman-web' }).first();
+    if (course) {
+      await db.orm.public.Course.where({ id: course.id }).update({
+        slug: 'pemrograman-web-dasar',
+        name: 'Pemrograman Web Dasar',
+      });
+      course.slug = 'pemrograman-web-dasar';
+      course.name = 'Pemrograman Web Dasar';
+    }
+  }
   
   if (!course) {
     course = await db.orm.public.Course.create({
       id: randomUUID(),
-      name: 'Pemrograman Web',
-      slug: 'pemrograman-web',
+      name: 'Pemrograman Web Dasar',
+      slug: 'pemrograman-web-dasar',
       joinCode: 'WEB101',
       description: 'Materi dasar-dasar pemrograman web termasuk HTML, CSS, JS, dan PHP.',
       isActive: true,
