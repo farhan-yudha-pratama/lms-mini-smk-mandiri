@@ -1,0 +1,980 @@
+[
+  {
+    "id": "dropConstraint.materialCategory.materialCategory_orderIndex_key",
+    "label": "Drop constraint \"materialCategory_orderIndex_key\" on \"materialCategory\"",
+    "operationClass": "destructive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "materialCategory_orderIndex_key",
+        "table": "materialCategory"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"materialCategory_orderIndex_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "materialCategory_orderIndex_key",
+          "public",
+          "\"public\".\"materialCategory\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "drop constraint \"materialCategory_orderIndex_key\"",
+        "sql": "ALTER TABLE \"public\".\"materialCategory\" DROP CONSTRAINT \"materialCategory_orderIndex_key\""
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"materialCategory_orderIndex_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "materialCategory_orderIndex_key",
+          "public",
+          "\"public\".\"materialCategory\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.permission",
+    "label": "Create table \"permission\"",
+    "summary": "Creates table \"permission\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "permission"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"permission\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"permission\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"permission\"",
+        "sql": "CREATE TABLE \"public\".\"permission\" (\n  \"category\" text NOT NULL,\n  \"code\" text NOT NULL,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"description\" text,\n  \"id\" text NOT NULL,\n  \"name\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"permission\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"permission\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.permissionPackage",
+    "label": "Create table \"permissionPackage\"",
+    "summary": "Creates table \"permissionPackage\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "permissionPackage"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"permissionPackage\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"permissionPackage\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"permissionPackage\"",
+        "sql": "CREATE TABLE \"public\".\"permissionPackage\" (\n  \"badge\" text DEFAULT 'Custom' NOT NULL,\n  \"category\" text DEFAULT 'Umum' NOT NULL,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"description\" text,\n  \"id\" text NOT NULL,\n  \"isSystem\" bool DEFAULT false NOT NULL,\n  \"name\" text NOT NULL,\n  \"permissions\" text NOT NULL,\n  \"updatedAt\" timestamptz DEFAULT (now()) NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"permissionPackage\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"permissionPackage\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.studentProject",
+    "label": "Create table \"studentProject\"",
+    "summary": "Creates table \"studentProject\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "studentProject"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"studentProject\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"studentProject\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"studentProject\"",
+        "sql": "CREATE TABLE \"public\".\"studentProject\" (\n  \"activeFile\" text,\n  \"courseId\" text,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"description\" text,\n  \"files\" text NOT NULL,\n  \"id\" text NOT NULL,\n  \"notes\" text,\n  \"pageId\" text,\n  \"studentId\" text NOT NULL,\n  \"title\" text NOT NULL,\n  \"type\" text DEFAULT 'WEB' NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"id\"),\n  CONSTRAINT \"studentProject_type_check_6199f5f8\" CHECK (\"type\" IN ('WEB', 'SQL', 'PHP', 'FULLSTACK'))\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"studentProject\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"studentProject\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.userPermission",
+    "label": "Create table \"userPermission\"",
+    "summary": "Creates table \"userPermission\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "userPermission"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"userPermission\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"userPermission\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"userPermission\"",
+        "sql": "CREATE TABLE \"public\".\"userPermission\" (\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"id\" text NOT NULL,\n  \"permissionId\" text NOT NULL,\n  \"userId\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"userPermission\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"userPermission\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.quizVariant.isActive",
+    "label": "Add column \"isActive\" to \"quizVariant\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "isActive",
+        "table": "quizVariant"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"isActive\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "quizVariant",
+          "isActive"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"isActive\"",
+        "sql": "ALTER TABLE \"public\".\"quizVariant\" ADD COLUMN \"isActive\" bool DEFAULT true NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"isActive\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "quizVariant",
+          "isActive"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.studentAnswer.feedbackAt",
+    "label": "Add column \"feedbackAt\" to \"studentAnswer\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "feedbackAt",
+        "table": "studentAnswer"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"feedbackAt\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "studentAnswer",
+          "feedbackAt"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"feedbackAt\"",
+        "sql": "ALTER TABLE \"public\".\"studentAnswer\" ADD COLUMN \"feedbackAt\" timestamptz"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"feedbackAt\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "studentAnswer",
+          "feedbackAt"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.studentAnswer.feedbackAuthorId",
+    "label": "Add column \"feedbackAuthorId\" to \"studentAnswer\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "feedbackAuthorId",
+        "table": "studentAnswer"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"feedbackAuthorId\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "studentAnswer",
+          "feedbackAuthorId"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"feedbackAuthorId\"",
+        "sql": "ALTER TABLE \"public\".\"studentAnswer\" ADD COLUMN \"feedbackAuthorId\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"feedbackAuthorId\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "studentAnswer",
+          "feedbackAuthorId"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.materialCategory.materialCategory_courseId_orderIndex_key",
+    "label": "Add unique constraint on \"materialCategory\" (courseId, orderIndex)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "materialCategory_courseId_orderIndex_key",
+        "table": "materialCategory"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"materialCategory_courseId_orderIndex_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "materialCategory_courseId_orderIndex_key",
+          "public",
+          "\"public\".\"materialCategory\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"materialCategory_courseId_orderIndex_key\"",
+        "sql": "ALTER TABLE \"public\".\"materialCategory\" ADD CONSTRAINT \"materialCategory_courseId_orderIndex_key\" UNIQUE (\"courseId\", \"orderIndex\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"materialCategory_courseId_orderIndex_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "materialCategory_courseId_orderIndex_key",
+          "public",
+          "\"public\".\"materialCategory\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.permission.permission_code_key",
+    "label": "Add unique constraint on \"permission\" (code)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "permission_code_key",
+        "table": "permission"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"permission_code_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "permission_code_key",
+          "public",
+          "\"public\".\"permission\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"permission_code_key\"",
+        "sql": "ALTER TABLE \"public\".\"permission\" ADD CONSTRAINT \"permission_code_key\" UNIQUE (\"code\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"permission_code_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "permission_code_key",
+          "public",
+          "\"public\".\"permission\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.permissionPackage.permissionPackage_name_key",
+    "label": "Add unique constraint on \"permissionPackage\" (name)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "permissionPackage_name_key",
+        "table": "permissionPackage"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"permissionPackage_name_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "permissionPackage_name_key",
+          "public",
+          "\"public\".\"permissionPackage\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"permissionPackage_name_key\"",
+        "sql": "ALTER TABLE \"public\".\"permissionPackage\" ADD CONSTRAINT \"permissionPackage_name_key\" UNIQUE (\"name\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"permissionPackage_name_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "permissionPackage_name_key",
+          "public",
+          "\"public\".\"permissionPackage\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.userPermission.userPermission_userId_permissionId_key",
+    "label": "Add unique constraint on \"userPermission\" (userId, permissionId)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "userPermission_userId_permissionId_key",
+        "table": "userPermission"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"userPermission_userId_permissionId_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "userPermission_userId_permissionId_key",
+          "public",
+          "\"public\".\"userPermission\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"userPermission_userId_permissionId_key\"",
+        "sql": "ALTER TABLE \"public\".\"userPermission\" ADD CONSTRAINT \"userPermission_userId_permissionId_key\" UNIQUE (\"userId\", \"permissionId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"userPermission_userId_permissionId_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "userPermission_userId_permissionId_key",
+          "public",
+          "\"public\".\"userPermission\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.studentAnswer.studentAnswer_feedbackAuthorId_idx_ab432da2",
+    "label": "Create index \"studentAnswer_feedbackAuthorId_idx_ab432da2\" on \"studentAnswer\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "studentAnswer_feedbackAuthorId_idx_ab432da2",
+        "table": "studentAnswer"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"studentAnswer_feedbackAuthorId_idx_ab432da2\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"studentAnswer_feedbackAuthorId_idx_ab432da2\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"studentAnswer_feedbackAuthorId_idx_ab432da2\"",
+        "sql": "CREATE INDEX \"studentAnswer_feedbackAuthorId_idx_ab432da2\" ON \"public\".\"studentAnswer\" (\"feedbackAuthorId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"studentAnswer_feedbackAuthorId_idx_ab432da2\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"studentAnswer_feedbackAuthorId_idx_ab432da2\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.studentProject.studentProject_courseId_idx_12f72d2a",
+    "label": "Create index \"studentProject_courseId_idx_12f72d2a\" on \"studentProject\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "studentProject_courseId_idx_12f72d2a",
+        "table": "studentProject"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"studentProject_courseId_idx_12f72d2a\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"studentProject_courseId_idx_12f72d2a\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"studentProject_courseId_idx_12f72d2a\"",
+        "sql": "CREATE INDEX \"studentProject_courseId_idx_12f72d2a\" ON \"public\".\"studentProject\" (\"courseId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"studentProject_courseId_idx_12f72d2a\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"studentProject_courseId_idx_12f72d2a\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.studentProject.studentProject_pageId_idx_8caaba4f",
+    "label": "Create index \"studentProject_pageId_idx_8caaba4f\" on \"studentProject\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "studentProject_pageId_idx_8caaba4f",
+        "table": "studentProject"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"studentProject_pageId_idx_8caaba4f\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"studentProject_pageId_idx_8caaba4f\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"studentProject_pageId_idx_8caaba4f\"",
+        "sql": "CREATE INDEX \"studentProject_pageId_idx_8caaba4f\" ON \"public\".\"studentProject\" (\"pageId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"studentProject_pageId_idx_8caaba4f\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"studentProject_pageId_idx_8caaba4f\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.studentProject.studentProject_studentId_idx_bf255322",
+    "label": "Create index \"studentProject_studentId_idx_bf255322\" on \"studentProject\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "studentProject_studentId_idx_bf255322",
+        "table": "studentProject"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"studentProject_studentId_idx_bf255322\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"studentProject_studentId_idx_bf255322\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"studentProject_studentId_idx_bf255322\"",
+        "sql": "CREATE INDEX \"studentProject_studentId_idx_bf255322\" ON \"public\".\"studentProject\" (\"studentId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"studentProject_studentId_idx_bf255322\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"studentProject_studentId_idx_bf255322\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.userPermission.userPermission_permissionId_idx_f46fcdf5",
+    "label": "Create index \"userPermission_permissionId_idx_f46fcdf5\" on \"userPermission\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "userPermission_permissionId_idx_f46fcdf5",
+        "table": "userPermission"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"userPermission_permissionId_idx_f46fcdf5\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"userPermission_permissionId_idx_f46fcdf5\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"userPermission_permissionId_idx_f46fcdf5\"",
+        "sql": "CREATE INDEX \"userPermission_permissionId_idx_f46fcdf5\" ON \"public\".\"userPermission\" (\"permissionId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"userPermission_permissionId_idx_f46fcdf5\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"userPermission_permissionId_idx_f46fcdf5\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.userPermission.userPermission_userId_idx_a489d58a",
+    "label": "Create index \"userPermission_userId_idx_a489d58a\" on \"userPermission\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "userPermission_userId_idx_a489d58a",
+        "table": "userPermission"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"userPermission_userId_idx_a489d58a\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"userPermission_userId_idx_a489d58a\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"userPermission_userId_idx_a489d58a\"",
+        "sql": "CREATE INDEX \"userPermission_userId_idx_a489d58a\" ON \"public\".\"userPermission\" (\"userId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"userPermission_userId_idx_a489d58a\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"userPermission_userId_idx_a489d58a\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.studentAnswer.studentAnswer_feedbackAuthorId_fkey",
+    "label": "Add foreign key \"studentAnswer_feedbackAuthorId_fkey\" on \"studentAnswer\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "studentAnswer_feedbackAuthorId_fkey",
+        "table": "studentAnswer"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"studentAnswer_feedbackAuthorId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "studentAnswer_feedbackAuthorId_fkey",
+          "public",
+          "\"public\".\"studentAnswer\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"studentAnswer_feedbackAuthorId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"studentAnswer\"\nADD CONSTRAINT \"studentAnswer_feedbackAuthorId_fkey\"\nFOREIGN KEY (\"feedbackAuthorId\")\nREFERENCES \"public\".\"user\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"studentAnswer_feedbackAuthorId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "studentAnswer_feedbackAuthorId_fkey",
+          "public",
+          "\"public\".\"studentAnswer\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.studentProject.studentProject_studentId_fkey",
+    "label": "Add foreign key \"studentProject_studentId_fkey\" on \"studentProject\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "studentProject_studentId_fkey",
+        "table": "studentProject"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"studentProject_studentId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "studentProject_studentId_fkey",
+          "public",
+          "\"public\".\"studentProject\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"studentProject_studentId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"studentProject\"\nADD CONSTRAINT \"studentProject_studentId_fkey\"\nFOREIGN KEY (\"studentId\")\nREFERENCES \"public\".\"user\" (\"id\")\nON DELETE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"studentProject_studentId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "studentProject_studentId_fkey",
+          "public",
+          "\"public\".\"studentProject\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.studentProject.studentProject_courseId_fkey",
+    "label": "Add foreign key \"studentProject_courseId_fkey\" on \"studentProject\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "studentProject_courseId_fkey",
+        "table": "studentProject"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"studentProject_courseId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "studentProject_courseId_fkey",
+          "public",
+          "\"public\".\"studentProject\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"studentProject_courseId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"studentProject\"\nADD CONSTRAINT \"studentProject_courseId_fkey\"\nFOREIGN KEY (\"courseId\")\nREFERENCES \"public\".\"course\" (\"id\")\nON DELETE SET NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"studentProject_courseId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "studentProject_courseId_fkey",
+          "public",
+          "\"public\".\"studentProject\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.studentProject.studentProject_pageId_fkey",
+    "label": "Add foreign key \"studentProject_pageId_fkey\" on \"studentProject\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "studentProject_pageId_fkey",
+        "table": "studentProject"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"studentProject_pageId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "studentProject_pageId_fkey",
+          "public",
+          "\"public\".\"studentProject\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"studentProject_pageId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"studentProject\"\nADD CONSTRAINT \"studentProject_pageId_fkey\"\nFOREIGN KEY (\"pageId\")\nREFERENCES \"public\".\"page\" (\"id\")\nON DELETE SET NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"studentProject_pageId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "studentProject_pageId_fkey",
+          "public",
+          "\"public\".\"studentProject\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.userPermission.userPermission_userId_fkey",
+    "label": "Add foreign key \"userPermission_userId_fkey\" on \"userPermission\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "userPermission_userId_fkey",
+        "table": "userPermission"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"userPermission_userId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "userPermission_userId_fkey",
+          "public",
+          "\"public\".\"userPermission\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"userPermission_userId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"userPermission\"\nADD CONSTRAINT \"userPermission_userId_fkey\"\nFOREIGN KEY (\"userId\")\nREFERENCES \"public\".\"user\" (\"id\")\nON DELETE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"userPermission_userId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "userPermission_userId_fkey",
+          "public",
+          "\"public\".\"userPermission\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.userPermission.userPermission_permissionId_fkey",
+    "label": "Add foreign key \"userPermission_permissionId_fkey\" on \"userPermission\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "userPermission_permissionId_fkey",
+        "table": "userPermission"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"userPermission_permissionId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "userPermission_permissionId_fkey",
+          "public",
+          "\"public\".\"userPermission\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"userPermission_permissionId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"userPermission\"\nADD CONSTRAINT \"userPermission_permissionId_fkey\"\nFOREIGN KEY (\"permissionId\")\nREFERENCES \"public\".\"permission\" (\"id\")\nON DELETE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"userPermission_permissionId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "userPermission_permissionId_fkey",
+          "public",
+          "\"public\".\"userPermission\""
+        ]
+      }
+    ]
+  }
+]
