@@ -60,7 +60,7 @@ async function runUnitTests() {
   // UNIT TEST 3: PROMPT BUILDER - CODE CHALLENGE (HTML, SQL, PHP)
   // -------------------------------------------------------------
   console.log('\n--- 3. Unit Test Prompt Builder: Code Challenge (HTML/CSS/JS, SQL, PHP) ---');
-  
+
   // 3.1 HTML/CSS/JS (Web Frontend Layout)
   const htmlPrompt = buildQuizPrompt({
     summaryText: 'Membuat kartu profil responsif dengan CSS flexbox.',
@@ -148,7 +148,7 @@ async function runUnitTests() {
   // UNIT TEST 5: VALIDASI ZOD SCHEMA FORM & PENYIMPANAN
   // -------------------------------------------------------------
   console.log('\n--- 5. Unit Test Validasi Schema Zod (Boundaries & Errors) ---');
-  
+
   // 5.1 Difficulty total != 100
   const badDiff = generateQuizFormSchema.safeParse({
     questionType: 'PILIHAN_GANDA',

@@ -11,6 +11,7 @@ export async function getUserSession() {
     role: session.role as string,
     name: (session.name as string) || session.email.split('@')[0],
     classId: session.classId as string | null,
+    permissions: (session.permissions as string[]) || [],
   };
 }
 

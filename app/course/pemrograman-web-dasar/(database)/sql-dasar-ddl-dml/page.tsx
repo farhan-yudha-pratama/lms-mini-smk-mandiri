@@ -17,7 +17,7 @@ export default function SqlDasarPage() {
       />
 
       <div className="flex pt-[88px] min-h-screen">
-        <Sidebar />
+        <Sidebar courseSlug="pemrograman-web-dasar" />
 
         <main className="md:ml-[280px] w-full p-4 md:p-10 bg-canvas relative" style={{ backgroundImage: 'radial-gradient(var(--color-outline) 1px, transparent 1px)', backgroundSize: '24px 24px' }}>
           <div className="max-w-5xl mx-auto space-y-12 md:space-y-16">
@@ -25,7 +25,7 @@ export default function SqlDasarPage() {
             {/* Header & Hero Section */}
             <section className="bg-black border-4 border-black p-6 md:p-12 shadow-neo-xl text-center relative overflow-hidden text-white">
               <div className="absolute top-0 left-0 bg-white text-black font-black px-4 py-1 border-b-4 border-r-4 border-black shadow-neo-sm z-20 uppercase">
-                Database 06
+                Database 07
               </div>
               <div className="absolute -top-10 -right-10 z-0">
                 <span className="material-symbols-outlined text-[150px] md:text-[250px] text-white opacity-20 transform rotate-12">terminal</span>
@@ -315,8 +315,8 @@ export default function SqlDasarPage() {
 
             {/* Footer Nav */}
             <div className="flex flex-col sm:flex-row justify-between items-center pt-8 gap-4">
-              <a href='/course/pemrograman-web-dasar/anatomi-tipe-data-tabel' className="bg-white text-black font-black uppercase text-sm md:text-lg px-4 py-3 md:px-6 md:py-4 border-4 border-black shadow-neo-md hover:-translate-y-1 hover:-translate-x-1 hover:shadow-neo-lg active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all flex items-center gap-2 w-full sm:w-auto justify-center">
-                <span className="material-symbols-outlined font-black">arrow_back</span> Anatomi Tabel
+              <a href='/course/pemrograman-web-dasar/query-sql' className="bg-white text-black font-black uppercase text-sm md:text-lg px-4 py-3 md:px-6 md:py-4 border-4 border-black shadow-neo-md hover:-translate-y-1 hover:-translate-x-1 hover:shadow-neo-lg active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all flex items-center gap-2 w-full sm:w-auto justify-center">
+                <span className="material-symbols-outlined font-black">arrow_back</span> Query SQL
               </a>
               <a href='/course/pemrograman-web-dasar/advanced-query-sql' className="bg-forest-teal text-white font-black uppercase text-sm md:text-lg px-4 py-3 md:px-6 md:py-4 border-4 border-black shadow-neo-md hover:-translate-y-1 hover:-translate-x-1 hover:shadow-neo-lg active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all flex items-center gap-2 w-full sm:w-auto justify-center text-center">
                 Lanjut ke: Advanced Query <span className="material-symbols-outlined font-black">arrow_forward</span>

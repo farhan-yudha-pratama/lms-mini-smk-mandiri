@@ -1,9 +1,17 @@
 import { getAllClasses } from '@/modules/class/class.service';
 import ClassListClient from './ClassListClient';
+import { getSession } from '@/lib/session';
+import { hasPermission } from '@/lib/permissions';
+import { redirect } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
 
 export default async function ClassesPage() {
+  const session = await getSession();
+  if (!session || !hasPermission(session, 'CLASSES_MANAGE')) {
+    redirect('/dashboard');
+  }
+
   const classes = await getAllClasses();
 
   return (

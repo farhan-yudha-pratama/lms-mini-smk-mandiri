@@ -4,6 +4,7 @@ import { db } from '@/prisma/db';
 import { revalidatePath } from 'next/cache';
 import { randomUUID } from 'crypto';
 import { getSession } from '@/lib/session';
+import { requirePermission } from '@/lib/permissions-server';
 
 export type CourseWithFirstPage = {
   id: string;
@@ -44,6 +45,7 @@ export async function getCourseById(id: string) {
 }
 
 export async function createCourse(data: { name: string; slug: string; joinCode: string; description?: string }) {
+  await requirePermission('COURSES_MANAGE');
   const newCourse = await db.orm.public.Course.create({
     id: randomUUID(),
     name: data.name,
@@ -57,12 +59,14 @@ export async function createCourse(data: { name: string; slug: string; joinCode:
 }
 
 export async function updateCourse(id: string, data: { name: string; slug: string; joinCode: string; description?: string; isActive: boolean }) {
+  await requirePermission('COURSES_MANAGE');
   await db.orm.public.Course.where({ id }).update(data);
   revalidatePath('/dashboard/courses');
   return { id, ...data };
 }
 
 export async function deleteCourse(id: string) {
+  await requirePermission('COURSES_MANAGE');
   await db.orm.public.Course.where({ id }).delete();
   revalidatePath('/dashboard/courses');
   return { id };
@@ -80,6 +84,7 @@ export async function getCourseTeachers(courseId: string) {
 }
 
 export async function assignTeacherToCourse(courseId: string, teacherId: string) {
+  await requirePermission('COURSES_MANAGE');
   const existing = await db.orm.public.CourseTeacher.where({ courseId, teacherId }).first();
   const course = await db.orm.public.Course.where({ id: courseId }).first();
   const teacher = await db.orm.public.User.where({ id: teacherId }).first();
@@ -125,6 +130,7 @@ export async function assignTeacherToCourse(courseId: string, teacherId: string)
 }
 
 export async function removeTeacherFromCourse(courseId: string, teacherId: string) {
+  await requirePermission('COURSES_MANAGE');
   const course = await db.orm.public.Course.where({ id: courseId }).first();
   const teacher = await db.orm.public.User.where({ id: teacherId }).first();
 

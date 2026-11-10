@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { UsersTableProps, UserRow } from '../types';
 import { formatDate } from '@/lib/user-helpers';
 
@@ -15,6 +15,7 @@ export default function UsersTable({
   onViewQuizHistory,
   onToggleActiveUser,
   onRevokeUserSession,
+  onManagePermissions,
 }: UsersTableProps) {
   const [activeDropdownId, setActiveDropdownId] = useState<string | null>(null);
 
@@ -25,12 +26,13 @@ export default function UsersTable({
     document.addEventListener('click', handleClick);
     return () => document.removeEventListener('click', handleClick);
   }, [activeDropdownId]);
+
   const getSortIcon = (col: keyof UserRow) => {
     if (sortColumn !== col) return 'unfold_more';
     return sortDirection === 'asc' ? 'expand_less' : 'expand_more';
   };
 
-  const isAllSelected = users.length > 0 && users.every(u => selectedIds.has(u.id));
+  const isAllSelected = users.length > 0 && users.every((u) => selectedIds.has(u.id));
 
   return (
     <div className="w-full">
@@ -55,8 +57,11 @@ export default function UsersTable({
             Tidak ada data pengguna yang ditemukan.
           </div>
         ) : (
-          users.map(user => (
-            <div key={user.id} className="p-4 bg-white rounded-xl border border-gray-100 shadow-sm flex flex-col relative transition-shadow hover:shadow-md">
+          users.map((user) => (
+            <div
+              key={user.id}
+              className="p-4 bg-white rounded-xl border border-gray-100 shadow-sm flex flex-col relative transition-shadow hover:shadow-md"
+            >
               <div className="flex items-start gap-3">
                 <div className="pt-1">
                   <input
@@ -73,17 +78,27 @@ export default function UsersTable({
                       <p className="text-xs text-gray-500 mb-2 truncate">{user.email}</p>
 
                       <div className="flex items-center gap-2 mb-3">
-                        <span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider
-                          ${user.role === 'SUPERADMIN' ? 'bg-indigo-50 text-indigo-600' :
-                            user.role === 'GURU' ? 'bg-teal-50 text-teal-600' :
-                              'bg-slate-100 text-slate-600'}
-                        `}>
+                        <span
+                          className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                            user.role === 'SUPERADMIN'
+                              ? 'bg-indigo-50 text-indigo-600'
+                              : user.role === 'GURU'
+                              ? 'bg-teal-50 text-teal-600'
+                              : 'bg-slate-100 text-slate-600'
+                          }`}
+                        >
                           {user.role}
                         </span>
-                        <span className={`inline-flex items-center gap-1 text-[11px] font-semibold
-                          ${user.isActive ? 'text-emerald-600' : 'text-rose-600'}
-                        `}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${user.isActive ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
+                        <span
+                          className={`inline-flex items-center gap-1 text-[11px] font-semibold ${
+                            user.isActive ? 'text-emerald-600' : 'text-rose-600'
+                          }`}
+                        >
+                          <span
+                            className={`w-1.5 h-1.5 rounded-full ${
+                              user.isActive ? 'bg-emerald-500' : 'bg-rose-500'
+                            }`}
+                          ></span>
                           {user.isActive ? 'Aktif' : 'Nonaktif'}
                         </span>
                       </div>
@@ -103,23 +118,51 @@ export default function UsersTable({
 
                       {activeDropdownId === user.id && (
                         <div className="absolute right-0 top-10 mt-1 w-52 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-20 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+                          {onManagePermissions && user.role !== 'MURID' && (
+                            <button
+                              onClick={() => {
+                                setActiveDropdownId(null);
+                                onManagePermissions(user);
+                              }}
+                              className="w-full text-left px-4 py-2 text-sm text-indigo-700 hover:bg-indigo-50 flex items-center gap-2 font-medium"
+                            >
+                              <span className="material-symbols-outlined text-[18px] text-indigo-600">
+                                verified_user
+                              </span>{' '}
+                              Kelola Hak Akses
+                            </button>
+                          )}
                           <button
-                            onClick={() => { setActiveDropdownId(null); onViewQuizHistory && onViewQuizHistory(user); }}
+                            onClick={() => {
+                              setActiveDropdownId(null);
+                              onViewQuizHistory && onViewQuizHistory(user);
+                            }}
                             className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-slate-50 flex items-center gap-2"
                           >
-                            <span className="material-symbols-outlined text-[18px] text-blue-600">manage_search</span> Cek Riwayat Kuis
+                            <span className="material-symbols-outlined text-[18px] text-blue-600">
+                              manage_search
+                            </span>{' '}
+                            Cek Riwayat Kuis
                           </button>
                           <button
-                            onClick={() => { setActiveDropdownId(null); onEditName && onEditName(user); }}
+                            onClick={() => {
+                              setActiveDropdownId(null);
+                              onEditName && onEditName(user);
+                            }}
                             className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-slate-50 flex items-center gap-2"
                           >
                             <span className="material-symbols-outlined text-[18px]">edit</span> Ubah Nama
                           </button>
                           {onToggleActiveUser && (
                             <button
-                              onClick={() => { setActiveDropdownId(null); onToggleActiveUser(user, !user.isActive); }}
+                              onClick={() => {
+                                setActiveDropdownId(null);
+                                onToggleActiveUser(user, !user.isActive);
+                              }}
                               className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 ${
-                                user.isActive ? 'text-amber-700 hover:bg-amber-50' : 'text-emerald-700 hover:bg-emerald-50'
+                                user.isActive
+                                  ? 'text-amber-700 hover:bg-amber-50'
+                                  : 'text-emerald-700 hover:bg-emerald-50'
                               }`}
                             >
                               <span className="material-symbols-outlined text-[18px]">
@@ -130,14 +173,20 @@ export default function UsersTable({
                           )}
                           {onRevokeUserSession && (
                             <button
-                              onClick={() => { setActiveDropdownId(null); onRevokeUserSession(user); }}
+                              onClick={() => {
+                                setActiveDropdownId(null);
+                                onRevokeUserSession(user);
+                              }}
                               className="w-full text-left px-4 py-2 text-sm text-amber-700 hover:bg-amber-50 flex items-center gap-2"
                             >
                               <span className="material-symbols-outlined text-[18px]">logout</span> Revoke Sesi
                             </button>
                           )}
                           <button
-                            onClick={() => { setActiveDropdownId(null); onDeleteUser && onDeleteUser(user); }}
+                            onClick={() => {
+                              setActiveDropdownId(null);
+                              onDeleteUser && onDeleteUser(user);
+                            }}
                             className="w-full text-left px-4 py-2 text-sm text-rose-600 hover:bg-rose-50 flex items-center gap-2"
                           >
                             <span className="material-symbols-outlined text-[18px]">delete</span> Hapus
@@ -170,20 +219,45 @@ export default function UsersTable({
                   onChange={(e) => onSelectAll(e.target.checked)}
                 />
               </th>
-              <th className="p-4 font-semibold cursor-pointer hover:text-gray-900 transition-colors" onClick={() => onSort('name')}>
-                <div className="flex items-center gap-1">Nama <span className="material-symbols-outlined text-[16px]">{getSortIcon('name')}</span></div>
+              <th
+                className="p-4 font-semibold cursor-pointer hover:text-gray-900 transition-colors"
+                onClick={() => onSort('name')}
+              >
+                <div className="flex items-center gap-1">
+                  Nama <span className="material-symbols-outlined text-[16px]">{getSortIcon('name')}</span>
+                </div>
               </th>
-              <th className="p-4 font-semibold cursor-pointer hover:text-gray-900 transition-colors" onClick={() => onSort('email')}>
-                <div className="flex items-center gap-1">Email <span className="material-symbols-outlined text-[16px]">{getSortIcon('email')}</span></div>
+              <th
+                className="p-4 font-semibold cursor-pointer hover:text-gray-900 transition-colors"
+                onClick={() => onSort('email')}
+              >
+                <div className="flex items-center gap-1">
+                  Email <span className="material-symbols-outlined text-[16px]">{getSortIcon('email')}</span>
+                </div>
               </th>
-              <th className="p-4 font-semibold cursor-pointer hover:text-gray-900 transition-colors" onClick={() => onSort('role')}>
-                <div className="flex items-center gap-1">Role <span className="material-symbols-outlined text-[16px]">{getSortIcon('role')}</span></div>
+              <th
+                className="p-4 font-semibold cursor-pointer hover:text-gray-900 transition-colors"
+                onClick={() => onSort('role')}
+              >
+                <div className="flex items-center gap-1">
+                  Role <span className="material-symbols-outlined text-[16px]">{getSortIcon('role')}</span>
+                </div>
               </th>
-              <th className="p-4 font-semibold cursor-pointer hover:text-gray-900 transition-colors" onClick={() => onSort('isActive')}>
-                <div className="flex items-center gap-1">Status <span className="material-symbols-outlined text-[16px]">{getSortIcon('isActive')}</span></div>
+              <th
+                className="p-4 font-semibold cursor-pointer hover:text-gray-900 transition-colors"
+                onClick={() => onSort('isActive')}
+              >
+                <div className="flex items-center gap-1">
+                  Status <span className="material-symbols-outlined text-[16px]">{getSortIcon('isActive')}</span>
+                </div>
               </th>
-              <th className="p-4 font-semibold cursor-pointer hover:text-gray-900 transition-colors" onClick={() => onSort('createdAt')}>
-                <div className="flex items-center gap-1">Terdaftar <span className="material-symbols-outlined text-[16px]">{getSortIcon('createdAt')}</span></div>
+              <th
+                className="p-4 font-semibold cursor-pointer hover:text-gray-900 transition-colors"
+                onClick={() => onSort('createdAt')}
+              >
+                <div className="flex items-center gap-1">
+                  Terdaftar <span className="material-symbols-outlined text-[16px]">{getSortIcon('createdAt')}</span>
+                </div>
               </th>
               <th className="p-4 font-semibold text-center w-20 rounded-tr-xl">Aksi</th>
             </tr>
@@ -196,7 +270,7 @@ export default function UsersTable({
                 </td>
               </tr>
             ) : (
-              users.map(user => (
+              users.map((user) => (
                 <tr key={user.id} className="hover:bg-slate-50 transition-colors group">
                   <td className="p-4">
                     <input
@@ -209,32 +283,44 @@ export default function UsersTable({
                   <td className="p-4 font-semibold text-gray-900">{user.name}</td>
                   <td className="p-4 text-gray-500">{user.email}</td>
                   <td className="p-4">
-                    <span className={`inline-flex px-2.5 py-1 rounded-md text-[11px] font-bold uppercase tracking-wider
-                      ${user.role === 'SUPERADMIN' ? 'bg-indigo-50 text-indigo-600' :
-                        user.role === 'GURU' ? 'bg-teal-50 text-teal-600' :
-                          'bg-slate-100 text-slate-600'}
-                    `}>
+                    <span
+                      className={`inline-flex px-2.5 py-1 rounded-md text-[11px] font-bold uppercase tracking-wider ${
+                        user.role === 'SUPERADMIN'
+                          ? 'bg-indigo-50 text-indigo-600'
+                          : user.role === 'GURU'
+                          ? 'bg-teal-50 text-teal-600'
+                          : 'bg-slate-100 text-slate-600'
+                      }`}
+                    >
                       {user.role}
                     </span>
                   </td>
                   <td className="p-4">
-                    <span className={`inline-flex items-center gap-1.5 font-medium
-                      ${user.isActive ? 'text-emerald-600' : 'text-rose-600'}
-                    `}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${user.isActive ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
+                    <span
+                      className={`inline-flex items-center gap-1.5 font-medium ${
+                        user.isActive ? 'text-emerald-600' : 'text-rose-600'
+                      }`}
+                    >
+                      <span
+                        className={`w-1.5 h-1.5 rounded-full ${
+                          user.isActive ? 'bg-emerald-500' : 'bg-rose-500'
+                        }`}
+                      ></span>
                       {user.isActive ? 'Aktif' : 'Nonaktif'}
                     </span>
                   </td>
-                  <td className="p-4 text-gray-500 font-medium">
-                    {formatDate(user.createdAt)}
-                  </td>
+                  <td className="p-4 text-gray-500 font-medium">{formatDate(user.createdAt)}</td>
                   <td className="p-4 text-center relative">
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         setActiveDropdownId(activeDropdownId === user.id ? null : user.id);
                       }}
-                      className={`p-1.5 rounded-lg transition-colors ${activeDropdownId === user.id ? 'bg-gray-200 text-gray-800' : 'text-gray-400 hover:text-gray-700 hover:bg-gray-100'}`}
+                      className={`p-1.5 rounded-lg transition-colors ${
+                        activeDropdownId === user.id
+                          ? 'bg-gray-200 text-gray-800'
+                          : 'text-gray-400 hover:text-gray-700 hover:bg-gray-100'
+                      }`}
                       title="Opsi"
                     >
                       <span className="material-symbols-outlined text-xl">more_horiz</span>
@@ -242,23 +328,51 @@ export default function UsersTable({
 
                     {activeDropdownId === user.id && (
                       <div className="absolute right-6 top-10 mt-1 w-52 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-20 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+                        {onManagePermissions && user.role !== 'MURID' && (
+                          <button
+                            onClick={() => {
+                              setActiveDropdownId(null);
+                              onManagePermissions(user);
+                            }}
+                            className="w-full text-left px-4 py-2 text-sm text-indigo-700 hover:bg-indigo-50 flex items-center gap-2 font-semibold"
+                          >
+                            <span className="material-symbols-outlined text-[18px] text-indigo-600">
+                              verified_user
+                            </span>{' '}
+                            Kelola Hak Akses
+                          </button>
+                        )}
                         <button
-                          onClick={() => { setActiveDropdownId(null); onViewQuizHistory && onViewQuizHistory(user); }}
+                          onClick={() => {
+                            setActiveDropdownId(null);
+                            onViewQuizHistory && onViewQuizHistory(user);
+                          }}
                           className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-slate-50 flex items-center gap-2"
                         >
-                          <span className="material-symbols-outlined text-[18px] text-blue-600">manage_search</span> Cek Riwayat Kuis
+                          <span className="material-symbols-outlined text-[18px] text-blue-600">
+                            manage_search
+                          </span>{' '}
+                          Cek Riwayat Kuis
                         </button>
                         <button
-                          onClick={() => { setActiveDropdownId(null); onEditName && onEditName(user); }}
+                          onClick={() => {
+                            setActiveDropdownId(null);
+                            onEditName && onEditName(user);
+                          }}
                           className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-slate-50 flex items-center gap-2"
                         >
                           <span className="material-symbols-outlined text-[18px]">edit</span> Ubah Nama
                         </button>
                         {onToggleActiveUser && (
                           <button
-                            onClick={() => { setActiveDropdownId(null); onToggleActiveUser(user, !user.isActive); }}
+                            onClick={() => {
+                              setActiveDropdownId(null);
+                              onToggleActiveUser(user, !user.isActive);
+                            }}
                             className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 ${
-                              user.isActive ? 'text-amber-700 hover:bg-amber-50' : 'text-emerald-700 hover:bg-emerald-50'
+                              user.isActive
+                                ? 'text-amber-700 hover:bg-amber-50'
+                                : 'text-emerald-700 hover:bg-emerald-50'
                             }`}
                           >
                             <span className="material-symbols-outlined text-[18px]">
@@ -269,14 +383,20 @@ export default function UsersTable({
                         )}
                         {onRevokeUserSession && (
                           <button
-                            onClick={() => { setActiveDropdownId(null); onRevokeUserSession(user); }}
+                            onClick={() => {
+                              setActiveDropdownId(null);
+                              onRevokeUserSession(user);
+                            }}
                             className="w-full text-left px-4 py-2 text-sm text-amber-700 hover:bg-amber-50 flex items-center gap-2"
                           >
                             <span className="material-symbols-outlined text-[18px]">logout</span> Revoke Sesi
                           </button>
                         )}
                         <button
-                          onClick={() => { setActiveDropdownId(null); onDeleteUser && onDeleteUser(user); }}
+                          onClick={() => {
+                            setActiveDropdownId(null);
+                            onDeleteUser && onDeleteUser(user);
+                          }}
                           className="w-full text-left px-4 py-2 text-sm text-rose-600 hover:bg-rose-50 flex items-center gap-2"
                         >
                           <span className="material-symbols-outlined text-[18px]">delete</span> Hapus

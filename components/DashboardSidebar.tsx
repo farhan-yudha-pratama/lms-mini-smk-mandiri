@@ -3,12 +3,21 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { logoutAction } from '@/app/actions';
+import { hasPermission, hasAnyPermission, PermissionCode } from '@/lib/permissions';
 
 interface DashboardSidebarProps {
   isSidebarOpen: boolean;
   isMobileOpen: boolean;
   setIsMobileOpen: (isOpen: boolean) => void;
-  user: { role: string; name: string; email: string } | null;
+  user: { role: string; name: string; email: string; permissions?: string[] } | null;
+}
+
+interface MenuItem {
+  label: string;
+  icon: string;
+  href: string;
+  permission?: PermissionCode | PermissionCode[];
+  rolesOnly?: string[];
 }
 
 export default function DashboardSidebar({
@@ -25,27 +34,44 @@ export default function DashboardSidebar({
     router.push('/login');
   };
 
-  const ALL_MENU_ITEMS = [
-    { label: 'Overview', icon: 'dashboard', href: '/dashboard', roles: ['SUPERADMIN', 'GURU'] },
-    { label: 'Manajemen Pengguna', icon: 'group', href: '/dashboard/users', roles: ['SUPERADMIN'] },
-    { label: 'Manajemen Kelas', icon: 'school', href: '/dashboard/classes', roles: ['SUPERADMIN', 'GURU'] },
-    { label: 'Mata Pelajaran', icon: 'auto_stories', href: '/dashboard/courses', roles: ['SUPERADMIN'] },
-    { label: 'Mapel Saya', icon: 'book', href: '/dashboard/my-courses', roles: ['GURU'] },
-    { label: 'Kelola Materi', icon: 'menu_book', href: '/dashboard/materi', roles: ['SUPERADMIN', 'GURU'] },
-    { label: 'Summary AI', icon: 'summarize', href: '/dashboard/summaries', roles: ['SUPERADMIN'] },
-    { label: 'Akses Siswa', icon: 'lock_open', href: '/dashboard/student-access', roles: ['SUPERADMIN', 'GURU'] },
-    { label: 'Project Siswa', icon: 'terminal', href: '/dashboard/student-projects', roles: ['SUPERADMIN', 'GURU'] },
-    { label: 'Manajemen Kuis', icon: 'quiz', href: '/dashboard/quizzes', roles: ['SUPERADMIN'] },
-    { label: 'Evaluasi & Kuis', icon: 'quiz', href: '/dashboard/quizzes', roles: ['GURU'] },
-    { label: 'Buku Nilai (Matrix)', icon: 'grading', href: '/dashboard/gradebook', roles: ['SUPERADMIN', 'GURU'] },
-    { label: 'Buku Arsip Kuis', icon: 'inventory_2', href: '/dashboard/archives', roles: ['SUPERADMIN', 'GURU'] },
-    { label: 'Laporan Belajar', icon: 'analytics', href: '/dashboard/reports', roles: ['SUPERADMIN', 'GURU'] },
-    { label: 'Audit Logs', icon: 'history', href: '/dashboard/audit-logs', roles: ['SUPERADMIN'] },
-    { label: 'Pengaturan', icon: 'settings', href: '/dashboard/settings', roles: ['SUPERADMIN', 'GURU'] },
+  const ALL_MENU_ITEMS: MenuItem[] = [
+    { label: 'Overview', icon: 'dashboard', href: '/dashboard' },
+    { label: 'Manajemen Pengguna', icon: 'group', href: '/dashboard/users', permission: 'USERS_MANAGE' },
+    { label: 'Manajemen Permission', icon: 'verified_user', href: '/dashboard/permissions', permission: 'USERS_MANAGE' },
+    { label: 'Manajemen Kelas', icon: 'school', href: '/dashboard/classes', permission: 'CLASSES_MANAGE' },
+    { label: 'Mata Pelajaran', icon: 'auto_stories', href: '/dashboard/courses', permission: 'COURSES_MANAGE' },
+    { label: 'Mapel Saya', icon: 'book', href: '/dashboard/my-courses', rolesOnly: ['GURU'], permission: 'MATERI_MANAGE' },
+    { label: 'Kelola Materi', icon: 'menu_book', href: '/dashboard/materi', permission: 'MATERI_MANAGE' },
+    { label: 'Summary AI', icon: 'summarize', href: '/dashboard/summaries', permission: 'SUMMARIES_MANAGE' },
+    { label: 'Akses Siswa', icon: 'lock_open', href: '/dashboard/student-access', permission: 'STUDENT_ACCESS_MANAGE' },
+    { label: 'Project Siswa', icon: 'terminal', href: '/dashboard/student-projects', permission: 'STUDENT_PROJECTS_VIEW' },
+    { label: 'Manajemen Kuis', icon: 'quiz', href: '/dashboard/quizzes', permission: ['QUIZZES_MANAGE', 'QUIZZES_GRADE'] },
+    { label: 'Buku Nilai (Matrix)', icon: 'grading', href: '/dashboard/gradebook', permission: 'GRADEBOOK_VIEW' },
+    { label: 'Buku Arsip Kuis', icon: 'inventory_2', href: '/dashboard/archives', permission: 'ARCHIVES_VIEW' },
+    { label: 'Laporan Belajar', icon: 'analytics', href: '/dashboard/reports', permission: 'REPORTS_VIEW' },
+    { label: 'Audit Logs', icon: 'history', href: '/dashboard/audit-logs', permission: 'AUDIT_LOGS_VIEW' },
+    { label: 'Pengaturan', icon: 'settings', href: '/dashboard/settings', permission: 'SETTINGS_MANAGE' },
   ];
 
-  const userRole = user?.role || 'GURU'; // Fallback to GURU if undefined
-  const menuItems = ALL_MENU_ITEMS.filter(item => item.roles.includes(userRole));
+  const menuItems = ALL_MENU_ITEMS.filter((item) => {
+    if (!user) return false;
+    // Superadmin has access to all admin items
+    if (user.role === 'SUPERADMIN') return true;
+
+    // Filter by role if specifically restricted (e.g. Mapel Saya is for GURU)
+    if (item.rolesOnly && !item.rolesOnly.includes(user.role)) {
+      return false;
+    }
+
+    // If item doesn't require specific permission, show it (e.g. Overview)
+    if (!item.permission) return true;
+
+    // Check granular permissions
+    if (Array.isArray(item.permission)) {
+      return hasAnyPermission(user, item.permission);
+    }
+    return hasPermission(user, item.permission);
+  });
 
   return (
     <aside
@@ -79,10 +105,11 @@ export default function DashboardSidebar({
                 <Link
                   href={item.href}
                   onClick={() => setIsMobileOpen(false)}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${active
-                      ? 'bg-blue-50 text-blue-700'
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
+                    active
+                      ? 'bg-blue-50 text-blue-700 font-semibold'
                       : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                    }`}
+                  }`}
                 >
                   <span className="material-symbols-outlined text-xl">{item.icon}</span>
                   {isSidebarOpen && <span className="font-medium whitespace-nowrap">{item.label}</span>}

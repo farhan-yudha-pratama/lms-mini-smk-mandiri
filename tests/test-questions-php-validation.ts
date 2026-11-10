@@ -1,6 +1,6 @@
-import { questionFormSchema } from '../modules/quiz/quiz.schema.ts';
-import { generateQuizFormSchema, aiPhpChallengeSchema } from '../modules/ai-quiz/schema.ts';
-import { runPhpCode, runPhpTestCases } from '../lib/virtual-php.ts';
+import { questionFormSchema } from '../modules/quiz/quiz.schema.js';
+import { generateQuizFormSchema, aiPhpChallengeSchema } from '../modules/ai-quiz/schema.js';
+import { runPhpCode, runPhpTestCases } from '../lib/virtual-php.js';
 
 async function main() {
   console.log('================================================================');
@@ -54,7 +54,7 @@ async function main() {
 
   // --- 2. Validasi Schema AI Question Generator ---
   console.log('\n--- 2. Validasi Schema AI Generator (generateQuizFormSchema & aiPhpChallengeSchema) ---');
-  
+
   const aiFormPayload = {
     questionType: 'CODE_CHALLENGE' as const,
     codeLanguage: 'php' as const,

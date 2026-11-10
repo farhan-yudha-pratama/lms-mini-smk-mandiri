@@ -3,11 +3,12 @@ import { getSession } from "@/lib/session";
 import { redirect } from "next/navigation";
 import AuditLogsView from "./AuditLogsView";
 import { parseAuditDetails } from "@/lib/audit";
+import { hasPermission } from "@/lib/permissions";
 
 export default async function AuditLogPage() {
   const session = await getSession();
   
-  if (session?.role !== "SUPERADMIN") {
+  if (!session || !hasPermission(session, "AUDIT_LOGS_VIEW")) {
     redirect("/dashboard");
   }
 

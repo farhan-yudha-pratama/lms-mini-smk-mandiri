@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { getUserSession } from '@/app/actions';
 import DashboardSidebar from './DashboardSidebar';
 import TeacherAssignmentWatcher from './dashboard/TeacherAssignmentWatcher';
+import PermissionWatcher from './dashboard/PermissionWatcher';
 
 interface DashboardShellProps {
   children: React.ReactNode;
@@ -12,7 +13,7 @@ interface DashboardShellProps {
 export default function DashboardShell({ children }: DashboardShellProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
-  const [user, setUser] = useState<{ userId?: string; role: string; name: string; email: string } | null>(null);
+  const [user, setUser] = useState<{ userId?: string; role: string; name: string; email: string; permissions?: string[] } | null>(null);
 
   useEffect(() => {
     getUserSession().then((session) => {
@@ -26,6 +27,9 @@ export default function DashboardShell({ children }: DashboardShellProps) {
     <div className="min-h-screen bg-gray-50 flex font-sans">
       {/* Real-time Teacher Assignment WebSocket Watcher & Toasts */}
       <TeacherAssignmentWatcher currentUserId={user?.userId} currentUserRole={user?.role} />
+
+      {/* Real-time Multi-Permission WebSocket Watcher */}
+      <PermissionWatcher currentUserId={user?.userId} onUserRefreshed={(updatedUser) => setUser(updatedUser)} />
 
       {/* Mobile Overlay */}
       {isMobileOpen && (
@@ -58,23 +62,25 @@ export default function DashboardShell({ children }: DashboardShellProps) {
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
               className="hidden lg:block text-gray-600 hover:text-gray-900 focus:outline-none"
             >
-              <span className="material-symbols-outlined">menu_open</span>
+              <span className="material-symbols-outlined">
+                {isSidebarOpen ? 'format_indent_decrease' : 'format_indent_increase'}
+              </span>
             </button>
           </div>
-          
+
           <div className="flex items-center gap-3">
-            <div className="hidden sm:block text-right">
-              <p className="text-sm font-semibold text-gray-900">{user?.name || 'Loading...'}</p>
-              <p className="text-xs text-gray-500">{user?.role || ''}</p>
+            <div className="text-right hidden sm:block">
+              <p className="text-sm font-semibold text-gray-900 leading-none">{user?.name || 'Loading...'}</p>
+              <p className="text-xs text-gray-500 mt-1 capitalize">{user?.role?.toLowerCase() || ''}</p>
             </div>
-            <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold">
-              {user?.name?.charAt(0).toUpperCase() || 'A'}
+            <div className="w-9 h-9 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm">
+              {user?.name ? user.name[0].toUpperCase() : 'U'}
             </div>
           </div>
         </header>
 
-        {/* Page Content */}
-        <main className="flex-1 p-6 overflow-y-auto">
+        {/* Content Body */}
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
           {children}
         </main>
       </div>

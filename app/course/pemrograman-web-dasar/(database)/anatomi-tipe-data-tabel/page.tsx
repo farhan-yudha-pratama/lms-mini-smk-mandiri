@@ -17,7 +17,7 @@ export default function AnatomiTabelPage() {
       />
 
       <div className="flex pt-[88px] min-h-screen">
-        <Sidebar />
+        <Sidebar courseSlug="pemrograman-web-dasar" />
 
         <main className="md:ml-[280px] w-full p-4 md:p-10 bg-canvas relative" style={{ backgroundImage: 'radial-gradient(var(--color-outline) 1px, transparent 1px)', backgroundSize: '24px 24px' }}>
           <div className="max-w-5xl mx-auto space-y-12 md:space-y-16">
@@ -265,8 +265,8 @@ export default function AnatomiTabelPage() {
               <a href='/course/pemrograman-web-dasar/relasi-tabel' className="bg-white text-black font-black uppercase text-sm md:text-lg px-4 py-3 md:px-6 md:py-4 border-4 border-black shadow-neo-md hover:-translate-y-1 hover:-translate-x-1 hover:shadow-neo-lg active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all flex items-center gap-2 w-full sm:w-auto justify-center">
                 <span className="material-symbols-outlined font-black">arrow_back</span> Relasi Tabel
               </a>
-              <a href='/course/pemrograman-web-dasar/sql-dasar-ddl-dml' className="bg-forest-teal text-white font-black uppercase text-sm md:text-lg px-4 py-3 md:px-6 md:py-4 border-4 border-black shadow-neo-md hover:-translate-y-1 hover:-translate-x-1 hover:shadow-neo-lg active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all flex items-center gap-2 w-full sm:w-auto justify-center text-center">
-                Lanjut ke: Bahasa SQL Dasar <span className="material-symbols-outlined font-black">arrow_forward</span>
+              <a href='/course/pemrograman-web-dasar/query-sql' className="bg-forest-teal text-white font-black uppercase text-sm md:text-lg px-4 py-3 md:px-6 md:py-4 border-4 border-black shadow-neo-md hover:-translate-y-1 hover:-translate-x-1 hover:shadow-neo-lg active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all flex items-center gap-2 w-full sm:w-auto justify-center text-center">
+                Lanjut ke: Query SQL <span className="material-symbols-outlined font-black">arrow_forward</span>
               </a>
             </div>
 

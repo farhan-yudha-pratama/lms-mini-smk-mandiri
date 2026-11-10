@@ -8,7 +8,9 @@ type AuditAction =
   | "UPDATE_ACCESS_STATUS" | "BULK_UPDATE_ACCESS" 
   | "BYPASS_CATEGORY_ACCESS" | "BYPASS_PAGE_ACCESS"
   | "EXPORT_REPORT" | "GRADE_ESSAY" | "COMPLETE_QUIZ" | "RESET_QUIZ" | "SYNC_ARCHIVES" | "CLEANUP_LOGS"
-  | "ASSIGN_TEACHER_COURSE" | "REMOVE_TEACHER_COURSE";
+  | "ASSIGN_TEACHER_COURSE" | "REMOVE_TEACHER_COURSE"
+  | "UPDATE_USER_PERMISSIONS"
+  | "CREATE_PERMISSION_PACKAGE" | "UPDATE_PERMISSION_PACKAGE" | "DELETE_PERMISSION_PACKAGE";
 
 export interface AuditDetailsV2 { v: 2; message: string; meta?: Record<string, unknown> }
 
@@ -55,21 +57,6 @@ export async function cleanupAuditLogs(olderThanDate: Date) {
     if (!session || session.role !== "SUPERADMIN") {
       throw new Error("Unauthorized");
     }
-
-    // Since we need to delete logs older than a date, Prisma usually does this via:
-    // await db.orm.public.AuditLog.deleteMany({ where: { createdAt: { lt: olderThanDate } } })
-    // But this custom ORM syntax might be `.where({ createdAt: { $lt: olderThanDate } }).delete()` or similar.
-    // Let's use the Prisma client directly if possible, or the orm wrapper.
-    // Wait, the custom prisma wrapper here is used as `db.orm.public.AuditLog.where({ ... }).delete()`
-    // We'll write the query carefully or check the wrapper's capabilities.
-    
-    // For now we'll do:
-    // This assumes the custom db wrapper supports basic operators or raw queries.
-    // A safer way if the wrapper is limited is to just fetch and delete in loop, 
-    // or rely on a Prisma query via the raw client if available (e.g. `db.prisma.auditLog.deleteMany`).
-    // I'll try raw prisma if available, but the wrapper is `db.orm.public.AuditLog`.
-    // The user's contract wrapper `db.orm.public.AuditLog` might not support complex where clauses like `{ lt: olderThanDate }`.
-    // I will use a simple workaround or assume it supports standard prisma where args.
 
     const allLogs = await db.orm.public.AuditLog.all();
     let deletedCount = 0;

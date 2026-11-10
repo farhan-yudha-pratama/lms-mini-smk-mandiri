@@ -9,16 +9,17 @@
 
 Siswa SMK memiliki karakteristik belajar yang sangat spesifik dan berbeda dengan mahasiswa akademis:
 - **Attention Span Pendek (3–5 Menit):** Siswa akan langsung bosan dan *skip* materi jika dalam 10 detik pertama mereka tidak paham tujuannya apa.
-- **Alergi "Wall of Text":** Teks berupa paragraf panjang tanpa jeda visual dianggap sebagai "beban pikiran" (*cognitive overload*).
-- **Pragmatis (Hands-On):** Siswa SMK lebih cepat paham jika melihat:
-  1. *Fungsi nyatanya untuk apa?*
-  2. *Contoh barang fisiknya apa?*
-  3. *Kalau rusak atau salah langkah, akibatnya apa?*
-- **Mobile First / Layar Kecil:** Lebih dari 70% siswa membaca materi melalui smartphone mereka di sela-sela jam istirahat atau praktik lab.
+- **Alergi "Wall of Text":** Teks berupa paragraf panjang tanpa jeda visual dianggap sebagai beban pikiran (*cognitive overload*).
+- **Pragmatis & Visual (Hands-On):** Siswa SMK lebih cepat paham jika melihat:
+  1. *Fungsi nyatanya untuk apa di dunia kerja?*
+  2. *Contoh barang fisiknya apa (analogi 1 detik)?*
+  3. *Kalau salah langkah / lupa, akibat fatalnya apa?*
+- **Kenyamanan Membaca (Whitespace):** Desain yang terlalu padat atau dijejali banyak elemen kecil membuat halaman terasa ramai dan melelahkan dibaca. Berikan ruang bernapas (*breathing room*) yang lega.
+- **Mobile First / Layar Kecil:** Lebih dari 70% siswa membaca materi melalui smartphone mereka di sela-sela jam praktik atau perjalanan.
 
 > [!IMPORTANT]
-> **Prinsip Utama: "To-the-Point, Visual, & Actionable"**  
-> Dilarang bertele-tele, dilarang bercerita panjang tentang sejarah kuno, dan jangan sajikan perdebatan teoritis akademis. Langsung ke inti kegunaan, anatomi fungsi, dan contoh nyata!
+> **Prinsip Utama: "To-the-Point, Lega, Visual, & Actionable"**  
+> Dilarang bertele-tele, dilarang menulis sejarah panjang tanpa faedah praktis, dan jangan buat halaman terasa sesak. Langsung ke inti kegunaan, anatomi fungsi, dan contoh nyata!
 
 ---
 
@@ -28,97 +29,112 @@ Setiap halaman materi di `app/course/.../page.tsx` wajib mematuhi metrik berikut
 
 | Parameter | Standar Ideal | Batas Maksimum | Catatan |
 | :--- | :--- | :--- | :--- |
-| **Waktu Baca Siswa** | 3 Menit | 5 Menit | Jika lebih dari 5 menit, pecah materi jadi 2 halaman. |
-| **Panjang Baris Kode JSX** | 150 – 250 baris | 300 baris | Halaman di atas 400 baris dipastikan terlalu bertele-tele. |
-| **Panjang Paragraf Narasi** | 1 – 2 kalimat | 3 kalimat (Maks. 35 kata) | Gunakan bullet list atau kartu jika poin lebih dari dua. |
-| **Rasio Visual vs Teks** | 65% Visual / Kartu | 35% Narasi Teks | Gunakan box model, diagram blok, tabel, dan badge. |
-| **Jumlah Poin per Subtopik** | 3 Poin Kunci | 4 Poin Kunci | Siswa SMK hanya mengingat 3 hal penting dalam 1 bab. |
-| **Interaktivitas / Simulator** | 1 Fitur Simpel | 2 Fitur | Cukup toggle/stepper simpel, hindari state bercabang rumit. |
+| **Waktu Baca Siswa** | 3 Menit | 5 Menit | Jika lebih dari 5 menit, pecah materi jadi 2 bab terpisah. |
+| **Panjang Baris Kode JSX** | 180 – 260 baris | 300 baris | Halaman di atas 350 baris dipastikan terlalu bertele-tele. |
+| **Panjang Paragraf Narasi** | 1 – 2 kalimat | 3 kalimat (Maks. 30 kata) | Gunakan kartu terpisah jika ada poin baru. |
+| **Spacing Jeda Vertikal** | `space-y-12 md:space-y-16` | - | Memberikan kelonggaran visual agar tidak terasa penuh sesak. |
+| **Padding Kartu Utama** | `p-6 md:p-12` | - | Kartu wajib lega, bukan kotak sempit yang dijejali teks. |
+| **Rasio Visual vs Teks** | 70% Visual / Kartu | 30% Narasi Teks | Gunakan box model, icon besar (60-80px), dan badge tegas. |
+| **Jumlah Poin per Subtopik** | 2 – 3 Poin Kunci | 4 Poin Kunci | Siswa SMK hanya mengingat 3 hal penting dalam 1 bab. |
+| **Interaktivitas / Simulator** | 1 Fitur Simpel | 2 Fitur | Cukup toggle visual / stepper simpel, hindari state rumit. |
 
 ---
 
-## 3. Formula Struktur Halaman Materi (Standard 5-Block Blueprint)
+## 3. Blueprint Arsitektur Halaman Materi (Standard 5-Block Blueprint)
 
-Setiap materi yang dibuat **HARUS** mengikuti 5 blok terstruktur berikut dari atas ke bawah:
+Setiap materi yang dibuat **HARUS** mengikuti 5 blok hierarki terstruktur berikut:
 
 ```
-[1. Hero Punchy Banner]       --> Judul singkat + 1 Tagline Fungsi Nyata
+[1. Hero Raksasa Immersif]    --> Banner Hitam Pekat + Watermark Ikon + Judul Raksasa + Tombol Aksi
         ↓
-[2. Analogi 1 Detik]          --> Perumpamaan konkret benda fisik sehari-hari
+[2. Analogi 1 Detik]          --> Split Box Asimetris: Masalah Nyata + Kertas Bon/Barang Fisik + Ikon 80px
         ↓
-[3. Anatomi / Cara Kerja]     --> 3-4 Kartu bernomor (01, 02, 03) atau Diagram Visual
+[3. Anatomi / Perintah Inti]  --> Kartu Horizontal Lebar atau Grid 2-Kolom Lapang (Bukan Kolom Sempit)
         ↓
-[4. Komparasi / Troubleshooting] --> Tabel Head-to-Head atau Kartu "Masalah vs Solusi"
+[4. DDL vs DML / Komparasi]   --> 2 Kartu Berdampingan (Wadah vs Isi) + Kotak Bahaya Maut Tanpa WHERE
         ↓
-[5. Evaluasi & Quiz]          --> Komponen <QuizTrigger /> langsung setelah materi
+[5. Kuis & Footer Navigasi]   --> Komponen <QuizTrigger /> + Tombol Bolak-Balik Halaman
 ```
 
 ### Detail Spesifikasi Tiap Blok:
 
-#### Blok 1: Hero Punchy Banner
-- **Wajib Ada:**
-  - Badge kategori modul (`bg-[#092328] text-white`).
-  - Judul materi yang tegas dan singkat (`text-3xl sm:text-5xl font-black uppercase`).
-  - 1 kalimat *Tagline* yang menjawab: *"Apa fungsi alat/konsep ini di dunia kerja nyata?"*.
-  - Emblem Box miring (`-rotate-2 hover:rotate-0`).
-- **Dilarang:** Kalimat pengantar klise (contoh: *"Dalam era digitalisasi global saat ini..."*).
+#### Blok 1: Hero Raksasa Hitam Immersif (Giant Immersive Black Hero)
+- **Tampilan Visual:**
+  - Latar belakang hitam pekat: `bg-black border-4 border-black p-6 md:p-12 shadow-neo-xl text-center relative overflow-hidden text-white`.
+  - Badge Kategori di pojok kiri atas: `absolute top-0 left-0 bg-white text-black font-black px-4 py-1 border-b-4 border-r-4 border-black shadow-neo-sm z-20 uppercase`.
+  - Watermark Ikon Raksasa di latar belakang: `<span className="material-symbols-outlined text-[150px] md:text-[250px] text-white opacity-20 transform rotate-12">terminal</span>`.
+  - Judul Raksasa Tegas: `text-4xl sm:text-5xl md:text-7xl font-black text-mint-soft tracking-tighter uppercase mb-4 md:mb-6`.
+  - Tagline Inset Putih: `text-base md:text-xl font-bold text-black bg-white inline-block px-4 py-2 md:px-6 md:py-3 border-4 border-black mb-8 md:mb-10 shadow-neo-md uppercase tracking-tight`.
+  - Tombol Aksi / Simulator Interaktif Besar: `bg-jade-vibrant text-white font-black text-xl md:text-3xl px-8 py-5 md:px-12 md:py-6 border-4 border-white shadow-neo-lg hover:-translate-y-2 hover:-translate-x-2 active:translate-x-[4px] active:translate-y-[4px] active:shadow-none transition-all uppercase tracking-widest flex items-center gap-4 mx-auto`.
+- **Aturan Header:**
+  - Jarak atas standar adalah `pt-[88px]`.
+  - **Dilarang memasang ticker ribbon berjalan** di halaman materi karena menyita ruang vertikal layar dan membuat halaman terasa penuh/bising.
 
-#### Blok 2: Analogi 1 Detik (Real-World Analogy)
+#### Blok 2: Analogi 1 Detik (Split Box Asimetris)
 - Mengaitkan konsep abstrak ke barang fisik yang disentuh siswa setiap hari.
-- **Daftar Analogi Terverifikasi:**
-  - *Hardware vs Software vs Brainware* $\rightarrow$ Gitar Fisik vs Not Balok / Lagu vs Gitaris.
-  - *HTML vs CSS vs JavaScript* $\rightarrow$ Rangka Rumah vs Cat & Dekorasi vs Kelistrikan/Pintu Otomatis.
-  - *Frontend vs Backend vs Database* $\rightarrow$ Pelayan Meja vs Koki Dapur vs Lemari Stok Bahan.
-  - *Port & IP Address* $\rightarrow$ Nomor Kamar Hotel vs Alamat Gedung Hotel.
-  - *RAM vs Storage (SSD/Harddisk)* $\rightarrow$ Meja Kerja Praktik (cepat tapi sempit) vs Gudang Arsip (luas tapi harus diambil).
+- Gunakan struktur split:
+  - **Sisi Kiri (2/3 lebar):** Teks pengantar 1 kalimat + Box penjelasan analogi (`bg-canvas border-4 border-black p-6 shadow-neo-md`).
+  - **Sisi Kanan (1/3 lebar):** Box hitam berotasi halus (`bg-black border-4 border-black shadow-neo-md p-6 text-white flex flex-col items-center justify-center -rotate-2 hover:rotate-0`) dengan ikon berukuran besar `text-[80px]` dan teks label ringkas.
 
-#### Blok 3: Anatomi / Cara Kerja Inti (Maksimal 3-4 Langkah)
-- Pecah mekanisme kerja menjadi kartu bernomor urut `01`, `02`, `03`.
-- Gunakan badge angka tebal (`font-black text-xl border-2 border-black`).
-- Setiap langkah hanya berisi: **Aksi** $\rightarrow$ **Penjelasan Singkat (1 kalimat)** $\rightarrow$ **Hasil/Status**.
+#### Blok 3: Anatomi / Perintah Inti (Kartu Horizontal Lebar)
+- Hindari memaksakan grid 3 kolom sempit bertumpuk teks. Gunakan kartu horizontal lebar:
+  - Sisi kiri: Blok kode syntax monospace (`w-full md:w-1/2 bg-black text-mint-soft font-mono p-4 border-2 border-black text-base md:text-lg`).
+  - Sisi kanan: Penjelasan fungsi dan tujuan praktis dalam 1–2 kalimat singkat.
+- Hover effect halus: `hover:translate-x-2 transition-transform`.
 
-#### Blok 4: Tabel Komparasi Head-to-Head / Troubleshooting Praktik
-- Anak SMK belajar lebih cepat dari perbandingan tegas atau masalah lapangan.
-- Gunakan tabel brutalist atau 2 kartu bersanding:
-  - Kolom A: Konsep 1 (misal: *Web Statis*) vs Kolom B: Konsep 2 (misal: *Web Dinamis*).
-  - Atau: **Gejala Rusak / Error** $\rightarrow$ **Penyebab** $\rightarrow$ **Langkah Perbaikan Lapangan**.
+#### Blok 4: Komparasi Lapang & Kotak Bahaya Maut
+- **Komparasi 2 Kolom (Wadah vs Isi):**
+  - Menggunakan `grid grid-cols-1 md:grid-cols-2 gap-8`.
+  - Tiap kolom memiliki header dengan ikon Material Symbols 5xl, chip kategori, penjelasan 1 kalimat, dan contoh syntax monospaced.
+- **Kotak Peringatan Bahaya Maut (Red Warning Banner):**
+  - Menggunakan latar merah tebal: `bg-[#FF0000] border-4 border-black p-6 md:p-8 flex flex-col md:flex-row gap-6 items-center shadow-neo-lg transform -rotate-1 hover:rotate-0 transition-transform`.
+  - Ikon warning animasi bounce: `<span className="material-symbols-outlined text-white text-[80px] font-black animate-bounce">warning</span>`.
+  - Kotak putih inset untuk penjelasan konsekuensi nyata bila perintah salah dijalankan (misal: *update/delete tanpa WHERE*).
 
-#### Blok 5: Evaluasi & Rangkuman Emas
-- 3 kartu ringkasan cepat (`3-Card Bento Row`).
-- Langsung sambung ke komponen kuis evaluasi: `<QuizTrigger pageSlug="nama-slug-materi" />`.
+#### Blok 5: Evaluasi Kuis & Footer Navigasi Modul
+- Komponen Evaluasi Langsung: `<QuizTrigger pageSlug="slug-halaman" />`.
+- **Footer Navigasi (Wajib Ada):**
+  - Tombol Mundur (Kembali ke Bab Sebelumnya): `bg-canvas text-black font-black uppercase text-sm md:text-lg px-4 py-3 md:px-6 md:py-4 border-4 border-black shadow-neo-md...`.
+  - Tombol Maju (Lanjut ke Bab Berikutnya): `bg-white text-black font-black uppercase text-sm md:text-lg px-4 py-3 md:px-6 md:py-4 border-4 border-black shadow-neo-md...`.
 
 ---
 
-## 4. Standar Desain Visual Tactile Neo Brutalism (docs/DESIGN.md)
+## 4. Standar Desain Visual Tactile Neo Brutalism (`docs/DESIGN.md`)
 
-Halaman materi wajib tunduk 100% pada aturan visual antarmuka:
+Setiap halaman materi wajib menggunakan token Tailwind yang telah terdefinisi di `@theme` (`app/globals.css`):
 
-### A. Palet Warna Resmi
+### A. Palet Token Warna Resmi
 ```css
-/* Tokens */
---canvas: #EAF4ED;       /* Latar utama halaman */
---mint-soft: #8BBB92;    /* Aksen lembut / badge sekunder */
---jade-vibrant: #2A835F; /* Tombol aktif / badge sukses / primary */
---pine-deep: #12544F;    /* Header / kontras gelap medium */
---forest-teal: #092328;  /* Teks gelap / kontainer emblem */
---black: #000000;        /* Garis stroke tinta dan bayangan */
---white: #FFFFFF;        /* Kontainer kartu & highlight */
+/* Color Tokens */
+bg-canvas        /* #EAF4ED: Latar utama dengan dot matrix */
+bg-mint-soft     /* #8BBB92: Kartu aksen sekunder / highlight lembut */
+bg-jade-vibrant  /* #2A835F: Tombol aksi utama / status aktif */
+bg-pine-deep     /* #12544F: Kontainer gelap medium / badge nomor */
+bg-forest-teal   /* #092328: Aksen header / badge nomor gelap */
+bg-black         /* #000000: Banner hero pekat & outline */
+bg-white         /* #FFFFFF: Latar kartu konten & inset teks */
 ```
 
-### B. Aturan Absolut Styling (Zero Exception)
+### B. Shadow & Border Tokens
+```css
+/* Hard Drop Shadows (Zero-Blur) */
+shadow-neo-sm    /* 2px 2px 0px 0px #000 (Badge, micro button) */
+shadow-neo-md    /* 4px 4px 0px 0px #000 (Kartu standar, input) */
+shadow-neo-lg    /* 6px 6px 0px 0px #000 (Tombol hero, banner warning) */
+shadow-neo-xl    /* 8px 8px 0px 0px #000 (Hero container utama) */
+
+/* Borders */
+border-4 border-black  /* Wajib untuk semua kontainer kartu, hero, dan tombol utama */
+border-2 border-black  /* Untuk badge kecil, syntax snippet, atau divider */
+```
+
+### C. Aturan Absolut Styling (Zero Exception)
 1. **Zero-Blur Policy:** Dilarang keras memakai `backdrop-blur`, `filter blur`, atau `shadow-lg` bawaan Tailwind yang berpendar halus.
-2. **Heavy Ink Borders:**
-   - Panel utama / Kartu: `border-4 border-black`
-   - Sub-elemen / Badge / Input: `border-2 border-black`
-3. **Hard Offset Shadows:**
-   - Hero / Kontainer Utama: `shadow-[8px_8px_0px_0px_#000]`
-   - Kartu Standar: `shadow-[4px_4px_0px_0px_#000]`
-   - Badge / Micro-button: `shadow-[2px_2px_0px_0px_#000]`
-4. **Sudut Tegas:** Selalu `rounded-none`. Tidak boleh menggunakan `rounded-xl`, `rounded-2xl`, atau kapsul bulat (kecuali avatar lingkaran eksplisit).
-5. **Tactile Push Physics pada Elemen Interaktif:**
+2. **Sudut Tegas:** Selalu `rounded-none`. Tidak boleh menggunakan `rounded-xl`, `rounded-2xl`, atau rounded pills.
+3. **Tactile Push Physics pada Tombol & Kartu:**
    ```css
-   hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_#000]
-   active:translate-x-[4px] active:translate-y-[4px] active:shadow-none
+   hover:-translate-y-1 hover:-translate-x-1 hover:shadow-neo-lg
+   active:translate-x-[2px] active:translate-y-[2px] active:shadow-none
    transition-all cursor-pointer
    ```
 
@@ -128,17 +144,18 @@ Halaman materi wajib tunduk 100% pada aturan visual antarmuka:
 
 | ❌ DILARANG KERAS (Anti-Pattern) | ✅ STANDAR BENAR (Best Practice) |
 | :--- | :--- |
-| **Menulis Definisi Buku Teks vs Definisi Praktis bersanding:** Menghabiskan 2 kartu hanya untuk membedakan gaya bahasa. | **Langsung tulis penjelasan praktisnya:** Siswa tidak butuh membaca definisi kaku yang membingungkan. |
-| **Paragraf Pembuka Lebih dari 4 Baris:** Menulis sejarah panjang sebelum masuk ke topik inti. | **Langsung ke topik & analogi:** 1 kalimat fungsi utama + 1 analogi visual barang nyata. |
-| **State React Berlebihan untuk Switcher Teks Sederhana:** Membuat 3 tab hanya untuk menampilkan 3 kalimat bergantian. | **Buka semua kartu dalam bentuk Grid:** Siswa bisa langsung *scanning* tanpa harus klik sana-sini di HP. |
-| **Jargon Teknis Abstrak Tanpa Penjelasan Fungsional:** Contoh: *"Fotodioda mengonversi partikel foton secara simultan"*. | **Bahasa Lapangan / Bahasa Manusia:** Contoh: *"Sensor kamera menangkap cahaya lalu diubah jadi sinyal digital"*. |
-| **File JSX Mencapai 500 – 800 Baris:** Terlalu banyak sub-modul yang dipaksakan masuk ke satu URL. | **Maksimal 200 – 300 Baris:** Materi terfokus pada 1 capaian pembelajaran spesifik. |
+| **Memasang Ticker Ribbon di atas konten materi:** Membuat ruang vertikal sempit dan visual berisik. | **Hapus ticker ribbon pada halaman materi:** Biarkan header bernapas bebas dengan `pt-[88px]`. |
+| **Grid 3 Kolom Padat Teks:** Menjejalkan 3 kolom sempit berisi teks panjang yang membuat halaman terlihat penuh dan melelahkan. | **Gunakan 2 Kolom atau Kartu Horizontal Lebar:** Format horizontal split lebih enak di-scan dan ramah ponsel. |
+| **Spasi Antar Bagian Terlalu Rapat (`space-y-6`):** Menjadikan halaman tampak seperti wall of text raksasa. | **Spasi Lega (`space-y-12 md:space-y-16`):** Memberikan jeda mata (*whitespace*) yang nyaman bagi siswa. |
+| **Menulis Definisi Buku Teks vs Definisi Praktis bersanding:** Membuang 2 kartu hanya untuk membedakan gaya bahasa. | **Langsung tulis penjelasan praktisnya:** Siswa SMK butuh kegunaan nyata, bukan hafalan teori. |
+| **State React Rumit untuk Switcher Teks:** Membuat tab-tab tersembunyi yang menyusahkan siswa saat scanning materi. | **Buka semua kartu dalam layout terbuka:** Siswa bisa langsung membaca alur dari atas ke bawah tanpa klik sana-sini. |
+| **File JSX Mencapai 400 – 600 Baris:** Terlalu banyak subtopik yang dijejalkan ke dalam 1 URL. | **Maksimal 200 – 280 Baris:** Fokus pada 1 konsep esensial yang selesai dipahami dalam 3–5 menit. |
 
 ---
 
-## 6. Official Code Scaffold / Template Siap Pakai (`page.tsx`)
+## 6. Official Battle-Tested Code Template (`page.tsx`)
 
-Gunakan boilerplate standar berikut saat membuat halaman materi baru:
+Gunakan boilerplate standar berikut saat membuat atau merapikan materi modul:
 
 ```tsx
 "use client";
@@ -146,149 +163,155 @@ Gunakan boilerplate standar berikut saat membuat halaman materi baru:
 import Headbar from '@/components/Headbar';
 import Sidebar from '@/components/Sidebar';
 import QuizTrigger from '@/components/quiz-engine/QuizTrigger';
-import Link from 'next/link';
+import { useState } from 'react';
 
 export default function MateriStandardPage() {
+  const [isReady, setIsReady] = useState(false);
+
   return (
     <>
       <Headbar
         links={[
-          { label: 'Silabus', href: '/course/[courseSlug]', isActive: false },
           { label: 'Materi', href: '/course/[courseSlug]/[pageSlug]', isActive: true },
         ]}
       />
 
-      {/* TICKER RIBBON */}
-      <div className="fixed top-[64px] left-0 w-full z-40 bg-[#2A835F] border-b-4 border-black py-1.5 px-4 overflow-hidden select-none">
-        <div className="flex items-center gap-4 text-xs font-black uppercase text-white font-mono tracking-wider">
-          <span>■ MODUL: [NAMA_MODUL]</span>
-          <span>● KELAS [X/XI/XII] SMK</span>
-          <span className="bg-black text-[#8BBB92] px-2 py-0.5 border border-black shadow-[2px_2px_0px_0px_#000]">
-            ★ [TOPIK_UTAMA]
-          </span>
-        </div>
-      </div>
-
-      <div
-        className="flex pt-[104px] min-h-screen bg-[#EAF4ED] text-black font-sans"
-        style={{
-          backgroundImage: 'radial-gradient(#000000 1px, transparent 1px)',
-          backgroundSize: '24px 24px',
-        }}
-      >
+      <div className="flex pt-[88px] min-h-screen">
         <Sidebar courseSlug="[courseSlug]" />
 
-        <main className="md:ml-[280px] w-full p-4 sm:p-6 md:p-8 relative">
-          <div className="max-w-5xl mx-auto space-y-8 md:space-y-10">
+        <main
+          className="md:ml-[280px] w-full p-4 md:p-10 bg-canvas relative"
+          style={{
+            backgroundImage: 'radial-gradient(var(--color-outline) 1px, transparent 1px)',
+            backgroundSize: '24px 24px',
+          }}
+        >
+          <div className="max-w-5xl mx-auto space-y-12 md:space-y-16">
 
-            {/* BLOK 1: HERO SECTION */}
-            <section className="bg-white border-4 border-black shadow-[8px_8px_0px_0px_#000] p-6 sm:p-8 relative">
-              <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
-                <div className="space-y-3 max-w-2xl">
-                  <div className="flex items-center gap-2">
-                    <span className="bg-[#092328] text-white text-xs font-black uppercase px-2.5 py-1 border-2 border-black shadow-[2px_2px_0px_0px_#000]">
-                      MATERI [NOMOR]
-                    </span>
-                    <span className="bg-[#8BBB92] text-black text-xs font-black uppercase px-2.5 py-1 border-2 border-black shadow-[2px_2px_0px_0px_#000]">
-                      DURASI 3 MENIT
-                    </span>
-                  </div>
-                  <h1 className="text-3xl sm:text-5xl font-black uppercase tracking-tight text-black">
-                    [JUDUL MATERI SINGKAT]
-                  </h1>
-                  <p className="text-sm sm:text-base font-bold text-gray-800 leading-snug">
-                    [1 KALIMAT JELAS MENGENAI FUNGSI ALAT / KONSEP INI DI DUNIA KERJA]
-                  </p>
-                </div>
-                <div className="w-24 h-24 sm:w-28 sm:h-28 bg-[#092328] border-4 border-black shadow-[6px_6px_0px_0px_#000] transform -rotate-2 flex flex-col items-center justify-center text-white shrink-0">
-                  <span className="material-symbols-outlined text-4xl text-[#8BBB92]">build</span>
-                  <span className="text-[10px] font-mono font-black mt-1 uppercase">PRAKTIK</span>
+            {/* BLOK 1: HERO SECTION IMMERSIF */}
+            <section className="bg-black border-4 border-black p-6 md:p-12 shadow-neo-xl text-center relative overflow-hidden text-white">
+              <div className="absolute top-0 left-0 bg-white text-black font-black px-4 py-1 border-b-4 border-r-4 border-black shadow-neo-sm z-20 uppercase">
+                [KATEGORI / MODUL 0X]
+              </div>
+              <div className="absolute -top-10 -right-10 z-0">
+                <span className="material-symbols-outlined text-[150px] md:text-[250px] text-white opacity-20 transform rotate-12">
+                  [ICON_NAME]
+                </span>
+              </div>
+
+              <div className="relative z-10 pt-8">
+                <h1 className="text-4xl sm:text-5xl md:text-7xl font-black text-mint-soft tracking-tighter uppercase mb-4 md:mb-6">
+                  [JUDUL MATERI SINGKAT]
+                </h1>
+                <p className="text-base md:text-xl font-bold text-black bg-white inline-block px-4 py-2 md:px-6 md:py-3 border-4 border-black mb-8 md:mb-10 shadow-neo-md uppercase tracking-tight">
+                  [1 KALIMAT ACTIONABLE: FUNGSI UTAMA DI DUNIA KERJA]
+                </p>
+                <div>
+                  <button
+                    onClick={() => setIsReady(!isReady)}
+                    className="bg-jade-vibrant text-white font-black text-xl md:text-3xl px-8 py-5 md:px-12 md:py-6 border-4 border-white shadow-neo-lg hover:-translate-y-2 hover:-translate-x-2 active:translate-x-[4px] active:translate-y-[4px] active:shadow-none transition-all uppercase tracking-widest flex items-center gap-4 mx-auto"
+                  >
+                    {isReady ? (
+                      <><span>Sudah Aktif!</span> <span className="material-symbols-outlined font-black text-4xl animate-bounce">check_circle</span></>
+                    ) : (
+                      <><span>[TOMBOL SIMULATOR / AKSI]</span> <span className="material-symbols-outlined font-black text-4xl">play_circle</span></>
+                    )}
+                  </button>
                 </div>
               </div>
             </section>
 
-            {/* BLOK 2: ANALOGI 1 DETIK */}
-            <section className="bg-[#8BBB92] border-4 border-black shadow-[6px_6px_0px_0px_#000] p-5 sm:p-6">
-              <div className="flex items-start gap-4">
-                <span className="text-3xl shrink-0">💡</span>
-                <div className="space-y-1">
-                  <h3 className="text-base sm:text-lg font-black uppercase text-black">
-                    Analogi Sederhana: [PERUMPAMAAN BENDA SEHARI-HARI]
-                  </h3>
-                  <p className="text-xs sm:text-sm font-bold text-black leading-relaxed">
-                    [JELASKAN HUBUNGAN BENDA FISIK DENGAN KONSEP TEKNIS INI DALAM MAKSIMAL 2 KALIMAT].
-                  </p>
-                </div>
-              </div>
-            </section>
-
-            {/* BLOK 3: CARA KERJA / 3 POIN UTAMA */}
-            <section className="bg-white border-4 border-black shadow-[8px_8px_0px_0px_#000] p-6 space-y-5">
-              <h2 className="text-xl sm:text-2xl font-black uppercase tracking-tight text-black border-b-4 border-black pb-3 flex items-center gap-2">
-                <span className="bg-[#2A835F] text-white px-2 py-0.5 border-2 border-black text-sm">INTI</span>
-                3 Langkah / Komponen Kunci
+            {/* BLOK 2: ANALOGI 1 DETIK (SPLIT BOX) */}
+            <section className="bg-white border-4 border-black shadow-neo-xl p-6 md:p-12 rotate-1 hover:rotate-0 transition-transform">
+              <h2 className="text-2xl sm:text-3xl md:text-5xl font-black text-black uppercase mb-8 md:mb-10 border-b-4 border-black pb-4 flex items-center gap-3 md:gap-4 tracking-tighter">
+                <span className="bg-forest-teal text-white w-12 h-12 md:w-16 md:h-16 flex items-center justify-center border-4 border-black shadow-neo-sm flex-shrink-0 text-2xl md:text-4xl">01</span>
+                [JUDUL ANALOGI KONKRET]
               </h2>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="flex flex-col lg:flex-row gap-8 items-stretch">
+                <div className="flex-1 space-y-6">
+                  <p className="text-lg md:text-xl font-bold text-forest-teal leading-relaxed">
+                    [KONDISI SEHARI-HARI YANG DIHADAPI SISWA / MASALAH NYATA].
+                  </p>
+                  <div className="bg-canvas border-4 border-black p-6 shadow-neo-md">
+                    <h3 className="text-xl font-black uppercase mb-2">Analogi Benda Nyata:</h3>
+                    <p className="font-bold text-black text-lg">
+                      [JELASKAN KORELASI BENDA FISIK DENGAN KONSEP TEKNIS INI DALAM 1-2 KALIMAT].
+                    </p>
+                  </div>
+                </div>
+
+                <div className="lg:w-1/3 bg-black border-4 border-black shadow-neo-md p-6 text-white flex flex-col items-center justify-center -rotate-2 hover:rotate-0 transition-transform">
+                  <span className="material-symbols-outlined text-[80px] text-mint-soft mb-4">[ANALOGY_ICON]</span>
+                  <p className="font-black uppercase text-center text-xl">[NAMA BENDA]</p>
+                </div>
+              </div>
+            </section>
+
+            {/* BLOK 3: PERINTAH INTI / ANATOMI (KARTU HORIZONTAL LEBAR) */}
+            <section className="bg-mint-soft border-4 border-black shadow-neo-xl p-6 md:p-12 -rotate-1 hover:rotate-0 transition-transform">
+              <h2 className="text-2xl sm:text-3xl md:text-5xl font-black text-black uppercase mb-8 md:mb-10 border-b-4 border-black pb-4 flex items-center gap-3 md:gap-4 tracking-tighter">
+                <span className="bg-black text-white w-12 h-12 md:w-16 md:h-16 flex items-center justify-center border-4 border-black shadow-neo-sm flex-shrink-0 text-2xl md:text-4xl">02</span>
+                [LANGKAH / PERINTAH KUNCI]
+              </h2>
+
+              <div className="space-y-6">
                 {[
-                  { no: '01', title: '[KOMPONEN / TAHAP 1]', desc: '[PENJELASAN 1 KALIMAT LANGSUNG ACTIONABLE]' },
-                  { no: '02', title: '[KOMPONEN / TAHAP 2]', desc: '[PENJELASAN 1 KALIMAT LANGSUNG ACTIONABLE]' },
-                  { no: '03', title: '[KOMPONEN / TAHAP 3]', desc: '[PENJELASAN 1 KALIMAT LANGSUNG ACTIONABLE]' },
+                  { code: 'PERINTAH_CONTOH_1;', title: '1. Tindakan Pertama', desc: 'Penjelasan aksi 1 kalimat to-the-point.' },
+                  { code: 'PERINTAH_CONTOH_2;', title: '2. Tindakan Kedua', desc: 'Penjelasan aksi 1 kalimat to-the-point.' },
                 ].map((item, idx) => (
-                  <div key={idx} className="bg-[#EAF4ED] border-3 border-black p-4 space-y-2 shadow-[3px_3px_0px_0px_#000]">
-                    <span className="font-mono text-xs font-black bg-[#092328] text-[#8BBB92] px-2 py-0.5 border border-black inline-block">
-                      {item.no}
-                    </span>
-                    <h4 className="font-black text-sm uppercase text-black">{item.title}</h4>
-                    <p className="text-xs font-bold text-gray-700 leading-normal">{item.desc}</p>
+                  <div key={idx} className="bg-white border-4 border-black p-6 shadow-neo-md flex flex-col md:flex-row items-center gap-6 hover:translate-x-2 transition-transform">
+                    <div className="w-full md:w-1/2 bg-black text-mint-soft font-mono p-4 border-2 border-black text-base md:text-lg">
+                      {item.code}
+                    </div>
+                    <div className="w-full md:w-1/2">
+                      <h3 className="text-xl md:text-2xl font-black uppercase text-black mb-1">{item.title}</h3>
+                      <p className="font-bold text-gray-700">{item.desc}</p>
+                    </div>
                   </div>
                 ))}
               </div>
             </section>
 
-            {/* BLOK 4: KOMPARASI / PANDUAN LAPANGAN */}
-            <section className="bg-white border-4 border-black shadow-[8px_8px_0px_0px_#000] p-6 space-y-4">
-              <h2 className="text-xl sm:text-2xl font-black uppercase tracking-tight text-black border-b-4 border-black pb-3">
-                Perbandingan Praktis (Head-to-Head)
+            {/* BLOK 4: KOMPARASI & KOTAK BAHAYA MAUT */}
+            <section className="bg-canvas border-4 border-black shadow-neo-xl p-6 md:p-12">
+              <h2 className="text-2xl sm:text-3xl md:text-5xl font-black text-black uppercase mb-8 md:mb-10 border-b-4 border-black pb-4 flex items-center gap-3 md:gap-4 tracking-tighter">
+                <span className="bg-pine-deep text-white w-12 h-12 md:w-16 md:h-16 flex items-center justify-center border-4 border-black shadow-neo-sm flex-shrink-0 text-2xl md:text-4xl">03</span>
+                [KASUS / KOMPARASI NYATA]
               </h2>
-              <div className="overflow-x-auto border-3 border-black">
-                <table className="w-full text-left border-collapse text-xs sm:text-sm font-bold">
-                  <thead>
-                    <tr className="bg-[#092328] text-white border-b-3 border-black">
-                      <th className="p-3 border-r-2 border-black">Aspek</th>
-                      <th className="p-3 border-r-2 border-black bg-[#2A835F]">[Kategori A]</th>
-                      <th className="p-3">[Kategori B]</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y-2 divide-black bg-[#FAF8F5]">
-                    <tr>
-                      <td className="p-3 font-black bg-white border-r-2 border-black">Fungsi Utama</td>
-                      <td className="p-3 border-r-2 border-black">[Fungsi A Singkat]</td>
-                      <td className="p-3">[Fungsi B Singkat]</td>
-                    </tr>
-                    <tr>
-                      <td className="p-3 font-black bg-white border-r-2 border-black">Contoh Nyata</td>
-                      <td className="p-3 border-r-2 border-black">[Contoh A Sehari-hari]</td>
-                      <td className="p-3">[Contoh B Sehari-hari]</td>
-                    </tr>
-                  </tbody>
-                </table>
+
+              {/* Kotak Bahaya Maut */}
+              <div className="bg-[#FF0000] border-4 border-black p-6 md:p-8 flex flex-col md:flex-row gap-6 items-center shadow-neo-lg transform -rotate-1 hover:rotate-0 transition-transform">
+                <span className="material-symbols-outlined text-white text-[80px] font-black drop-shadow-[4px_4px_0px_rgba(0,0,0,1)] animate-bounce">warning</span>
+                <div className="text-white">
+                  <h3 className="text-2xl md:text-4xl font-black uppercase mb-2 text-white drop-shadow-[2px_2px_0px_rgba(0,0,0,1)] tracking-tight">
+                    [PERINGATAN KESALAHAN FATAL]
+                  </h3>
+                  <div className="bg-white text-black border-4 border-black p-4 mt-2 text-base md:text-lg font-bold shadow-neo-sm">
+                    [PENJELASAN AKIBAT BURUK JIKA SALAH LANGKAH & CARA MENGHINDARINYA DALAM 1-2 KALIMAT].
+                  </div>
+                </div>
               </div>
             </section>
 
-            {/* BLOK 5: EVALUASI & QUIZ */}
-            <section className="space-y-4">
-              <div className="bg-[#12544F] border-4 border-black shadow-[6px_6px_0px_0px_#000] p-6 text-white text-center space-y-2">
-                <h3 className="text-lg sm:text-xl font-black uppercase tracking-tight">
-                  Sudah Paham Inti Materinya?
-                </h3>
-                <p className="text-xs sm:text-sm text-gray-200 font-bold max-w-lg mx-auto">
-                  Uji pemahamanmu sekarang melalui kuis interaktif di bawah ini untuk mendapatkan nilai modul!
-                </p>
-              </div>
+            {/* BLOK 5: EVALUASI KUIS */}
+            <QuizTrigger pageSlug="[pageSlug]" />
 
-              <QuizTrigger pageSlug="[pageSlug]" />
-            </section>
+            {/* FOOTER NAVIGASI (PREVIOUS / NEXT) */}
+            <div className="flex flex-col sm:flex-row justify-between items-center pt-8 gap-4">
+              <a
+                href="/course/[courseSlug]/[prevSlug]"
+                className="bg-canvas text-black font-black uppercase text-sm md:text-lg px-4 py-3 md:px-6 md:py-4 border-4 border-black shadow-neo-md hover:-translate-y-1 hover:-translate-x-1 hover:shadow-neo-lg active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all flex items-center gap-2 w-full sm:w-auto justify-center"
+              >
+                <span className="material-symbols-outlined font-black">arrow_back</span> [JUDUL BAB SEBELUMNYA]
+              </a>
+              <a
+                href="/course/[courseSlug]/[nextSlug]"
+                className="bg-white text-black font-black uppercase text-sm md:text-lg px-4 py-3 md:px-6 md:py-4 border-4 border-black shadow-neo-md hover:-translate-y-1 hover:-translate-x-1 hover:shadow-neo-lg active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all flex items-center gap-2 w-full sm:w-auto justify-center text-center"
+              >
+                Lanjut ke: [JUDUL BAB BERIKUTNYA] <span className="material-symbols-outlined font-black">arrow_forward</span>
+              </a>
+            </div>
 
           </div>
         </main>
@@ -302,10 +325,11 @@ export default function MateriStandardPage() {
 
 ## 7. Checklist Kurasi Kualitas Materi (Self-Audit Sebelum Publish)
 
-Sebelum sebuah halaman materi disetujui untuk siswa SMK Mandiri, verifikasi 5 poin wajib berikut:
+Sebelum sebuah halaman materi disetujui untuk siswa SMK Mandiri, verifikasi 6 poin wajib berikut:
 
-- [ ] **1. Apakah siswa paham dalam 30 detik pertama?** Ada analogi konkret dan tagline fungsi kerja nyata di Hero.
-- [ ] **2. Apakah bebas dari Wall-of-Text?** Tidak ada paragraf yang melebihi 3 kalimat atau 35 kata.
-- [ ] **3. Apakah panjang baris file JSX di bawah 300 baris?** Jika lebih, pangkas teks berlebih atau bagi menjadi modul berikutnya.
-- [ ] **4. Apakah ramah layar smartphone?** Seluruh grid berformat `grid-cols-1 md:grid-cols-2/3`, tombol mudah ditekan, dan tabel dibungkus `overflow-x-auto`.
-- [ ] **5. Apakah 100% mematuhi Tactile Neo Brutalism?** Border tebal 4px hitam, shadow tegas tanpa blur, `rounded-none`, dan warna palet token sesuai `docs/DESIGN.md`.
+- [ ] **1. Apakah siswa paham dalam 30 detik pertama?** Ada analogi konkret dan tagline fungsi kerja nyata di Hero raksasa.
+- [ ] **2. Apakah bebas dari Wall-of-Text?** Tidak ada paragraf yang melebihi 2–3 kalimat atau 30 kata.
+- [ ] **3. Apakah tata letak terasa lega (banyak *whitespace*)?** Menggunakan `space-y-12 md:space-y-16`, padding kartu `p-6 md:p-12`, dan **tanpa ticker ribbon** yang menyita layar.
+- [ ] **4. Apakah layout kartu tidak berjejalan?** Menggunakan kartu split horizontal lebar atau 2 kolom lapang, bukan grid 3 kolom sempit bertumpuk teks.
+- [ ] **5. Apakah panjang baris file JSX di bawah 300 baris?** Terfokus pada 1 capaian pembelajaran spesifik.
+- [ ] **6. Apakah 100% mematuhi Tactile Neo Brutalism?** Border 4px solid hitam, shadow tegas tanpa blur (`shadow-neo-*`), `rounded-none`, dan token warna sesuai `@theme`.
