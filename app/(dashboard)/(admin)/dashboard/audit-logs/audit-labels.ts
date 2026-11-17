@@ -25,8 +25,10 @@ export const auditLabels: Record<string, { label: string; color: string }> = {
   // Blue (Teacher class updates)
   UPDATE_TEACHER_COURSE_CLASSES: { label: 'Atur Kelas Guru', color: 'bg-blue-100 text-blue-800 border-blue-200' },
 
-  // Red (Teacher removal)
+  // Red (Teacher & Student removal)
   REMOVE_TEACHER_COURSE: { label: 'Cabut Guru Mapel', color: 'bg-red-100 text-red-800 border-red-200' },
+  REMOVE_STUDENT_COURSE: { label: 'Keluarkan Siswa Mapel', color: 'bg-red-100 text-red-800 border-red-200' },
+  REMOVE_CLASS_STUDENTS_COURSE: { label: 'Keluarkan Kelas Mapel', color: 'bg-red-100 text-red-800 border-red-200' },
 
   // Purple
   GRADE_ESSAY: { label: 'Nilai Essay', color: 'bg-purple-100 text-purple-800 border-purple-200' },
