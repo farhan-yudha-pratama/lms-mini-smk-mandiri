@@ -1,5 +1,8 @@
 import { getStudents } from '@/app/actions/student-access';
-import { getAllClasses } from '@/modules/class/class.service';
+import { getScopedClasses, resolveTeacherScope } from '@/modules/course/teacher-scope.service';
+import { getSession } from '@/lib/session';
+import { hasAnyPermission } from '@/lib/permissions';
+import { redirect } from 'next/navigation';
 import StudentAccessTable from './components/StudentAccessTable';
 import { StudentRow } from './types';
 
@@ -8,9 +11,16 @@ export const metadata = {
 };
 
 export default async function StudentAccessPage() {
+  const session = await getSession();
+  if (!session || !hasAnyPermission(session, ['STUDENT_ACCESS_MANAGE', 'STUDENT_ACCESS_VIEW'])) {
+    redirect('/dashboard');
+  }
+
+  const scope = await resolveTeacherScope(session);
+
   const [rawStudents, rawClasses] = await Promise.all([
     getStudents(),
-    getAllClasses()
+    getScopedClasses(scope),
   ]);
   
   const classesMap = new Map(rawClasses.map(c => [c.id, c.name]));
@@ -33,6 +43,16 @@ export default async function StudentAccessPage() {
           <p className="text-gray-500 mt-1">Kelola dan pantau hak akses halaman untuk setiap siswa.</p>
         </div>
       </div>
+
+      {!scope.isUnrestricted && (scope.allowedCourseIds.size === 0 || scope.allowedClassIds.size === 0) && (
+        <div className="bg-amber-50 border border-amber-300 text-amber-900 rounded-xl p-4 flex items-start gap-3 text-xs sm:text-sm">
+          <span className="material-symbols-outlined text-amber-600 text-xl shrink-0">warning</span>
+          <div>
+            <p className="font-bold text-amber-950">Penugasan Kelas Belum Lengkap</p>
+            <p className="mt-0.5">Anda belum ditugaskan ke kelas atau mata pelajaran mana pun. Hubungi administrator untuk mengatur penugasan Anda.</p>
+          </div>
+        </div>
+      )}
       
       <StudentAccessTable students={students} classes={rawClasses} />
     </div>

@@ -20,6 +20,13 @@ export const auditLabels: Record<string, { label: string; color: string }> = {
   // Green
   CREATE_CATEGORY: { label: 'Buat Kategori', color: 'bg-green-100 text-green-800 border-green-200' },
   CREATE_PAGE: { label: 'Buat Materi', color: 'bg-green-100 text-green-800 border-green-200' },
+  ASSIGN_TEACHER_COURSE: { label: 'Tugaskan Guru', color: 'bg-green-100 text-green-800 border-green-200' },
+
+  // Blue (Teacher class updates)
+  UPDATE_TEACHER_COURSE_CLASSES: { label: 'Atur Kelas Guru', color: 'bg-blue-100 text-blue-800 border-blue-200' },
+
+  // Red (Teacher removal)
+  REMOVE_TEACHER_COURSE: { label: 'Cabut Guru Mapel', color: 'bg-red-100 text-red-800 border-red-200' },
 
   // Purple
   GRADE_ESSAY: { label: 'Nilai Essay', color: 'bg-purple-100 text-purple-800 border-purple-200' },

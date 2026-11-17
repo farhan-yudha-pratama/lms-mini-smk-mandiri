@@ -2,8 +2,15 @@
 
 import { db } from '@/prisma/db';
 import { revalidatePath } from 'next/cache';
+import { requirePermission } from '@/lib/permissions-server';
+import { resolveTeacherScope } from '@/modules/course/teacher-scope.service';
+import { assertCanAccessAttempt } from '@/modules/quiz-report/quiz-report.service';
 
 export async function submitEssayGrades(attemptId: string, grades: { answerId: string; points: number; feedback: string }[]) {
+  const session = await requirePermission('QUIZZES_GRADE');
+  const scope = await resolveTeacherScope(session);
+  await assertCanAccessAttempt(scope, attemptId);
+
   return await db.transaction(async (tx) => {
     const attempt = await tx.orm.public.QuizAttempt.where({ id: attemptId }).first();
     if (!attempt) throw new Error('Attempt not found');

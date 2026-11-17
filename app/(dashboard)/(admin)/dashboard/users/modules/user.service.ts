@@ -213,7 +213,12 @@ export const userService = {
         await db.orm.public.CourseStudent.where({ id: cs.id }).delete();
       }
 
-      // Relasi penugasan guru ke mata pelajaran (guru)
+      // Relasi penugasan guru ke mata pelajaran & kelas (guru)
+      const teacherClasses = await db.orm.public.CourseTeacherClass.where({ teacherId: id }).all();
+      for (const tcc of teacherClasses) {
+        await db.orm.public.CourseTeacherClass.where({ id: tcc.id }).delete();
+      }
+
       const teacherCourses = await db.orm.public.CourseTeacher.where({ teacherId: id }).all();
       for (const ct of teacherCourses) {
         await db.orm.public.CourseTeacher.where({ id: ct.id }).delete();

@@ -205,9 +205,13 @@ export async function getMaterialOptionsAction(): Promise<ActionResponse<CourseM
   }
 }
 
+import { hasAnyPermission } from '@/lib/permissions';
+import { resolveTeacherScope } from '@/modules/course/teacher-scope.service';
+import { db } from '@/prisma/db';
+
 async function getAuthenticatedStaff() {
   const session = await getSession();
-  if (!session || !session.userId || (session.role !== 'SUPERADMIN' && session.role !== 'GURU')) {
+  if (!session || !session.userId || !hasAnyPermission(session, ['STUDENT_PROJECTS_VIEW', 'STUDENT_PROJECTS_INSPECT'])) {
     return null;
   }
   return session;
@@ -219,12 +223,12 @@ async function getAuthenticatedStaff() {
 export async function getStudentsProjectMonitoringAction() {
   const session = await getAuthenticatedStaff();
   if (!session) {
-    return { success: false, message: 'Akses ditolak: Hanya untuk Guru dan Superadmin' };
+    return { success: false, message: 'Akses ditolak: Anda tidak memiliki izin melihat proyek siswa' };
   }
 
   try {
-    const teacherId = session.role === 'GURU' ? session.userId : undefined;
-    const data = await getStudentsProjectMonitoringData(teacherId);
+    const scope = await resolveTeacherScope(session);
+    const data = await getStudentsProjectMonitoringData(scope);
     return { success: true, message: 'Berhasil memuat data monitoring', data };
   } catch (error) {
     console.error('getStudentsProjectMonitoringAction error:', error);
@@ -238,10 +242,17 @@ export async function getStudentsProjectMonitoringAction() {
 export async function getStudentProjectsForAdminAction(studentId: string) {
   const session = await getAuthenticatedStaff();
   if (!session) {
-    return { success: false, message: 'Akses ditolak: Hanya untuk Guru dan Superadmin' };
+    return { success: false, message: 'Akses ditolak: Anda tidak memiliki izin inspeksi proyek siswa' };
   }
 
   try {
+    const scope = await resolveTeacherScope(session);
+    if (!scope.isUnrestricted) {
+      const student = await db.orm.public.User.where({ id: studentId, role: 'MURID' }).first();
+      if (!student?.classId || !scope.allowedClassIds.has(student.classId)) {
+        return { success: false, message: 'Anda tidak memiliki akses ke kelas siswa ini' };
+      }
+    }
     const data = await getStudentProjectsForAdmin(studentId);
     if (!data.student) {
       return { success: false, message: 'Data siswa tidak ditemukan' };

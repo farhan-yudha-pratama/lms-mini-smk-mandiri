@@ -1,16 +1,22 @@
 import { getSession } from '@/lib/session';
-import { db } from '@/prisma/db';
-import { getAllClasses } from '@/modules/class/class.service';
+import { hasAnyPermission } from '@/lib/permissions';
+import { redirect } from 'next/navigation';
+import { getScopedClasses, getScopedCourses, resolveTeacherScope } from '@/modules/course/teacher-scope.service';
 import GradebookClient from './GradebookClient';
 
 export const dynamic = 'force-dynamic';
 
 export default async function GradebookPage() {
   const session = await getSession();
-  
-  // Get all classes and courses for filters
-  const classes = await getAllClasses();
-  const courses = await db.orm.public.Course.all();
+  if (!session || !hasAnyPermission(session, ['GRADEBOOK_VIEW', 'QUIZZES_GRADE'])) {
+    redirect('/dashboard');
+  }
+
+  const scope = await resolveTeacherScope(session);
+  const [classes, courses] = await Promise.all([
+    getScopedClasses(scope),
+    getScopedCourses(scope),
+  ]);
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6 animate-fade-in">
@@ -20,6 +26,16 @@ export default async function GradebookPage() {
           Pantau rekap nilai kuis dan tugas mandiri seluruh siswa dalam format matriks spreadsheet per kelas dan mata pelajaran.
         </p>
       </div>
+
+      {!scope.isUnrestricted && (scope.allowedCourseIds.size === 0 || scope.allowedClassIds.size === 0) && (
+        <div className="bg-amber-50 border border-amber-300 text-amber-900 rounded-xl p-4 flex items-start gap-3 text-xs sm:text-sm">
+          <span className="material-symbols-outlined text-amber-600 text-xl shrink-0">warning</span>
+          <div>
+            <p className="font-bold text-amber-950">Penugasan Kelas Belum Lengkap</p>
+            <p className="mt-0.5">Anda belum ditugaskan ke kelas atau mata pelajaran mana pun. Hubungi administrator untuk mengatur penugasan Anda.</p>
+          </div>
+        </div>
+      )}
 
       <GradebookClient classes={classes} courses={courses} />
     </div>

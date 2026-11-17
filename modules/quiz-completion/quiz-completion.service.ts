@@ -1,5 +1,10 @@
 import { db } from '@/prisma/db';
 import { randomUUID } from 'crypto';
+import {
+  isClassAllowedForCourse,
+  resolvePackageCourseIds,
+  type TeacherScope,
+} from '@/modules/course/teacher-scope.service';
 
 export interface QuizArchiveItem {
   id: string;
@@ -280,11 +285,38 @@ export async function getQuizArchives(params: {
   search?: string;
   page?: number;
   limit?: number;
+  scope?: TeacherScope;
 }): Promise<QuizArchivesResponse> {
   const page = Math.max(1, params.page || 1);
   const limit = Math.max(1, params.limit || 50);
 
   let records = await db.orm.public.QuizCompletionRecord.all();
+
+  if (params.scope && !params.scope.isUnrestricted) {
+    const [allPackages, allPages, allCategories] = await Promise.all([
+      db.orm.public.QuizPackage.all(),
+      db.orm.public.Page.all(),
+      db.orm.public.MaterialCategory.all(),
+    ]);
+    const pageMap = new Map(allPages.map(p => [p.id, p]));
+    const catMap = new Map(allCategories.map(c => [c.id, c]));
+    const titleToCourseIds = new Map<string, string[]>();
+    for (const pkg of allPackages) {
+      const key = pkg.title.toLowerCase().trim();
+      const { candidateCourseIds } = resolvePackageCourseIds(pkg, pageMap, catMap);
+      const existing = titleToCourseIds.get(key) || [];
+      for (const cId of candidateCourseIds) {
+        if (!existing.includes(cId)) existing.push(cId);
+      }
+      titleToCourseIds.set(key, existing);
+    }
+
+    records = records.filter(r => {
+      if (!r.classroomId || !params.scope!.allowedClassIds.has(r.classroomId)) return false;
+      const cIds = titleToCourseIds.get(r.sourceTitle.toLowerCase().trim()) || [];
+      return cIds.some(cId => isClassAllowedForCourse(params.scope!, cId, r.classroomId));
+    });
+  }
 
   // 1. Filter Kelas
   if (params.classId) {

@@ -8,11 +8,29 @@ import { ActionResponse, PageAccessStatus } from '@/app/(dashboard)/(admin)/dash
 import { logAudit } from '@/lib/audit';
 import { getStudentLabel, getPageLabel, getCategoryLabel } from '@/lib/audit-context';
 import { msg } from '@/lib/audit-messages';
+import { requireAnyPermission } from '@/lib/permissions-server';
+import { isClassAllowedForCourse, isCourseAllowed, resolveTeacherScope } from '@/modules/course/teacher-scope.service';
+import { db } from '@/prisma/db';
+
+async function assertTeacherCanAccessStudent(studentId: string, permissions: string[]) {
+  const session = await requireAnyPermission(permissions);
+  const scope = await resolveTeacherScope(session);
+  if (scope.isUnrestricted) return scope;
+  const student = await db.orm.public.User.where({ id: studentId, role: 'MURID' }).first();
+  if (!student?.classId || !scope.allowedClassIds.has(student.classId)) {
+    throw new Error('FORBIDDEN');
+  }
+  return scope;
+}
 
 function handleActionError(error: unknown): ActionResponse {
   if (error instanceof ZodError) {
     const errorMessages = error.issues.map(err => err.message).join(', ');
     return { success: false, error: `Data pembaruan tidak valid: ${errorMessages}` };
+  }
+
+  if (error instanceof Error && (error.message === 'UNAUTHORIZED' || error.message === 'FORBIDDEN')) {
+    return { success: false, error: 'Anda tidak memiliki akses untuk mengelola siswa atau materi ini.' };
   }
 
   if (error instanceof Error) {
@@ -28,20 +46,33 @@ function handleActionError(error: unknown): ActionResponse {
 }
 
 export async function getStudents() {
-  return await studentAccessService.getStudents();
+  const session = await requireAnyPermission(['STUDENT_ACCESS_MANAGE', 'STUDENT_ACCESS_VIEW']);
+  const scope = await resolveTeacherScope(session);
+  return await studentAccessService.getStudents(scope);
 }
 
 export async function getStudent(studentId: string) {
+  await assertTeacherCanAccessStudent(studentId, ['STUDENT_ACCESS_MANAGE', 'STUDENT_ACCESS_VIEW']);
   return await studentAccessService.getStudentById(studentId);
 }
 
 export async function getStudentAccessData(studentId: string) {
-  return await studentAccessService.getStudentAccessData(studentId);
+  const scope = await assertTeacherCanAccessStudent(studentId, ['STUDENT_ACCESS_MANAGE', 'STUDENT_ACCESS_VIEW']);
+  return await studentAccessService.getStudentAccessData(studentId, scope);
 }
 
 export async function updatePageAccess(studentId: string, pageId: string, status: PageAccessStatus): Promise<ActionResponse> {
   try {
     const parsed = UpdateAccessSchema.parse({ studentId, pageId, status });
+    const scope = await assertTeacherCanAccessStudent(parsed.studentId, ['STUDENT_ACCESS_MANAGE', 'STUDENT_ACCESS_UPDATE']);
+    if (!scope.isUnrestricted) {
+      const page = await db.orm.public.Page.where({ id: parsed.pageId }).first();
+      const cat = page ? await db.orm.public.MaterialCategory.where({ id: page.categoryId }).first() : null;
+      const student = await db.orm.public.User.where({ id: parsed.studentId }).first();
+      if (!isClassAllowedForCourse(scope, cat?.courseId, student?.classId)) {
+        throw new Error('FORBIDDEN');
+      }
+    }
 
     const result = await studentAccessService.updatePageAccess(parsed.studentId, parsed.pageId, parsed.status as PageAccessStatus);
     
@@ -61,6 +92,23 @@ export async function updatePageAccess(studentId: string, pageId: string, status
 
 export async function bulkUpdatePageAccessAction(studentId: string, pageIds: string[], status: PageAccessStatus): Promise<ActionResponse> {
   try {
+    const scope = await assertTeacherCanAccessStudent(studentId, ['STUDENT_ACCESS_MANAGE', 'STUDENT_ACCESS_UPDATE']);
+    if (!scope.isUnrestricted) {
+      const [pages, categories, student] = await Promise.all([
+        db.orm.public.Page.all(),
+        db.orm.public.MaterialCategory.all(),
+        db.orm.public.User.where({ id: studentId }).first(),
+      ]);
+      const pageMap = new Map(pages.map(p => [p.id, p]));
+      const catMap = new Map(categories.map(c => [c.id, c]));
+      for (const pId of pageIds) {
+        const cat = pageMap.get(pId) ? catMap.get(pageMap.get(pId)!.categoryId) : null;
+        if (!isClassAllowedForCourse(scope, cat?.courseId, student?.classId)) {
+          throw new Error('FORBIDDEN');
+        }
+      }
+    }
+
     for (const pageId of pageIds) {
       await studentAccessService.updatePageAccess(studentId, pageId, status);
     }
@@ -83,6 +131,17 @@ export async function bulkUpdatePageAccessAction(studentId: string, pageIds: str
 
 export async function bypassCategoryAccessAction(studentId: string, categoryId: string): Promise<ActionResponse> {
   try {
+    const scope = await assertTeacherCanAccessStudent(studentId, ['STUDENT_ACCESS_MANAGE', 'STUDENT_ACCESS_BYPASS']);
+    if (!scope.isUnrestricted) {
+      const [cat, student] = await Promise.all([
+        db.orm.public.MaterialCategory.where({ id: categoryId }).first(),
+        db.orm.public.User.where({ id: studentId }).first(),
+      ]);
+      if (!isCourseAllowed(scope, cat?.courseId) || !isClassAllowedForCourse(scope, cat?.courseId, student?.classId)) {
+        throw new Error('FORBIDDEN');
+      }
+    }
+
     const result = await studentAccessService.bypassCategoryAccessService(studentId, categoryId);
     
     const [student, category] = await Promise.all([getStudentLabel(studentId), getCategoryLabel(categoryId)]);
@@ -102,6 +161,18 @@ export async function bypassCategoryAccessAction(studentId: string, categoryId: 
 
 export async function bypassPageAccessAction(studentId: string, pageId: string): Promise<ActionResponse> {
   try {
+    const scope = await assertTeacherCanAccessStudent(studentId, ['STUDENT_ACCESS_MANAGE', 'STUDENT_ACCESS_BYPASS']);
+    if (!scope.isUnrestricted) {
+      const [page, student] = await Promise.all([
+        db.orm.public.Page.where({ id: pageId }).first(),
+        db.orm.public.User.where({ id: studentId }).first(),
+      ]);
+      const cat = page ? await db.orm.public.MaterialCategory.where({ id: page.categoryId }).first() : null;
+      if (!isClassAllowedForCourse(scope, cat?.courseId, student?.classId)) {
+        throw new Error('FORBIDDEN');
+      }
+    }
+
     const result = await studentAccessService.bypassPageAccessService(studentId, pageId);
     
     const [student, page] = await Promise.all([getStudentLabel(studentId), getPageLabel(pageId)]);

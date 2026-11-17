@@ -23,9 +23,14 @@ import {
   reorderQuestionsSchema 
 } from './quiz.schema';
 import { z } from 'zod';
+import { requireAnyPermission } from '@/lib/permissions-server';
+import { isCourseAllowed, isPackageAllowedForScope, resolveTeacherScope } from '@/modules/course/teacher-scope.service';
+import { db } from '@/prisma/db';
 
 export async function createQuizPackageAction(formData: FormData) {
   try {
+    const session = await requireAnyPermission(['QUIZZES_MANAGE', 'QUIZZES_CREATE']);
+    const scope = await resolveTeacherScope(session);
     const rawData = {
       courseId: formData.get('courseId'),
       pageId: formData.get('pageId') || null,
@@ -41,6 +46,9 @@ export async function createQuizPackageAction(formData: FormData) {
     };
 
     const validatedData = quizFormSchema.parse(rawData);
+    if (!isCourseAllowed(scope, validatedData.courseId)) {
+      return { success: false, message: 'Anda tidak ditugaskan sebagai pengampu mata pelajaran ini.' };
+    }
     await createQuizPackage(validatedData);
     
   revalidatePath(`/dashboard/quizzes`);
@@ -55,6 +63,8 @@ export async function createQuizPackageAction(formData: FormData) {
 
 export async function updateQuizPackageAction(id: string, formData: FormData) {
   try {
+    const session = await requireAnyPermission(['QUIZZES_MANAGE', 'QUIZZES_UPDATE']);
+    const scope = await resolveTeacherScope(session);
     const rawData = {
       courseId: formData.get('courseId'),
       pageId: formData.get('pageId') || null,
@@ -70,6 +80,9 @@ export async function updateQuizPackageAction(id: string, formData: FormData) {
     };
 
     const validatedData = quizFormSchema.parse(rawData);
+    if (!isCourseAllowed(scope, validatedData.courseId)) {
+      return { success: false, message: 'Anda tidak ditugaskan sebagai pengampu mata pelajaran ini.' };
+    }
     await updateQuizPackage(id, validatedData);
     
   revalidatePath(`/dashboard/quizzes`);
@@ -85,6 +98,27 @@ export async function updateQuizPackageAction(id: string, formData: FormData) {
 
 export async function deleteQuizPackageAction(id: string) {
   try {
+    const session = await requireAnyPermission(['QUIZZES_MANAGE', 'QUIZZES_DELETE']);
+    const scope = await resolveTeacherScope(session);
+    if (!scope.isUnrestricted) {
+      const pkg = await db.orm.public.QuizPackage.where({ id }).first();
+      if (pkg) {
+        const [pages, categories] = await Promise.all([
+          pkg.pageId ? db.orm.public.Page.where({ id: pkg.pageId }).all() : Promise.resolve([]),
+          db.orm.public.MaterialCategory.all(),
+        ]);
+        const allowed = isPackageAllowedForScope(
+          scope,
+          pkg,
+          new Map(pages.map(p => [p.id, p])),
+          new Map(categories.map(c => [c.id, c]))
+        );
+        if (!allowed) {
+          return { success: false, message: 'Anda tidak memiliki akses untuk menghapus paket kuis ini.' };
+        }
+      }
+    }
+
     const res = await deleteQuizPackage(id);
     revalidatePath(`/dashboard/quizzes`);
     revalidatePath(`/dashboard/gradebook`);

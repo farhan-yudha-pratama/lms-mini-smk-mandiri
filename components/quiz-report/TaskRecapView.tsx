@@ -12,13 +12,16 @@ export default function TaskRecapView({
   classes,
   courses = [],
   role = 'MURID',
+  canFilterCourse = false,
   onOpenDetail,
 }: {
   classes: ClassType[];
   courses?: { id: string; name: string }[];
   role?: string;
+  canFilterCourse?: boolean;
   onOpenDetail: (attemptId: string) => void;
 }) {
+  const showCourseFilter = canFilterCourse || role === 'SUPERADMIN';
   const [selectedClassId, setSelectedClassId] = useState<string>('');
   const [selectedCourseId, setSelectedCourseId] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string>('');
@@ -232,7 +235,7 @@ export default function TaskRecapView({
             </span>
           </div>
           
-          {role === 'SUPERADMIN' && (
+          {showCourseFilter && (
             <select
               value={selectedCourseId}
               onChange={e => handleCourseChange(e.target.value)}

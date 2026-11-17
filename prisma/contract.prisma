@@ -43,6 +43,7 @@ model Classroom {
   users       User[]
   scoreSummaries     StudentScoreSummary[]
   completionRecords  QuizCompletionRecord[]
+  teacherClasses     CourseTeacherClass[]
 }
 
 model User {
@@ -70,6 +71,7 @@ model User {
   givenFeedbacks  StudentAnswer[]   @relation("AnswerFeedbackAuthor")
   projects        StudentProject[]
   permissions     UserPermission[]
+  teacherClasses  CourseTeacherClass[]
 }
 
 model MaterialCategory {
@@ -403,6 +405,7 @@ model Course {
   teachers    CourseTeacher[]
   students    CourseStudent[]
   projects    StudentProject[]
+  teacherClasses CourseTeacherClass[]
 }
 
 model CourseTeacher {
@@ -413,6 +416,22 @@ model CourseTeacher {
   course  Course @relation(fields: [courseId], references: [id])
   teacher User   @relation(fields: [teacherId], references: [id])
   @@unique([courseId, teacherId])
+}
+
+model CourseTeacherClass {
+  id          String            @id @default(uuid())
+  courseId    String
+  teacherId   String
+  classroomId String
+  createdAt   TimestamptzString @default(now())
+
+  course      Course            @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  teacher     User              @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  classroom   Classroom         @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+
+  @@unique([courseId, teacherId, classroomId])
+  @@index([teacherId])
+  @@index([courseId, teacherId])
 }
 
 model CourseStudent {

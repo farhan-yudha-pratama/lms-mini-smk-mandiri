@@ -1,7 +1,10 @@
 import { getSession } from '@/lib/session';
+import { hasAnyPermission } from '@/lib/permissions';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { getStudentProjectsForAdmin } from '@/modules/sandbox/sandbox.service';
+import { resolveTeacherScope } from '@/modules/course/teacher-scope.service';
+import { db } from '@/prisma/db';
 import StudentProjectDetailClient from './StudentProjectDetailClient';
 
 export const dynamic = 'force-dynamic';
@@ -23,11 +26,18 @@ export default async function StudentProjectDetailPage({
 }) {
   const session = await getSession();
 
-  if (!session || !session.userId || (session.role !== 'SUPERADMIN' && session.role !== 'GURU')) {
+  if (!session || !session.userId || !hasAnyPermission(session, ['STUDENT_PROJECTS_VIEW', 'STUDENT_PROJECTS_INSPECT'])) {
     redirect('/dashboard');
   }
 
   const { studentId } = await params;
+  const scope = await resolveTeacherScope(session);
+  if (!scope.isUnrestricted) {
+    const studentRow = await db.orm.public.User.where({ id: studentId, role: 'MURID' }).first();
+    if (!studentRow?.classId || !scope.allowedClassIds.has(studentRow.classId)) {
+      redirect('/dashboard/student-projects');
+    }
+  }
   const { student, projects } = await getStudentProjectsForAdmin(studentId);
 
   if (!student) {
