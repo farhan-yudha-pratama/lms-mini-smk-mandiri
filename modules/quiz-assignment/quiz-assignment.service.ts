@@ -47,20 +47,43 @@ export async function assertTeacherCanAccessQuizAssignment(
   }
 }
 
-// Get all assignments for a class and package
+// Helper internal: resolusi courseId efektif paket kuis & murid yang terdaftar di CourseStudent
+async function getPackageCandidateCourseIds(packageId: string): Promise<string[]> {
+  const pkg = await db.orm.public.QuizPackage.where({ id: packageId }).first();
+  if (!pkg) return [];
+
+  const [pages, categories] = await Promise.all([
+    pkg.pageId ? db.orm.public.Page.where({ id: pkg.pageId }).all() : Promise.resolve([]),
+    pkg.pageId ? db.orm.public.MaterialCategory.all() : Promise.resolve([]),
+  ]);
+  const pageMap = new Map(pages.map(p => [p.id, p]));
+  const categoryMap = new Map(categories.map(c => [c.id, c]));
+  return resolvePackageCourseIds(pkg, pageMap, categoryMap).candidateCourseIds;
+}
+
+async function getEnrolledStudentIdsForCourses(courseIds: string[]): Promise<Set<string>> {
+  if (courseIds.length === 0) return new Set();
+  const enrollments = await db.orm.public.CourseStudent.all();
+  const courseSet = new Set(courseIds);
+  return new Set(enrollments.filter(e => courseSet.has(e.courseId)).map(e => e.studentId));
+}
+
+// Get all assignments for a class and package (hanya siswa di kelas tsb yang terdaftar di mapel paket)
 export async function getAssignmentsByPackageAndClass(packageId: string, classId: string) {
-  // 1. Get all students in the class
-  const students = await db.orm.public.User.where({ classId, role: 'MURID' }).all();
+  const candidateCourseIds = await getPackageCandidateCourseIds(packageId);
+  if (candidateCourseIds.length === 0) return [];
 
-  // 2. Get assignments for this package
-  const assignments = await db.orm.public.QuizAssignment.where({ quizPackageId: packageId }).all();
+  // 1. Get all students in the class filtered by CourseStudent enrollment
+  const [classStudents, enrolledStudentIds, assignments, attempts, variants] = await Promise.all([
+    db.orm.public.User.where({ classId, role: 'MURID' }).all(),
+    getEnrolledStudentIdsForCourses(candidateCourseIds),
+    db.orm.public.QuizAssignment.where({ quizPackageId: packageId }).all(),
+    db.orm.public.QuizAttempt.all(),
+    db.orm.public.QuizVariant.where({ quizPackageId: packageId }).all(),
+  ]);
 
-  // 3. Get attempts to check locking
-  const attempts = await db.orm.public.QuizAttempt.all();
-  // To optimize in Prisma 8, we fetch all for this package's variants.
-  const variants = await db.orm.public.QuizVariant.where({ quizPackageId: packageId }).all();
+  const students = classStudents.filter(s => enrolledStudentIds.has(s.id));
   const variantIds = variants.map(v => v.id);
-
   const relevantAttempts = attempts.filter(a => variantIds.includes(a.quizVariantId));
 
   // Merge Data
@@ -85,14 +108,24 @@ export async function assignManual(packageId: string, variantId: string, student
     throw new Error('Tidak dapat menugaskan varian yang sedang disuspend. Silakan pilih varian yang aktif.');
   }
 
-  // Only assign to students who haven't attempted the quiz yet
+  const candidateCourseIds = await getPackageCandidateCourseIds(packageId);
+  if (candidateCourseIds.length === 0) {
+    throw new Error('Paket kuis belum terhubung ke mata pelajaran mana pun.');
+  }
+  const enrolledStudentIds = await getEnrolledStudentIdsForCourses(candidateCourseIds);
+  const enrolledTargetIds = studentIds.filter(id => enrolledStudentIds.has(id));
+  if (studentIds.length > 0 && enrolledTargetIds.length === 0) {
+    throw new Error('Murid yang dipilih belum terdaftar pada mata pelajaran kuis ini.');
+  }
+
+  // Only assign to enrolled students who haven't attempted the quiz yet
   const attempts = await db.orm.public.QuizAttempt.all();
   const variants = await db.orm.public.QuizVariant.where({ quizPackageId: packageId }).all();
   const variantIds = variants.map(v => v.id);
   const relevantAttempts = attempts.filter(a => variantIds.includes(a.quizVariantId));
 
   const lockedStudentIds = relevantAttempts.map(a => a.studentId);
-  const validStudentIds = studentIds.filter(id => !lockedStudentIds.includes(id));
+  const validStudentIds = enrolledTargetIds.filter(id => !lockedStudentIds.includes(id));
 
   // Fetch existing assignments
   const existingAssignments = await db.orm.public.QuizAssignment.where({ quizPackageId: packageId }).all();
@@ -261,42 +294,66 @@ export interface StudentTaskItem {
   courseSlug: string | null;
   page: any | null;
   isLinkedToMaterial: boolean;
+  groupInfo?: {
+    groupId: string;
+    groupName: string;
+    variantName: string;
+    taskNote: string | null;
+    members: Array<{ studentId: string; name: string; isSelf: boolean }>;
+    startedByName: string | null;
+    submittedByName: string | null;
+    scoreOverride: number | null;
+    groupBaseScore: number | null;
+  } | null;
 }
 
 /**
- * Mengambil seluruh tugas & kuis aktif yang ditugaskan kepada siswa tertentu.
- * Memvalidasi batas waktu dan keterbukaan halaman materi berurutan.
+ * Mengambil seluruh tugas & kuis aktif yang ditugaskan kepada siswa tertentu (individu & kelompok).
+ * Memvalidasi keanggotaan mapel, batas waktu, dan keterbukaan halaman materi berurutan.
  */
 export async function getStudentTasks(studentId: string): Promise<StudentTaskItem[]> {
-  const assignments = await db.orm.public.QuizAssignment.where({ studentId }).all();
-  if (assignments.length === 0) return [];
+  const [enrollments, assignments, myGroupMemberships] = await Promise.all([
+    db.orm.public.CourseStudent.where({ studentId }).all(),
+    db.orm.public.QuizAssignment.where({ studentId }).all(),
+    db.orm.public.ClassGroupMember.where({ studentId }).all(),
+  ]);
+  if (enrollments.length === 0 || (assignments.length === 0 && myGroupMemberships.length === 0)) {
+    return [];
+  }
 
-  const unlockedPageIds = await getUnlockedPageIdsForStudent(studentId);
+  const enrolledCourseIds = new Set(enrollments.map(e => e.courseId));
 
-  const packageIds = assignments.map(a => a.quizPackageId);
-  const allPackages = await db.orm.public.QuizPackage.all();
-  const packages = allPackages.filter(p => packageIds.includes(p.id));
-  const pkgMap = new Map(packages.map(p => [p.id, p]));
+  const [unlockedPageIds, allPackages, myAttempts, allCourses, allPages, allCategories, allVariants] = await Promise.all([
+    getUnlockedPageIdsForStudent(studentId),
+    db.orm.public.QuizPackage.all(),
+    db.orm.public.QuizAttempt.where({ studentId }).all(),
+    db.orm.public.Course.all(),
+    db.orm.public.Page.all(),
+    db.orm.public.MaterialCategory.all(),
+    db.orm.public.QuizVariant.all(),
+  ]);
 
-  const allAttempts = await db.orm.public.QuizAttempt.where({ studentId }).all();
-  const attemptMap = new Map(allAttempts.map(a => [a.quizVariantId, a]));
+  const pkgMap = new Map(allPackages.map(p => [p.id, p]));
+  const attemptMap = new Map(myAttempts.filter(a => !(a as any).groupId).map(a => [a.quizVariantId, a]));
 
-  const courseIds = packages.map(p => p.courseId).filter(Boolean) as string[];
-  const allCourses = courseIds.length > 0 ? await db.orm.public.Course.all() : [];
-  const courses = allCourses.filter(c => courseIds.includes(c.id));
-  const courseMap = new Map(courses.map((c: any) => [c.id, c.name]));
-  const courseSlugMap = new Map(courses.map((c: any) => [c.id, c.slug]));
-
-  const pageIds = packages.map(p => p.pageId).filter(Boolean) as string[];
-  const allPages = pageIds.length > 0 ? await db.orm.public.Page.all() : [];
-  const pages = allPages.filter(p => pageIds.includes(p.id));
-  const pageMap = new Map(pages.map((p: any) => [p.id, p]));
+  const courseMap = new Map(allCourses.map((c: any) => [c.id, c.name]));
+  const courseSlugMap = new Map(allCourses.map((c: any) => [c.id, c.slug]));
+  const pageMap = new Map(allPages.map((p: any) => [p.id, p]));
+  const categoryMap = new Map(allCategories.map((c: any) => [c.id, c]));
+  const variantMap = new Map(allVariants.map((v: any) => [v.id, v]));
 
   const now = new Date();
 
   const tasks: StudentTaskItem[] = assignments.map(a => {
     const pkg = pkgMap.get(a.quizPackageId);
-    if (!pkg || !pkg.isActive || pkg.isHidden) return null;
+    if (!pkg || !pkg.isActive || pkg.isHidden || (pkg as any).assignmentMode === 'GROUP') return null;
+
+    // Strict Course Scope: hanya tampilkan tugas jika siswa terdaftar di mapel pemilik kuis
+    const { candidateCourseIds } = resolvePackageCourseIds(pkg, pageMap, categoryMap);
+    const matchedCourseId = candidateCourseIds.find(cId => enrolledCourseIds.has(cId));
+    if (!matchedCourseId) {
+      return null;
+    }
 
     // Filter halaman materi: jika kuis terikat pada halaman tertentu,
     // sembunyikan jika halamannya belum terbuka untuk murid ini.
@@ -318,8 +375,8 @@ export async function getStudentTasks(studentId: string): Promise<StudentTaskIte
       status = attempt.status as any;
     }
 
-    const courseName = pkg.courseId ? courseMap.get(pkg.courseId) || 'Kuis Mandiri' : 'Kuis Mandiri';
-    const courseSlug = pkg.courseId ? courseSlugMap.get(pkg.courseId) || null : null;
+    const courseName = courseMap.get(matchedCourseId) || 'Kuis Mandiri';
+    const courseSlug = courseSlugMap.get(matchedCourseId) || null;
     const page = pkg.pageId ? pageMap.get(pkg.pageId) || null : null;
 
     return {
@@ -331,8 +388,95 @@ export async function getStudentTasks(studentId: string): Promise<StudentTaskIte
       courseSlug,
       page,
       isLinkedToMaterial: Boolean(pkg.pageId && page),
+      groupInfo: null,
     };
   }).filter(Boolean) as StudentTaskItem[];
+
+  // Tugas Kelompok berdasarkan ClassGroupMember
+  if (myGroupMemberships.length > 0) {
+    const [allGroups, allGroupMembers, allAttempts, allUsers] = await Promise.all([
+      db.orm.public.ClassGroup.all(),
+      db.orm.public.ClassGroupMember.all(),
+      db.orm.public.QuizAttempt.all(),
+      db.orm.public.User.all(),
+    ]);
+
+    const groupMap = new Map(allGroups.map(g => [g.id, g]));
+    const userMap = new Map(allUsers.map(u => [u.id, u]));
+    const groupAttemptMap = new Map<string, any>();
+    for (const att of allAttempts) {
+      if ((att as any).groupId) groupAttemptMap.set((att as any).groupId, att);
+    }
+
+    for (const gm of myGroupMemberships) {
+      const group = groupMap.get(gm.groupId);
+      if (!group) continue;
+
+      const pkg = pkgMap.get(group.quizPackageId);
+      if (!pkg || !pkg.isActive || pkg.isHidden || (pkg as any).assignmentMode !== 'GROUP') continue;
+
+      const { candidateCourseIds } = resolvePackageCourseIds(pkg, pageMap, categoryMap);
+      const matchedCourseId = candidateCourseIds.find(cId => enrolledCourseIds.has(cId));
+      if (!matchedCourseId) continue;
+
+      if (pkg.pageId && !unlockedPageIds.has(pkg.pageId)) continue;
+
+      const rawAttempt = groupAttemptMap.get(group.id) || null;
+      let status: 'IN_PROGRESS' | 'READY' | 'LOCKED' | 'COMPLETED' | 'GRADED' = 'READY';
+      if (pkg.openAt && now < new Date(pkg.openAt)) status = 'LOCKED';
+      if (pkg.closeAt && now > new Date(pkg.closeAt)) {
+        if (!rawAttempt || rawAttempt.status === 'IN_PROGRESS') continue;
+      }
+      if (rawAttempt) {
+        status = rawAttempt.status as any;
+      }
+
+      const members = allGroupMembers
+        .filter(m => m.groupId === group.id)
+        .map(m => ({
+          studentId: m.studentId,
+          name: userMap.get(m.studentId)?.name || 'Siswa',
+          isSelf: m.studentId === studentId,
+        }))
+        .sort((a, b) => (a.isSelf === b.isSelf ? a.name.localeCompare(b.name) : a.isSelf ? -1 : 1));
+
+      const variant = group.quizVariantId ? variantMap.get(group.quizVariantId) : null;
+      const actorName = rawAttempt ? (userMap.get(rawAttempt.studentId)?.name || 'Anggota') : null;
+      const baseScore = rawAttempt?.score ?? null;
+      const effectiveScore = gm.scoreOverride !== null && gm.scoreOverride !== undefined ? gm.scoreOverride : baseScore;
+      const effectiveAttempt = rawAttempt ? { ...rawAttempt, score: effectiveScore } : null;
+
+      const page = pkg.pageId ? pageMap.get(pkg.pageId) || null : null;
+
+      tasks.push({
+        assignment: {
+          id: `group:${group.id}`,
+          quizPackageId: pkg.id,
+          quizVariantId: group.quizVariantId,
+          studentId,
+          assignedAt: group.createdAt,
+        },
+        pkg,
+        attempt: effectiveAttempt,
+        status,
+        courseName: courseMap.get(matchedCourseId) || 'Tugas Kelompok',
+        courseSlug: courseSlugMap.get(matchedCourseId) || null,
+        page,
+        isLinkedToMaterial: Boolean(pkg.pageId && page),
+        groupInfo: {
+          groupId: group.id,
+          groupName: group.name,
+          variantName: variant?.name || 'Tugas Kelompok',
+          taskNote: group.taskNote || null,
+          members,
+          startedByName: status === 'IN_PROGRESS' ? actorName : null,
+          submittedByName: status === 'COMPLETED' || status === 'GRADED' ? actorName : null,
+          scoreOverride: gm.scoreOverride ?? null,
+          groupBaseScore: baseScore,
+        },
+      });
+    }
+  }
 
   tasks.sort((a, b) => {
     const order: Record<string, number> = { 'IN_PROGRESS': 1, 'READY': 2, 'LOCKED': 3, 'COMPLETED': 4, 'GRADED': 5 };

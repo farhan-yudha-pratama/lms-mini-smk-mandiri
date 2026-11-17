@@ -17,6 +17,7 @@ import {
   getQuizAttemptDetail,
   gradeQuizAttempt,
   getUnfinishedStudentsReport,
+  overrideGroupMemberScore,
   QuizReportsResponse,
   UnfinishedStudentsResponse
 } from './quiz-report.service';
@@ -255,6 +256,28 @@ export async function getTaskRecapAction(params: { classId?: string; courseId?: 
     return {
       success: false,
       message: error instanceof Error ? error.message : 'Gagal mengambil rekapan tugas'
+    };
+  }
+}
+
+export async function overrideGroupMemberScoreAction(
+  groupId: string,
+  studentId: string,
+  scoreOverride: number | null
+) {
+  try {
+    const session = await requireAnyPermission(['QUIZZES_GRADE', 'QUIZZES_MANAGE']);
+    const scope = await resolveTeacherScope(session);
+    const data = await overrideGroupMemberScore(groupId, studentId, scoreOverride, scope);
+    revalidatePath('/dashboard/reports');
+    revalidatePath('/rapor');
+    return { success: true, data };
+  } catch (error) {
+    return {
+      success: false,
+      message: error instanceof Error && error.message === 'FORBIDDEN'
+        ? 'Anda tidak memiliki izin mengubah nilai anggota kelompok ini'
+        : error instanceof Error ? error.message : 'Gagal menyesuaikan nilai anggota kelompok',
     };
   }
 }

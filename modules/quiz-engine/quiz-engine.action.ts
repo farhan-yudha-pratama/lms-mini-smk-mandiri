@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { getQuizStatus, startQuiz, getQuizEngineData, submitQuiz, activateQuizAttempt, studentResetQuizAttempt } from './quiz-engine.service';
+import { getQuizStatus, startQuiz, startGroupQuiz, getQuizEngineData, submitQuiz, activateQuizAttempt, studentResetQuizAttempt } from './quiz-engine.service';
 import { getUserSession } from '@/app/actions';
 
 export async function checkQuizStatusAction(pageSlug: string) {
@@ -25,6 +25,18 @@ export async function startQuizAction(assignmentId: string) {
     return { success: true, attemptId };
   } catch (error) {
     return { success: false, message: error instanceof Error ? error.message : 'Gagal memulai kuis' };
+  }
+}
+
+export async function startGroupQuizAction(groupId: string) {
+  const session = await getUserSession();
+  if (!session) return { success: false, message: 'Unauthorized' };
+
+  try {
+    const attemptId = await startGroupQuiz(groupId, session.userId);
+    return { success: true, attemptId };
+  } catch (error) {
+    return { success: false, message: error instanceof Error ? error.message : 'Gagal memulai tugas kelompok' };
   }
 }
 

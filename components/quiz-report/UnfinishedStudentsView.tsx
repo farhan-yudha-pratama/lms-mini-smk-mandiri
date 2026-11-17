@@ -81,24 +81,61 @@ export default function UnfinishedStudentsView({
     });
   };
 
+  // Sync RSC refreshed data & sanitize filters when teacher class scope changes
+  useEffect(() => {
+    const classValid = !selectedClassId || classes.some(c => c.id === selectedClassId);
+    const courseValid = !selectedCourseId || courses.some(c => c.id === selectedCourseId);
+    const packageValid = !selectedPackageId || packages.some(p => p.id === selectedPackageId);
+
+    if (!classValid) setSelectedClassId('');
+    if (!courseValid) setSelectedCourseId('');
+    if (!packageValid) setSelectedPackageId('');
+
+    if (initialData) {
+      const noFilters =
+        (!classValid || !selectedClassId) &&
+        (!packageValid || !selectedPackageId) &&
+        (!courseValid || !selectedCourseId) &&
+        filterMode === 'ALL' &&
+        sortBy === 'UNOPENED_DESC' &&
+        !searchQuery &&
+        page === 1 &&
+        limit === 50;
+      if (noFilters) {
+        setData(initialData);
+      } else {
+        loadData({
+          classId: classValid ? selectedClassId : '',
+          courseId: courseValid ? selectedCourseId : '',
+          packageId: packageValid ? selectedPackageId : '',
+        });
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialData, classes, courses, packages]);
+
   // Real-time synchronization via Socket.io
   useEffect(() => {
     const socket = getSocket();
-    if (!socket) return;
-
-    socket.emit('join:reports');
-
     const handleSync = () => {
       loadData();
     };
 
-    socket.on('quiz:started', handleSync);
-    socket.on('quiz:completed', handleSync);
+    window.addEventListener('lms:teacher-scope-updated', handleSync);
+    if (socket) {
+      socket.emit('join:reports');
+      socket.on('quiz:started', handleSync);
+      socket.on('quiz:completed', handleSync);
+    }
 
     return () => {
-      socket.off('quiz:started', handleSync);
-      socket.off('quiz:completed', handleSync);
+      window.removeEventListener('lms:teacher-scope-updated', handleSync);
+      if (socket) {
+        socket.off('quiz:started', handleSync);
+        socket.off('quiz:completed', handleSync);
+      }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedClassId, selectedPackageId, selectedCourseId, filterMode, sortBy, searchQuery, page, limit]);
 
   const handleClassChange = (newClassId: string) => {

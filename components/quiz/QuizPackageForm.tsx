@@ -207,6 +207,51 @@ export default function QuizPackageForm({
               className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-base sm:text-sm shadow-2xs leading-relaxed"
             />
           </div>
+
+          {/* Mode Penugasan: Individu vs Kelompok */}
+          <div className="space-y-2 pt-1">
+            <label className="block text-xs sm:text-sm font-semibold text-gray-700">
+              Mode Pengerjaan Tugas / Kuis
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <label className="flex items-start gap-2.5 p-3.5 border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50/50">
+                <input
+                  type="radio"
+                  name="assignmentMode"
+                  value="INDIVIDUAL"
+                  defaultChecked={(initialData?.assignmentMode || 'INDIVIDUAL') === 'INDIVIDUAL'}
+                  className="mt-0.5 text-blue-600 focus:ring-blue-500"
+                />
+                <div className="space-y-0.5">
+                  <span className="text-xs sm:text-sm font-bold text-gray-900 flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-base text-blue-600">person</span>
+                    Individu (Per Siswa)
+                  </span>
+                  <span className="text-[11px] text-gray-500 block">
+                    Setiap siswa mengerjakan dan mengirim jawaban masing-masing.
+                  </span>
+                </div>
+              </label>
+              <label className="flex items-start gap-2.5 p-3.5 border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors has-[:checked]:border-purple-500 has-[:checked]:bg-purple-50/50">
+                <input
+                  type="radio"
+                  name="assignmentMode"
+                  value="GROUP"
+                  defaultChecked={initialData?.assignmentMode === 'GROUP'}
+                  className="mt-0.5 text-purple-600 focus:ring-purple-500"
+                />
+                <div className="space-y-0.5">
+                  <span className="text-xs sm:text-sm font-bold text-gray-900 flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-base text-purple-600">groups</span>
+                    Tugas Kelompok
+                  </span>
+                  <span className="text-[11px] text-gray-500 block">
+                    Kelompok dibentuk per kelas (acak/manual), 1 kiriman per kelompok, anti-cheat default nonaktif.
+                  </span>
+                </div>
+              </label>
+            </div>
+          </div>
         </div>
 
         {/* BAGIAN 2: KRITERIA PENILAIAN & DURASI */}

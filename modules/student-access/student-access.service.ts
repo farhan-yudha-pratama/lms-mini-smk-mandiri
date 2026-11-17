@@ -1,6 +1,6 @@
 import { db } from '@/prisma/db';
 import { PageAccessStatus } from '@/app/(dashboard)/(admin)/dashboard/student-access/types';
-import { isClassAllowedForCourse, type TeacherScope } from '@/modules/course/teacher-scope.service';
+import { isClassAllowedForCourse, resolvePackageCourseIds, type TeacherScope } from '@/modules/course/teacher-scope.service';
 
 export async function getStudents(scope?: TeacherScope) {
   let students = await db.orm.public.User.where({ role: 'MURID' }).all();
@@ -262,8 +262,32 @@ export async function bypassPageAccessService(studentId: string, pageId: string)
   };
 }
 
+/**
+ * Memeriksa apakah siswa terdaftar (CourseStudent) pada mata pelajaran pemilik paket kuis.
+ */
+export async function isStudentEnrolledInPackage(
+  studentId: string,
+  pkg: { courseId?: string | null; pageId?: string | null }
+): Promise<boolean> {
+  const [enrollments, pages, categories] = await Promise.all([
+    db.orm.public.CourseStudent.where({ studentId }).all(),
+    pkg.pageId ? db.orm.public.Page.where({ id: pkg.pageId }).all() : Promise.resolve([]),
+    pkg.pageId ? db.orm.public.MaterialCategory.all() : Promise.resolve([]),
+  ]);
+  if (enrollments.length === 0) return false;
+
+  const enrolledCourseIds = new Set(enrollments.map(e => e.courseId));
+  const pageMap = new Map(pages.map(p => [p.id, p]));
+  const categoryMap = new Map(categories.map(c => [c.id, c]));
+  const { candidateCourseIds } = resolvePackageCourseIds(pkg, pageMap, categoryMap);
+
+  return candidateCourseIds.some(cId => enrolledCourseIds.has(cId));
+}
+
 export async function getUnlockedPageIdsForStudent(studentId: string): Promise<Set<string>> {
-  const [accesses, sequences, packages, attempts, packageVariants, allPages] = await Promise.all([
+  const [enrollments, categories, accesses, sequences, packages, attempts, packageVariants, allPages] = await Promise.all([
+    db.orm.public.CourseStudent.where({ studentId }).all(),
+    db.orm.public.MaterialCategory.all(),
     db.orm.public.PageAccess.where({ studentId }).all(),
     db.orm.public.PageSequence.all(),
     db.orm.public.QuizPackage.all(),
@@ -271,6 +295,11 @@ export async function getUnlockedPageIdsForStudent(studentId: string): Promise<S
     db.orm.public.QuizVariant.all(),
     db.orm.public.Page.all(),
   ]);
+
+  if (enrollments.length === 0) return new Set<string>();
+
+  const enrolledCourseIds = new Set(enrollments.map(e => e.courseId));
+  const categoryCourseMap = new Map(categories.map(c => [c.id, c.courseId]));
 
   const pageQuizMap = new Map(packages.filter(p => p.pageId).map(p => [p.pageId!, p]));
   const variantMap = new Map<string, string[]>();
@@ -286,6 +315,10 @@ export async function getUnlockedPageIdsForStudent(studentId: string): Promise<S
 
   for (const page of allPages) {
     if (!page.isPublished) continue;
+
+    // Hanya izinkan halaman dari mata pelajaran yang diikuti siswa
+    const pageCourseId = categoryCourseMap.get(page.categoryId);
+    if (!pageCourseId || !enrolledCourseIds.has(pageCourseId)) continue;
 
     const explicitStatus = accessMap.get(page.id);
     if (explicitStatus === 'UNLOCKED' || explicitStatus === 'COMPLETED') {

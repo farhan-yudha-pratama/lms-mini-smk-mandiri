@@ -34,9 +34,9 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'0daabda74b74436bb2a27408880f8b8d0c4e8011cd4817cdbe08435ccd3dd02c'>;
+  StorageHashBase<'4cfd2eba93a4df911b003cd20d31860acaff096894efc2e5f85af8cf1a1880fd'>;
 export type ExecutionHash =
-  ExecutionHashBase<'da7f10970cb31482420be4185fec322270742af099fbe67aa492adb01c684d75'>;
+  ExecutionHashBase<'d961cec5b3d7d019c0e8a76c3961e3a05522b28c0882fcbe5a7ac6c2969feee6'>;
 export type ProfileHash =
   ProfileHashBase<'3916f444a8a17ad749191acf9e08dad97d1a327b88c2f1d45d12f240296aa8b2'>;
 
@@ -250,6 +250,28 @@ export type FieldOutputTypes = {
       readonly ipAddress: CodecTypes['pg/text@1']['output'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
     };
+    readonly ClassGroup: {
+      readonly id: CodecTypes['pg/text@1']['output'];
+      readonly quizPackageId: CodecTypes['pg/text@1']['output'];
+      readonly classroomId: CodecTypes['pg/text@1']['output'];
+      readonly courseId: CodecTypes['pg/text@1']['output'];
+      readonly createdByTeacherId: CodecTypes['pg/text@1']['output'];
+      readonly name: CodecTypes['pg/text@1']['output'];
+      readonly taskNote: CodecTypes['pg/text@1']['output'] | null;
+      readonly quizVariantId: CodecTypes['pg/text@1']['output'] | null;
+      readonly isShared: CodecTypes['pg/bool@1']['output'];
+      readonly ruleMode: 'RANDOM_COUNT' | 'RANDOM_SIZE' | 'MANUAL';
+      readonly ruleValue: CodecTypes['pg/int4@1']['output'] | null;
+      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
+      readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
+    };
+    readonly ClassGroupMember: {
+      readonly id: CodecTypes['pg/text@1']['output'];
+      readonly groupId: CodecTypes['pg/text@1']['output'];
+      readonly studentId: CodecTypes['pg/text@1']['output'];
+      readonly scoreOverride: CodecTypes['pg/float8@1']['output'] | null;
+      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
+    };
     readonly Classroom: {
       readonly id: CodecTypes['pg/text@1']['output'];
       readonly name: CodecTypes['pg/text@1']['output'];
@@ -392,6 +414,7 @@ export type FieldOutputTypes = {
       readonly id: CodecTypes['pg/text@1']['output'];
       readonly quizVariantId: CodecTypes['pg/text@1']['output'];
       readonly studentId: CodecTypes['pg/text@1']['output'];
+      readonly groupId: CodecTypes['pg/text@1']['output'] | null;
       readonly score: CodecTypes['pg/float8@1']['output'] | null;
       readonly status: 'IN_PROGRESS' | 'COMPLETED' | 'GRADED';
       readonly startedAt: CodecTypes['pg/timestamptz-string@1']['output'];
@@ -404,7 +427,7 @@ export type FieldOutputTypes = {
       readonly studentEmail: CodecTypes['pg/text@1']['output'];
       readonly classroomId: CodecTypes['pg/text@1']['output'] | null;
       readonly classroomName: CodecTypes['pg/text@1']['output'] | null;
-      readonly sourceType: 'MATERIAL_QUIZ' | 'ASSIGNMENT';
+      readonly sourceType: 'MATERIAL_QUIZ' | 'ASSIGNMENT' | 'GROUP_TASK';
       readonly sourceId: CodecTypes['pg/text@1']['output'];
       readonly sourceTitle: CodecTypes['pg/text@1']['output'];
       readonly categoryName: CodecTypes['pg/text@1']['output'] | null;
@@ -417,6 +440,11 @@ export type FieldOutputTypes = {
       readonly correctAnswers: CodecTypes['pg/int4@1']['output'];
       readonly essayCount: CodecTypes['pg/int4@1']['output'];
       readonly timeTakenSeconds: CodecTypes['pg/int4@1']['output'] | null;
+      readonly groupId: CodecTypes['pg/text@1']['output'] | null;
+      readonly groupName: CodecTypes['pg/text@1']['output'] | null;
+      readonly groupVariantName: CodecTypes['pg/text@1']['output'] | null;
+      readonly groupMembersSummary: CodecTypes['pg/text@1']['output'] | null;
+      readonly groupBaseScore: CodecTypes['pg/float8@1']['output'] | null;
       readonly completedAt: CodecTypes['pg/timestamptz-string@1']['output'];
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
     };
@@ -432,6 +460,7 @@ export type FieldOutputTypes = {
       readonly passingScore: CodecTypes['pg/float8@1']['output'];
       readonly timeLimit: CodecTypes['pg/int4@1']['output'] | null;
       readonly shuffleQuestions: CodecTypes['pg/bool@1']['output'];
+      readonly assignmentMode: 'INDIVIDUAL' | 'GROUP';
       readonly isActive: CodecTypes['pg/bool@1']['output'];
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
       readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
@@ -526,6 +555,28 @@ export type FieldInputTypes = {
       readonly action: CodecTypes['pg/text@1']['input'];
       readonly details: CodecTypes['pg/text@1']['input'] | null;
       readonly ipAddress: CodecTypes['pg/text@1']['input'] | null;
+      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
+    };
+    readonly ClassGroup: {
+      readonly id: CodecTypes['pg/text@1']['input'];
+      readonly quizPackageId: CodecTypes['pg/text@1']['input'];
+      readonly classroomId: CodecTypes['pg/text@1']['input'];
+      readonly courseId: CodecTypes['pg/text@1']['input'];
+      readonly createdByTeacherId: CodecTypes['pg/text@1']['input'];
+      readonly name: CodecTypes['pg/text@1']['input'];
+      readonly taskNote: CodecTypes['pg/text@1']['input'] | null;
+      readonly quizVariantId: CodecTypes['pg/text@1']['input'] | null;
+      readonly isShared: CodecTypes['pg/bool@1']['input'];
+      readonly ruleMode: 'RANDOM_COUNT' | 'RANDOM_SIZE' | 'MANUAL';
+      readonly ruleValue: CodecTypes['pg/int4@1']['input'] | null;
+      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
+      readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['input'];
+    };
+    readonly ClassGroupMember: {
+      readonly id: CodecTypes['pg/text@1']['input'];
+      readonly groupId: CodecTypes['pg/text@1']['input'];
+      readonly studentId: CodecTypes['pg/text@1']['input'];
+      readonly scoreOverride: CodecTypes['pg/float8@1']['input'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
     };
     readonly Classroom: {
@@ -670,6 +721,7 @@ export type FieldInputTypes = {
       readonly id: CodecTypes['pg/text@1']['input'];
       readonly quizVariantId: CodecTypes['pg/text@1']['input'];
       readonly studentId: CodecTypes['pg/text@1']['input'];
+      readonly groupId: CodecTypes['pg/text@1']['input'] | null;
       readonly score: CodecTypes['pg/float8@1']['input'] | null;
       readonly status: 'IN_PROGRESS' | 'COMPLETED' | 'GRADED';
       readonly startedAt: CodecTypes['pg/timestamptz-string@1']['input'];
@@ -682,7 +734,7 @@ export type FieldInputTypes = {
       readonly studentEmail: CodecTypes['pg/text@1']['input'];
       readonly classroomId: CodecTypes['pg/text@1']['input'] | null;
       readonly classroomName: CodecTypes['pg/text@1']['input'] | null;
-      readonly sourceType: 'MATERIAL_QUIZ' | 'ASSIGNMENT';
+      readonly sourceType: 'MATERIAL_QUIZ' | 'ASSIGNMENT' | 'GROUP_TASK';
       readonly sourceId: CodecTypes['pg/text@1']['input'];
       readonly sourceTitle: CodecTypes['pg/text@1']['input'];
       readonly categoryName: CodecTypes['pg/text@1']['input'] | null;
@@ -695,6 +747,11 @@ export type FieldInputTypes = {
       readonly correctAnswers: CodecTypes['pg/int4@1']['input'];
       readonly essayCount: CodecTypes['pg/int4@1']['input'];
       readonly timeTakenSeconds: CodecTypes['pg/int4@1']['input'] | null;
+      readonly groupId: CodecTypes['pg/text@1']['input'] | null;
+      readonly groupName: CodecTypes['pg/text@1']['input'] | null;
+      readonly groupVariantName: CodecTypes['pg/text@1']['input'] | null;
+      readonly groupMembersSummary: CodecTypes['pg/text@1']['input'] | null;
+      readonly groupBaseScore: CodecTypes['pg/float8@1']['input'] | null;
       readonly completedAt: CodecTypes['pg/timestamptz-string@1']['input'];
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
     };
@@ -710,6 +767,7 @@ export type FieldInputTypes = {
       readonly passingScore: CodecTypes['pg/float8@1']['input'];
       readonly timeLimit: CodecTypes['pg/int4@1']['input'] | null;
       readonly shuffleQuestions: CodecTypes['pg/bool@1']['input'];
+      readonly assignmentMode: 'INDIVIDUAL' | 'GROUP';
       readonly isActive: CodecTypes['pg/bool@1']['input'];
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
       readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['input'];
@@ -805,6 +863,28 @@ export type StorageColumnTypes = {
       readonly id: CodecTypes['pg/text@1']['output'];
       readonly ipAddress: CodecTypes['pg/text@1']['output'] | null;
       readonly userId: CodecTypes['pg/text@1']['output'] | null;
+    };
+    readonly classGroup: {
+      readonly classroomId: CodecTypes['pg/text@1']['output'];
+      readonly courseId: CodecTypes['pg/text@1']['output'];
+      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
+      readonly createdByTeacherId: CodecTypes['pg/text@1']['output'];
+      readonly id: CodecTypes['pg/text@1']['output'];
+      readonly isShared: CodecTypes['pg/bool@1']['output'];
+      readonly name: CodecTypes['pg/text@1']['output'];
+      readonly quizPackageId: CodecTypes['pg/text@1']['output'];
+      readonly quizVariantId: CodecTypes['pg/text@1']['output'] | null;
+      readonly ruleMode: 'RANDOM_COUNT' | 'RANDOM_SIZE' | 'MANUAL';
+      readonly ruleValue: CodecTypes['pg/int4@1']['output'] | null;
+      readonly taskNote: CodecTypes['pg/text@1']['output'] | null;
+      readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
+    };
+    readonly classGroupMember: {
+      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
+      readonly groupId: CodecTypes['pg/text@1']['output'];
+      readonly id: CodecTypes['pg/text@1']['output'];
+      readonly scoreOverride: CodecTypes['pg/float8@1']['output'] | null;
+      readonly studentId: CodecTypes['pg/text@1']['output'];
     };
     readonly classroom: {
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
@@ -946,6 +1026,7 @@ export type StorageColumnTypes = {
     };
     readonly quizAttempt: {
       readonly finishedAt: CodecTypes['pg/timestamptz-string@1']['output'] | null;
+      readonly groupId: CodecTypes['pg/text@1']['output'] | null;
       readonly id: CodecTypes['pg/text@1']['output'];
       readonly quizVariantId: CodecTypes['pg/text@1']['output'];
       readonly score: CodecTypes['pg/float8@1']['output'] | null;
@@ -961,6 +1042,11 @@ export type StorageColumnTypes = {
       readonly correctAnswers: CodecTypes['pg/int4@1']['output'];
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
       readonly essayCount: CodecTypes['pg/int4@1']['output'];
+      readonly groupBaseScore: CodecTypes['pg/float8@1']['output'] | null;
+      readonly groupId: CodecTypes['pg/text@1']['output'] | null;
+      readonly groupMembersSummary: CodecTypes['pg/text@1']['output'] | null;
+      readonly groupName: CodecTypes['pg/text@1']['output'] | null;
+      readonly groupVariantName: CodecTypes['pg/text@1']['output'] | null;
       readonly id: CodecTypes['pg/text@1']['output'];
       readonly isPassed: CodecTypes['pg/bool@1']['output'];
       readonly pageSlug: CodecTypes['pg/text@1']['output'] | null;
@@ -969,7 +1055,7 @@ export type StorageColumnTypes = {
       readonly score: CodecTypes['pg/float8@1']['output'];
       readonly sourceId: CodecTypes['pg/text@1']['output'];
       readonly sourceTitle: CodecTypes['pg/text@1']['output'];
-      readonly sourceType: 'MATERIAL_QUIZ' | 'ASSIGNMENT';
+      readonly sourceType: 'MATERIAL_QUIZ' | 'ASSIGNMENT' | 'GROUP_TASK';
       readonly studentEmail: CodecTypes['pg/text@1']['output'];
       readonly studentId: CodecTypes['pg/text@1']['output'];
       readonly studentName: CodecTypes['pg/text@1']['output'];
@@ -977,6 +1063,7 @@ export type StorageColumnTypes = {
       readonly totalQuestions: CodecTypes['pg/int4@1']['output'];
     };
     readonly quizPackage: {
+      readonly assignmentMode: 'INDIVIDUAL' | 'GROUP';
       readonly closeAt: CodecTypes['pg/timestamptz-string@1']['output'] | null;
       readonly courseId: CodecTypes['pg/text@1']['output'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
@@ -1084,6 +1171,28 @@ export type StorageColumnInputTypes = {
       readonly ipAddress: CodecTypes['pg/text@1']['input'] | null;
       readonly userId: CodecTypes['pg/text@1']['input'] | null;
     };
+    readonly classGroup: {
+      readonly classroomId: CodecTypes['pg/text@1']['input'];
+      readonly courseId: CodecTypes['pg/text@1']['input'];
+      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
+      readonly createdByTeacherId: CodecTypes['pg/text@1']['input'];
+      readonly id: CodecTypes['pg/text@1']['input'];
+      readonly isShared: CodecTypes['pg/bool@1']['input'];
+      readonly name: CodecTypes['pg/text@1']['input'];
+      readonly quizPackageId: CodecTypes['pg/text@1']['input'];
+      readonly quizVariantId: CodecTypes['pg/text@1']['input'] | null;
+      readonly ruleMode: 'RANDOM_COUNT' | 'RANDOM_SIZE' | 'MANUAL';
+      readonly ruleValue: CodecTypes['pg/int4@1']['input'] | null;
+      readonly taskNote: CodecTypes['pg/text@1']['input'] | null;
+      readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['input'];
+    };
+    readonly classGroupMember: {
+      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
+      readonly groupId: CodecTypes['pg/text@1']['input'];
+      readonly id: CodecTypes['pg/text@1']['input'];
+      readonly scoreOverride: CodecTypes['pg/float8@1']['input'] | null;
+      readonly studentId: CodecTypes['pg/text@1']['input'];
+    };
     readonly classroom: {
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
       readonly id: CodecTypes['pg/text@1']['input'];
@@ -1224,6 +1333,7 @@ export type StorageColumnInputTypes = {
     };
     readonly quizAttempt: {
       readonly finishedAt: CodecTypes['pg/timestamptz-string@1']['input'] | null;
+      readonly groupId: CodecTypes['pg/text@1']['input'] | null;
       readonly id: CodecTypes['pg/text@1']['input'];
       readonly quizVariantId: CodecTypes['pg/text@1']['input'];
       readonly score: CodecTypes['pg/float8@1']['input'] | null;
@@ -1239,6 +1349,11 @@ export type StorageColumnInputTypes = {
       readonly correctAnswers: CodecTypes['pg/int4@1']['input'];
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
       readonly essayCount: CodecTypes['pg/int4@1']['input'];
+      readonly groupBaseScore: CodecTypes['pg/float8@1']['input'] | null;
+      readonly groupId: CodecTypes['pg/text@1']['input'] | null;
+      readonly groupMembersSummary: CodecTypes['pg/text@1']['input'] | null;
+      readonly groupName: CodecTypes['pg/text@1']['input'] | null;
+      readonly groupVariantName: CodecTypes['pg/text@1']['input'] | null;
       readonly id: CodecTypes['pg/text@1']['input'];
       readonly isPassed: CodecTypes['pg/bool@1']['input'];
       readonly pageSlug: CodecTypes['pg/text@1']['input'] | null;
@@ -1247,7 +1362,7 @@ export type StorageColumnInputTypes = {
       readonly score: CodecTypes['pg/float8@1']['input'];
       readonly sourceId: CodecTypes['pg/text@1']['input'];
       readonly sourceTitle: CodecTypes['pg/text@1']['input'];
-      readonly sourceType: 'MATERIAL_QUIZ' | 'ASSIGNMENT';
+      readonly sourceType: 'MATERIAL_QUIZ' | 'ASSIGNMENT' | 'GROUP_TASK';
       readonly studentEmail: CodecTypes['pg/text@1']['input'];
       readonly studentId: CodecTypes['pg/text@1']['input'];
       readonly studentName: CodecTypes['pg/text@1']['input'];
@@ -1255,6 +1370,7 @@ export type StorageColumnInputTypes = {
       readonly totalQuestions: CodecTypes['pg/int4@1']['input'];
     };
     readonly quizPackage: {
+      readonly assignmentMode: 'INDIVIDUAL' | 'GROUP';
       readonly closeAt: CodecTypes['pg/timestamptz-string@1']['input'] | null;
       readonly courseId: CodecTypes['pg/text@1']['input'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
@@ -1362,11 +1478,13 @@ export namespace Models {
     isActive: CodecTypes['pg/bool@1']['output'];
     createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
     updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
+    classGroups: public_ClassGroup[];
     completionRecords: public_QuizCompletionRecord[];
     scoreSummaries: public_StudentScoreSummary[];
     teacherClasses: public_CourseTeacherClass[];
     users: public_User[];
-    readonly [RelationKeys]?: 'completionRecords' | 'scoreSummaries' | 'teacherClasses' | 'users';
+    readonly [RelationKeys]?:
+      'classGroups' | 'completionRecords' | 'scoreSummaries' | 'teacherClasses' | 'users';
   };
   export type public_User = {
     id: CodecTypes['pg/text@1']['output'];
@@ -1384,7 +1502,9 @@ export namespace Models {
     auditLogs: public_AuditLog[];
     classroom: public_Classroom | null;
     completionRecords: public_QuizCompletionRecord[];
+    createdClassGroups: public_ClassGroup[];
     givenFeedbacks: public_StudentAnswer[];
+    groupMemberships: public_ClassGroupMember[];
     pageAccesses: public_PageAccess[];
     permissions: public_UserPermission[];
     projects: public_StudentProject[];
@@ -1397,7 +1517,9 @@ export namespace Models {
       | 'auditLogs'
       | 'classroom'
       | 'completionRecords'
+      | 'createdClassGroups'
       | 'givenFeedbacks'
+      | 'groupMemberships'
       | 'pageAccesses'
       | 'permissions'
       | 'projects'
@@ -1493,14 +1615,16 @@ export namespace Models {
     passingScore: CodecTypes['pg/float8@1']['output'];
     timeLimit: CodecTypes['pg/int4@1']['output'] | null;
     shuffleQuestions: CodecTypes['pg/bool@1']['output'];
+    assignmentMode: 'INDIVIDUAL' | 'GROUP';
     isActive: CodecTypes['pg/bool@1']['output'];
     createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
     updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
     assignments: public_QuizAssignment[];
+    classGroups: public_ClassGroup[];
     course: public_Course | null;
     page: public_Page | null;
     variants: public_QuizVariant[];
-    readonly [RelationKeys]?: 'assignments' | 'course' | 'page' | 'variants';
+    readonly [RelationKeys]?: 'assignments' | 'classGroups' | 'course' | 'page' | 'variants';
   };
   export type public_QuizAntiCheatConfig = {
     id: CodecTypes['pg/text@1']['output'];
@@ -1521,10 +1645,11 @@ export namespace Models {
     antiCheatConfig: public_QuizAntiCheatConfig | null;
     assignments: public_QuizAssignment[];
     attempts: public_QuizAttempt[];
+    classGroups: public_ClassGroup[];
     package: public_QuizPackage;
     questions: public_Question[];
     readonly [RelationKeys]?:
-      'antiCheatConfig' | 'assignments' | 'attempts' | 'package' | 'questions';
+      'antiCheatConfig' | 'assignments' | 'attempts' | 'classGroups' | 'package' | 'questions';
   };
   export type public_Question = {
     id: CodecTypes['pg/text@1']['output'];
@@ -1557,14 +1682,16 @@ export namespace Models {
     id: CodecTypes['pg/text@1']['output'];
     quizVariantId: CodecTypes['pg/text@1']['output'];
     studentId: CodecTypes['pg/text@1']['output'];
+    groupId: CodecTypes['pg/text@1']['output'] | null;
     score: CodecTypes['pg/float8@1']['output'] | null;
     status: 'IN_PROGRESS' | 'COMPLETED' | 'GRADED';
     startedAt: CodecTypes['pg/timestamptz-string@1']['output'];
     finishedAt: CodecTypes['pg/timestamptz-string@1']['output'] | null;
     answers: public_StudentAnswer[];
+    group: public_ClassGroup | null;
     student: public_User;
     variant: public_QuizVariant;
-    readonly [RelationKeys]?: 'answers' | 'student' | 'variant';
+    readonly [RelationKeys]?: 'answers' | 'group' | 'student' | 'variant';
   };
   export type public_StudentAnswer = {
     id: CodecTypes['pg/text@1']['output'];
@@ -1642,7 +1769,7 @@ export namespace Models {
     studentEmail: CodecTypes['pg/text@1']['output'];
     classroomId: CodecTypes['pg/text@1']['output'] | null;
     classroomName: CodecTypes['pg/text@1']['output'] | null;
-    sourceType: 'MATERIAL_QUIZ' | 'ASSIGNMENT';
+    sourceType: 'MATERIAL_QUIZ' | 'ASSIGNMENT' | 'GROUP_TASK';
     sourceId: CodecTypes['pg/text@1']['output'];
     sourceTitle: CodecTypes['pg/text@1']['output'];
     categoryName: CodecTypes['pg/text@1']['output'] | null;
@@ -1655,6 +1782,11 @@ export namespace Models {
     correctAnswers: CodecTypes['pg/int4@1']['output'];
     essayCount: CodecTypes['pg/int4@1']['output'];
     timeTakenSeconds: CodecTypes['pg/int4@1']['output'] | null;
+    groupId: CodecTypes['pg/text@1']['output'] | null;
+    groupName: CodecTypes['pg/text@1']['output'] | null;
+    groupVariantName: CodecTypes['pg/text@1']['output'] | null;
+    groupMembersSummary: CodecTypes['pg/text@1']['output'] | null;
+    groupBaseScore: CodecTypes['pg/float8@1']['output'] | null;
     completedAt: CodecTypes['pg/timestamptz-string@1']['output'];
     createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
     classroom: public_Classroom | null;
@@ -1672,12 +1804,13 @@ export namespace Models {
     createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
     updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
     categories: public_MaterialCategory[];
+    classGroups: public_ClassGroup[];
     projects: public_StudentProject[];
     students: public_CourseStudent[];
     teacherClasses: public_CourseTeacherClass[];
     teachers: public_CourseTeacher[];
     readonly [RelationKeys]?:
-      'categories' | 'projects' | 'students' | 'teacherClasses' | 'teachers';
+      'categories' | 'classGroups' | 'projects' | 'students' | 'teacherClasses' | 'teachers';
   };
   export type public_CourseTeacher = {
     id: CodecTypes['pg/text@1']['output'];
@@ -1755,6 +1888,40 @@ export namespace Models {
     updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
     readonly [RelationKeys]?: never;
   };
+  export type public_ClassGroup = {
+    id: CodecTypes['pg/text@1']['output'];
+    quizPackageId: CodecTypes['pg/text@1']['output'];
+    classroomId: CodecTypes['pg/text@1']['output'];
+    courseId: CodecTypes['pg/text@1']['output'];
+    createdByTeacherId: CodecTypes['pg/text@1']['output'];
+    name: CodecTypes['pg/text@1']['output'];
+    taskNote: CodecTypes['pg/text@1']['output'] | null;
+    quizVariantId: CodecTypes['pg/text@1']['output'] | null;
+    isShared: CodecTypes['pg/bool@1']['output'];
+    ruleMode: 'RANDOM_COUNT' | 'RANDOM_SIZE' | 'MANUAL';
+    ruleValue: CodecTypes['pg/int4@1']['output'] | null;
+    createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
+    updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
+    attempts: public_QuizAttempt[];
+    classroom: public_Classroom;
+    course: public_Course;
+    creator: public_User;
+    members: public_ClassGroupMember[];
+    package: public_QuizPackage;
+    variant: public_QuizVariant | null;
+    readonly [RelationKeys]?:
+      'attempts' | 'classroom' | 'course' | 'creator' | 'members' | 'package' | 'variant';
+  };
+  export type public_ClassGroupMember = {
+    id: CodecTypes['pg/text@1']['output'];
+    groupId: CodecTypes['pg/text@1']['output'];
+    studentId: CodecTypes['pg/text@1']['output'];
+    scoreOverride: CodecTypes['pg/float8@1']['output'] | null;
+    createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
+    group: public_ClassGroup;
+    student: public_User;
+    readonly [RelationKeys]?: 'group' | 'student';
+  };
 }
 
 export declare const models: {
@@ -1786,6 +1953,8 @@ export declare const models: {
     Permission: Models.public_Permission;
     UserPermission: Models.public_UserPermission;
     PermissionPackage: Models.public_PermissionPackage;
+    ClassGroup: Models.public_ClassGroup;
+    ClassGroupMember: Models.public_ClassGroupMember;
   };
 };
 
@@ -1857,6 +2026,258 @@ type ContractBase = Omit<
                     readonly namespaceId: 'public' & NamespaceId;
                     readonly tableName: 'auditLog';
                     readonly columns: readonly ['userId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'user';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+              ];
+            };
+            readonly classGroup: {
+              columns: {
+                readonly id: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly quizPackageId: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly classroomId: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly courseId: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly createdByTeacherId: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly name: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly taskNote: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly quizVariantId: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly isShared: {
+                  readonly nativeType: 'bool';
+                  readonly codecId: 'pg/bool@1';
+                  readonly nullable: false;
+                  readonly default: {
+                    readonly kind: 'literal';
+                    readonly value: DefaultLiteralValue<'pg/bool@1', false>;
+                  };
+                };
+                readonly ruleMode: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                  readonly default: {
+                    readonly kind: 'literal';
+                    readonly value: DefaultLiteralValue<'pg/text@1', 'MANUAL'>;
+                  };
+                };
+                readonly ruleValue: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: true;
+                };
+                readonly createdAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                  readonly nullable: false;
+                  readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
+                };
+                readonly updatedAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                  readonly nullable: false;
+                };
+              };
+              primaryKey: { readonly columns: readonly ['id'] };
+              uniques: readonly [];
+              indexes: readonly [
+                {
+                  readonly name: 'classGroup_quizPackageId_classroomId_idx_cf9e9601';
+                  readonly prefix: 'classGroup_quizPackageId_classroomId_idx';
+                  readonly columns: readonly ['quizPackageId', 'classroomId'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'classGroup_createdByTeacherId_idx_c32da81c';
+                  readonly prefix: 'classGroup_createdByTeacherId_idx';
+                  readonly columns: readonly ['createdByTeacherId'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'classGroup_quizPackageId_idx_5e8f85e9';
+                  readonly prefix: 'classGroup_quizPackageId_idx';
+                  readonly columns: readonly ['quizPackageId'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'classGroup_classroomId_idx_e4a392d3';
+                  readonly prefix: 'classGroup_classroomId_idx';
+                  readonly columns: readonly ['classroomId'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'classGroup_courseId_idx_12f72d2a';
+                  readonly prefix: 'classGroup_courseId_idx';
+                  readonly columns: readonly ['courseId'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'classGroup_quizVariantId_idx_bb620c0b';
+                  readonly prefix: 'classGroup_quizVariantId_idx';
+                  readonly columns: readonly ['quizVariantId'];
+                  readonly unique: false;
+                },
+              ];
+              foreignKeys: readonly [
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'classGroup';
+                    readonly columns: readonly ['quizPackageId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'quizPackage';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'classGroup';
+                    readonly columns: readonly ['classroomId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'classroom';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'classGroup';
+                    readonly columns: readonly ['courseId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'course';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'classGroup';
+                    readonly columns: readonly ['createdByTeacherId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'user';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'classGroup';
+                    readonly columns: readonly ['quizVariantId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'quizVariant';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+              ];
+            };
+            readonly classGroupMember: {
+              columns: {
+                readonly id: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly groupId: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly studentId: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly scoreOverride: {
+                  readonly nativeType: 'float8';
+                  readonly codecId: 'pg/float8@1';
+                  readonly nullable: true;
+                };
+                readonly createdAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                  readonly nullable: false;
+                  readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
+                };
+              };
+              primaryKey: { readonly columns: readonly ['id'] };
+              uniques: readonly [{ readonly columns: readonly ['groupId', 'studentId'] }];
+              indexes: readonly [
+                {
+                  readonly name: 'classGroupMember_studentId_idx_bf255322';
+                  readonly prefix: 'classGroupMember_studentId_idx';
+                  readonly columns: readonly ['studentId'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'classGroupMember_groupId_idx_e2fb5578';
+                  readonly prefix: 'classGroupMember_groupId_idx';
+                  readonly columns: readonly ['groupId'];
+                  readonly unique: false;
+                },
+              ];
+              foreignKeys: readonly [
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'classGroupMember';
+                    readonly columns: readonly ['groupId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'classGroup';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'classGroupMember';
+                    readonly columns: readonly ['studentId'];
                   };
                   readonly target: {
                     readonly namespaceId: 'public' & NamespaceId;
@@ -3005,6 +3426,11 @@ type ContractBase = Omit<
                   readonly codecId: 'pg/text@1';
                   readonly nullable: false;
                 };
+                readonly groupId: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
                 readonly score: {
                   readonly nativeType: 'float8';
                   readonly codecId: 'pg/float8@1';
@@ -3034,6 +3460,12 @@ type ContractBase = Omit<
               primaryKey: { readonly columns: readonly ['id'] };
               uniques: readonly [];
               indexes: readonly [
+                {
+                  readonly name: 'quizAttempt_groupId_idx_e2fb5578';
+                  readonly prefix: 'quizAttempt_groupId_idx';
+                  readonly columns: readonly ['groupId'];
+                  readonly unique: false;
+                },
                 {
                   readonly name: 'quizAttempt_quizVariantId_idx_bb620c0b';
                   readonly prefix: 'quizAttempt_quizVariantId_idx';
@@ -3069,6 +3501,18 @@ type ContractBase = Omit<
                   readonly target: {
                     readonly namespaceId: 'public' & NamespaceId;
                     readonly tableName: 'user';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'quizAttempt';
+                    readonly columns: readonly ['groupId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'classGroup';
                     readonly columns: readonly ['id'];
                   };
                 },
@@ -3173,6 +3617,31 @@ type ContractBase = Omit<
                 readonly timeTakenSeconds: {
                   readonly nativeType: 'int4';
                   readonly codecId: 'pg/int4@1';
+                  readonly nullable: true;
+                };
+                readonly groupId: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly groupName: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly groupVariantName: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly groupMembersSummary: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly groupBaseScore: {
+                  readonly nativeType: 'float8';
+                  readonly codecId: 'pg/float8@1';
                   readonly nullable: true;
                 };
                 readonly completedAt: {
@@ -3297,6 +3766,15 @@ type ContractBase = Omit<
                   readonly default: {
                     readonly kind: 'literal';
                     readonly value: DefaultLiteralValue<'pg/bool@1', false>;
+                  };
+                };
+                readonly assignmentMode: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                  readonly default: {
+                    readonly kind: 'literal';
+                    readonly value: DefaultLiteralValue<'pg/text@1', 'INDIVIDUAL'>;
                   };
                 };
                 readonly isActive: {
@@ -4058,9 +4536,17 @@ type ContractBase = Omit<
             };
           };
           readonly valueSet: {
+            readonly GroupRuleMode: {
+              readonly kind: 'valueSet';
+              readonly values: readonly ['RANDOM_COUNT', 'RANDOM_SIZE', 'MANUAL'];
+            };
             readonly HistorySourceType: {
               readonly kind: 'valueSet';
-              readonly values: readonly ['MATERIAL_QUIZ', 'ASSIGNMENT'];
+              readonly values: readonly ['MATERIAL_QUIZ', 'ASSIGNMENT', 'GROUP_TASK'];
+            };
+            readonly PackageAssignmentMode: {
+              readonly kind: 'valueSet';
+              readonly values: readonly ['INDIVIDUAL', 'GROUP'];
             };
             readonly PageAccessStatus: {
               readonly kind: 'valueSet';
@@ -4180,6 +4666,14 @@ type ContractBase = Omit<
       readonly namespace: 'public' & NamespaceId;
       readonly model: 'PermissionPackage';
     };
+    readonly classGroup: {
+      readonly namespace: 'public' & NamespaceId;
+      readonly model: 'ClassGroup';
+    };
+    readonly classGroupMember: {
+      readonly namespace: 'public' & NamespaceId;
+      readonly model: 'ClassGroupMember';
+    };
   };
   readonly domain: {
     readonly namespaces: {
@@ -4239,6 +4733,229 @@ type ContractBase = Omit<
               };
             };
           };
+          readonly ClassGroup: {
+            readonly fields: {
+              readonly id: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly quizPackageId: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly classroomId: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly courseId: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly createdByTeacherId: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly name: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly taskNote: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly quizVariantId: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly isShared: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/bool@1' };
+              };
+              readonly ruleMode: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly ruleValue: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+              readonly createdAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                };
+              };
+              readonly updatedAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                };
+              };
+            };
+            readonly relations: {
+              readonly attempts: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'QuizAttempt';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['groupId'];
+                };
+              };
+              readonly classroom: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'Classroom';
+                };
+                readonly cardinality: 'N:1';
+                readonly nullable: false;
+                readonly on: {
+                  readonly localFields: readonly ['classroomId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+              readonly course: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'Course';
+                };
+                readonly cardinality: 'N:1';
+                readonly nullable: false;
+                readonly on: {
+                  readonly localFields: readonly ['courseId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+              readonly creator: {
+                readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'User' };
+                readonly cardinality: 'N:1';
+                readonly nullable: false;
+                readonly on: {
+                  readonly localFields: readonly ['createdByTeacherId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+              readonly members: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'ClassGroupMember';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['groupId'];
+                };
+              };
+              readonly package: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'QuizPackage';
+                };
+                readonly cardinality: 'N:1';
+                readonly nullable: false;
+                readonly on: {
+                  readonly localFields: readonly ['quizPackageId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+              readonly variant: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'QuizVariant';
+                };
+                readonly cardinality: 'N:1';
+                readonly nullable: true;
+                readonly on: {
+                  readonly localFields: readonly ['quizVariantId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+            };
+            readonly storage: {
+              readonly table: 'classGroup';
+              readonly namespaceId: 'public';
+              readonly fields: {
+                readonly id: { readonly column: 'id' };
+                readonly quizPackageId: { readonly column: 'quizPackageId' };
+                readonly classroomId: { readonly column: 'classroomId' };
+                readonly courseId: { readonly column: 'courseId' };
+                readonly createdByTeacherId: { readonly column: 'createdByTeacherId' };
+                readonly name: { readonly column: 'name' };
+                readonly taskNote: { readonly column: 'taskNote' };
+                readonly quizVariantId: { readonly column: 'quizVariantId' };
+                readonly isShared: { readonly column: 'isShared' };
+                readonly ruleMode: { readonly column: 'ruleMode' };
+                readonly ruleValue: { readonly column: 'ruleValue' };
+                readonly createdAt: { readonly column: 'createdAt' };
+                readonly updatedAt: { readonly column: 'updatedAt' };
+              };
+            };
+          };
+          readonly ClassGroupMember: {
+            readonly fields: {
+              readonly id: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly groupId: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly studentId: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly scoreOverride: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/float8@1' };
+              };
+              readonly createdAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                };
+              };
+            };
+            readonly relations: {
+              readonly group: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'ClassGroup';
+                };
+                readonly cardinality: 'N:1';
+                readonly nullable: false;
+                readonly on: {
+                  readonly localFields: readonly ['groupId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+              readonly student: {
+                readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'User' };
+                readonly cardinality: 'N:1';
+                readonly nullable: false;
+                readonly on: {
+                  readonly localFields: readonly ['studentId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+            };
+            readonly storage: {
+              readonly table: 'classGroupMember';
+              readonly namespaceId: 'public';
+              readonly fields: {
+                readonly id: { readonly column: 'id' };
+                readonly groupId: { readonly column: 'groupId' };
+                readonly studentId: { readonly column: 'studentId' };
+                readonly scoreOverride: { readonly column: 'scoreOverride' };
+                readonly createdAt: { readonly column: 'createdAt' };
+              };
+            };
+          };
           readonly Classroom: {
             readonly fields: {
               readonly id: {
@@ -4277,6 +4994,17 @@ type ContractBase = Omit<
               };
             };
             readonly relations: {
+              readonly classGroups: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'ClassGroup';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['classroomId'];
+                };
+              };
               readonly completionRecords: {
                 readonly to: {
                   readonly namespace: 'public' & NamespaceId;
@@ -4383,6 +5111,17 @@ type ContractBase = Omit<
                 readonly to: {
                   readonly namespace: 'public' & NamespaceId;
                   readonly model: 'MaterialCategory';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['courseId'];
+                };
+              };
+              readonly classGroups: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'ClassGroup';
                 };
                 readonly cardinality: '1:N';
                 readonly on: {
@@ -5466,6 +6205,10 @@ type ContractBase = Omit<
                 readonly nullable: false;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
               };
+              readonly groupId: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
               readonly score: {
                 readonly nullable: true;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/float8@1' };
@@ -5501,6 +6244,18 @@ type ContractBase = Omit<
                   readonly targetFields: readonly ['quizAttemptId'];
                 };
               };
+              readonly group: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'ClassGroup';
+                };
+                readonly cardinality: 'N:1';
+                readonly nullable: true;
+                readonly on: {
+                  readonly localFields: readonly ['groupId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
               readonly student: {
                 readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'User' };
                 readonly cardinality: 'N:1';
@@ -5530,6 +6285,7 @@ type ContractBase = Omit<
                 readonly id: { readonly column: 'id' };
                 readonly quizVariantId: { readonly column: 'quizVariantId' };
                 readonly studentId: { readonly column: 'studentId' };
+                readonly groupId: { readonly column: 'groupId' };
                 readonly score: { readonly column: 'score' };
                 readonly status: { readonly column: 'status' };
                 readonly startedAt: { readonly column: 'startedAt' };
@@ -5615,6 +6371,26 @@ type ContractBase = Omit<
                 readonly nullable: true;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
               };
+              readonly groupId: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly groupName: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly groupVariantName: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly groupMembersSummary: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly groupBaseScore: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/float8@1' };
+              };
               readonly completedAt: {
                 readonly nullable: false;
                 readonly type: {
@@ -5676,6 +6452,11 @@ type ContractBase = Omit<
                 readonly correctAnswers: { readonly column: 'correctAnswers' };
                 readonly essayCount: { readonly column: 'essayCount' };
                 readonly timeTakenSeconds: { readonly column: 'timeTakenSeconds' };
+                readonly groupId: { readonly column: 'groupId' };
+                readonly groupName: { readonly column: 'groupName' };
+                readonly groupVariantName: { readonly column: 'groupVariantName' };
+                readonly groupMembersSummary: { readonly column: 'groupMembersSummary' };
+                readonly groupBaseScore: { readonly column: 'groupBaseScore' };
                 readonly completedAt: { readonly column: 'completedAt' };
                 readonly createdAt: { readonly column: 'createdAt' };
               };
@@ -5733,6 +6514,10 @@ type ContractBase = Omit<
                 readonly nullable: false;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/bool@1' };
               };
+              readonly assignmentMode: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
               readonly isActive: {
                 readonly nullable: false;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/bool@1' };
@@ -5757,6 +6542,17 @@ type ContractBase = Omit<
                 readonly to: {
                   readonly namespace: 'public' & NamespaceId;
                   readonly model: 'QuizAssignment';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['quizPackageId'];
+                };
+              };
+              readonly classGroups: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'ClassGroup';
                 };
                 readonly cardinality: '1:N';
                 readonly on: {
@@ -5812,6 +6608,7 @@ type ContractBase = Omit<
                 readonly passingScore: { readonly column: 'passingScore' };
                 readonly timeLimit: { readonly column: 'timeLimit' };
                 readonly shuffleQuestions: { readonly column: 'shuffleQuestions' };
+                readonly assignmentMode: { readonly column: 'assignmentMode' };
                 readonly isActive: { readonly column: 'isActive' };
                 readonly createdAt: { readonly column: 'createdAt' };
                 readonly updatedAt: { readonly column: 'updatedAt' };
@@ -5879,6 +6676,17 @@ type ContractBase = Omit<
                 readonly to: {
                   readonly namespace: 'public' & NamespaceId;
                   readonly model: 'QuizAttempt';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['quizVariantId'];
+                };
+              };
+              readonly classGroups: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'ClassGroup';
                 };
                 readonly cardinality: '1:N';
                 readonly on: {
@@ -6414,6 +7222,17 @@ type ContractBase = Omit<
                   readonly targetFields: readonly ['studentId'];
                 };
               };
+              readonly createdClassGroups: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'ClassGroup';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['createdByTeacherId'];
+                };
+              };
               readonly givenFeedbacks: {
                 readonly to: {
                   readonly namespace: 'public' & NamespaceId;
@@ -6423,6 +7242,17 @@ type ContractBase = Omit<
                 readonly on: {
                   readonly localFields: readonly ['id'];
                   readonly targetFields: readonly ['feedbackAuthorId'];
+                };
+              };
+              readonly groupMemberships: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'ClassGroupMember';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['studentId'];
                 };
               };
               readonly pageAccesses: {
@@ -6633,11 +7463,27 @@ type ContractBase = Omit<
               { readonly name: 'COMPLETED'; readonly value: 'COMPLETED' },
             ];
           };
+          readonly PackageAssignmentMode: {
+            readonly codecId: 'pg/text@1';
+            readonly members: readonly [
+              { readonly name: 'INDIVIDUAL'; readonly value: 'INDIVIDUAL' },
+              { readonly name: 'GROUP'; readonly value: 'GROUP' },
+            ];
+          };
+          readonly GroupRuleMode: {
+            readonly codecId: 'pg/text@1';
+            readonly members: readonly [
+              { readonly name: 'RANDOM_COUNT'; readonly value: 'RANDOM_COUNT' },
+              { readonly name: 'RANDOM_SIZE'; readonly value: 'RANDOM_SIZE' },
+              { readonly name: 'MANUAL'; readonly value: 'MANUAL' },
+            ];
+          };
           readonly HistorySourceType: {
             readonly codecId: 'pg/text@1';
             readonly members: readonly [
               { readonly name: 'MATERIAL_QUIZ'; readonly value: 'MATERIAL_QUIZ' },
               { readonly name: 'ASSIGNMENT'; readonly value: 'ASSIGNMENT' },
+              { readonly name: 'GROUP_TASK'; readonly value: 'GROUP_TASK' },
             ];
           };
         };
@@ -6671,6 +7517,31 @@ type ContractBase = Omit<
           readonly ref: {
             readonly namespace: 'public';
             readonly table: 'auditLog';
+            readonly column: 'id';
+          };
+          readonly onCreate: { readonly kind: 'generator'; readonly id: 'uuidv4' };
+        },
+        {
+          readonly ref: {
+            readonly namespace: 'public';
+            readonly table: 'classGroup';
+            readonly column: 'id';
+          };
+          readonly onCreate: { readonly kind: 'generator'; readonly id: 'uuidv4' };
+        },
+        {
+          readonly ref: {
+            readonly namespace: 'public';
+            readonly table: 'classGroup';
+            readonly column: 'updatedAt';
+          };
+          readonly onCreate: { readonly kind: 'generator'; readonly id: 'timestampNow' };
+          readonly onUpdate: { readonly kind: 'generator'; readonly id: 'timestampNow' };
+        },
+        {
+          readonly ref: {
+            readonly namespace: 'public';
+            readonly table: 'classGroupMember';
             readonly column: 'id';
           };
           readonly onCreate: { readonly kind: 'generator'; readonly id: 'uuidv4' };

@@ -68,6 +68,9 @@ export interface CourseTeacherAssignedEvent {
   courseName: string;
   teacherId: string;
   teacherName?: string;
+  classIds?: string[];
+  classNames?: string[];
+  actionType?: 'ASSIGNED' | 'CLASSES_UPDATED';
   assignedAt: string;
 }
 

@@ -110,7 +110,7 @@ export async function getQuizStatus(pageSlug: string, studentId: string) {
   };
 }
 
-import { getUnlockedPageIdsForStudent } from '@/modules/student-access/student-access.service';
+import { getUnlockedPageIdsForStudent, isStudentEnrolledInPackage } from '@/modules/student-access/student-access.service';
 
 export async function startQuiz(assignmentId: string, studentId: string) {
   const assignment = await db.orm.public.QuizAssignment.where({ id: assignmentId }).first();
@@ -118,6 +118,11 @@ export async function startQuiz(assignmentId: string, studentId: string) {
 
   const pkg = await db.orm.public.QuizPackage.where({ id: assignment.quizPackageId }).first();
   if (!pkg || !pkg.isActive) throw new Error('Kuis tidak aktif atau tidak ditemukan');
+
+  const isEnrolled = await isStudentEnrolledInPackage(studentId, pkg);
+  if (!isEnrolled) {
+    throw new Error('Anda belum terdaftar pada mata pelajaran untuk kuis ini.');
+  }
 
   const variant = await db.orm.public.QuizVariant.where({ id: assignment.quizVariantId }).first();
   if (!variant || variant.isActive === false) {
@@ -162,9 +167,111 @@ export async function startQuiz(assignmentId: string, studentId: string) {
   return attempt.id;
 }
 
+async function canAccessAttemptAsStudent(attempt: { studentId: string; groupId?: string | null }, studentId: string): Promise<boolean> {
+  if (attempt.studentId === studentId) return true;
+  if (!attempt.groupId) return false;
+  const member = await db.orm.public.ClassGroupMember.where({
+    groupId: attempt.groupId,
+    studentId,
+  }).first();
+  return Boolean(member);
+}
+
+export async function startGroupQuiz(groupId: string, studentId: string) {
+  const [group, member] = await Promise.all([
+    db.orm.public.ClassGroup.where({ id: groupId }).first(),
+    db.orm.public.ClassGroupMember.where({ groupId, studentId }).first(),
+  ]);
+  if (!group || !member) {
+    throw new Error('Anda tidak terdaftar sebagai anggota kelompok ini.');
+  }
+
+  const pkg = await db.orm.public.QuizPackage.where({ id: group.quizPackageId }).first();
+  if (!pkg || !pkg.isActive || (pkg as any).assignmentMode !== 'GROUP') {
+    throw new Error('Tugas kelompok tidak aktif atau tidak ditemukan.');
+  }
+
+  const isEnrolled = await isStudentEnrolledInPackage(studentId, pkg);
+  if (!isEnrolled) {
+    throw new Error('Anda belum terdaftar pada mata pelajaran untuk tugas kelompok ini.');
+  }
+
+  const now = new Date();
+  if (pkg.openAt && now < new Date(pkg.openAt)) {
+    throw new Error('Tugas kelompok ini belum dibuka.');
+  }
+  if (pkg.closeAt && now > new Date(pkg.closeAt)) {
+    throw new Error('Batas waktu tugas kelompok ini telah berakhir.');
+  }
+
+  if (pkg.pageId) {
+    const unlockedPageIds = await getUnlockedPageIdsForStudent(studentId);
+    if (!unlockedPageIds.has(pkg.pageId)) {
+      throw new Error('Materi tugas kelompok ini masih terkunci.');
+    }
+  }
+
+  if (!group.quizVariantId) {
+    throw new Error('Guru belum memilih topik/varian tugas untuk kelompok Anda.');
+  }
+  const variant = await db.orm.public.QuizVariant.where({ id: group.quizVariantId }).first();
+  if (!variant || variant.isActive === false) {
+    throw new Error('Varian tugas untuk kelompok ini sedang dinonaktifkan oleh Guru.');
+  }
+
+  const existingAttempt = await db.orm.public.QuizAttempt.where({ groupId: group.id }).first();
+  if (existingAttempt) {
+    if (existingAttempt.status === 'COMPLETED' || existingAttempt.status === 'GRADED') {
+      throw new Error('Tugas kelompok ini sudah dikerjakan dan dikirim oleh anggota kelompok Anda.');
+    }
+    return existingAttempt.id;
+  }
+
+  const attempt = await db.orm.public.QuizAttempt.create({
+    id: randomUUID(),
+    quizVariantId: group.quizVariantId,
+    studentId,
+    groupId: group.id,
+    status: 'IN_PROGRESS',
+    startedAt: new Date().toISOString(),
+  });
+
+  try {
+    const [student, members] = await Promise.all([
+      db.orm.public.User.where({ id: studentId }).first(),
+      db.orm.public.ClassGroupMember.where({ groupId: group.id }).all(),
+    ]);
+    const classroom = student?.classId ? await db.orm.public.Classroom.where({ id: student.classId }).first() : null;
+    const { emitQuizStarted, emitQuizAssigned } = await import('@/lib/socket/emitter');
+    emitQuizStarted({
+      attemptId: attempt.id,
+      studentId,
+      studentName: `${student?.name || 'Siswa'} (${group.name})`,
+      quizTitle: pkg.title,
+      packageId: pkg.id,
+      classId: student?.classId || null,
+      className: classroom?.name || null,
+      status: 'IN_PROGRESS',
+      startedAt: attempt.startedAt,
+    });
+    emitQuizAssigned({
+      packageId: pkg.id,
+      studentIds: members.map(m => m.studentId),
+      classId: group.classroomId,
+      assignedAt: new Date().toISOString(),
+    });
+  } catch (socketErr) {
+    console.error('[startGroupQuiz] Socket emit error:', socketErr);
+  }
+
+  return attempt.id;
+}
+
 export async function getQuizEngineData(attemptId: string, studentId: string) {
   const attempt = await db.orm.public.QuizAttempt.where({ id: attemptId }).first();
-  if (!attempt || attempt.studentId !== studentId) throw new Error('Attempt tidak valid');
+  if (!attempt || !(await canAccessAttemptAsStudent(attempt as any, studentId))) {
+    throw new Error('Attempt tidak valid');
+  }
   if (attempt.status !== 'IN_PROGRESS') throw new Error('Kuis sudah selesai');
 
   const variant = await db.orm.public.QuizVariant.where({ id: attempt.quizVariantId }).first();
@@ -233,7 +340,9 @@ export async function getQuizEngineData(attemptId: string, studentId: string) {
 
 export async function activateQuizAttempt(attemptId: string, studentId: string) {
   const attempt = await db.orm.public.QuizAttempt.where({ id: attemptId }).first();
-  if (!attempt || attempt.studentId !== studentId) throw new Error('Attempt tidak valid');
+  if (!attempt || !(await canAccessAttemptAsStudent(attempt as any, studentId))) {
+    throw new Error('Attempt tidak valid');
+  }
   if (attempt.status !== 'IN_PROGRESS') {
     return { startedAt: attempt.startedAt, serverTime: new Date().toISOString() };
   }
@@ -296,7 +405,13 @@ export async function submitQuiz(
 ) {
   const result = await db.transaction(async (tx) => {
     const attempt = await tx.orm.public.QuizAttempt.where({ id: attemptId }).first();
-    if (!attempt || attempt.studentId !== studentId) throw new Error('Attempt tidak valid');
+    if (!attempt) throw new Error('Attempt tidak valid');
+    const attemptGroupId = (attempt as any).groupId as string | null;
+    if (attempt.studentId !== studentId) {
+      if (!attemptGroupId) throw new Error('Attempt tidak valid');
+      const member = await tx.orm.public.ClassGroupMember.where({ groupId: attemptGroupId, studentId }).first();
+      if (!member) throw new Error('Attempt tidak valid');
+    }
     if (attempt.status === 'COMPLETED' || attempt.status === 'GRADED') {
       throw new Error('Kuis telah diselesaikan');
     }
@@ -427,6 +542,7 @@ export async function submitQuiz(
     const roundedScore = Math.round(finalScore * 100) / 100;
 
     await tx.orm.public.QuizAttempt.where({ id: attemptId }).update({
+      studentId,
       score: roundedScore,
       status: 'COMPLETED',
       finishedAt: new Date().toISOString()
@@ -434,59 +550,77 @@ export async function submitQuiz(
 
     const passed = roundedScore >= pkg!.passingScore;
     if (passed && pkg!.pageId) {
-      // 1. Mark CURRENT page as COMPLETED
-      const currentPageAccess = await tx.orm.public.PageAccess.where({
-        pageId: pkg!.pageId,
-        studentId
-      }).first();
-
-      if (currentPageAccess) {
-        if (currentPageAccess.status !== 'COMPLETED') {
-          await tx.orm.public.PageAccess.where({ id: currentPageAccess.id }).update({
-            status: 'COMPLETED',
-            completedAt: new Date().toISOString()
-          });
+      const targetPageStudentIds = [studentId];
+      if (attemptGroupId) {
+        const groupMembers = await tx.orm.public.ClassGroupMember.where({ groupId: attemptGroupId }).all();
+        for (const gm of groupMembers) {
+          if (!targetPageStudentIds.includes(gm.studentId)) targetPageStudentIds.push(gm.studentId);
         }
-      } else {
-        await tx.orm.public.PageAccess.create({
-          id: randomUUID(),
-          pageId: pkg!.pageId,
-          studentId,
-          status: 'COMPLETED',
-          unlockedAt: new Date().toISOString(),
-          completedAt: new Date().toISOString()
-        });
       }
 
-      // 2. Unlock next pages based on PageSequence
       const sequences = await tx.orm.public.PageSequence.where({ prerequisitePageId: pkg!.pageId }).all();
-      for (const seq of sequences) {
-        const existingAccess = await tx.orm.public.PageAccess.where({ 
-          pageId: seq.pageId, 
-          studentId 
+
+      for (const targetSid of targetPageStudentIds) {
+        // 1. Mark CURRENT page as COMPLETED
+        const currentPageAccess = await tx.orm.public.PageAccess.where({
+          pageId: pkg!.pageId,
+          studentId: targetSid
         }).first();
 
-        if (existingAccess) {
-          if (existingAccess.status === 'LOCKED') {
-            await tx.orm.public.PageAccess.where({ id: existingAccess.id }).update({
-              status: 'UNLOCKED',
-              unlockedAt: new Date().toISOString()
+        if (currentPageAccess) {
+          if (currentPageAccess.status !== 'COMPLETED') {
+            await tx.orm.public.PageAccess.where({ id: currentPageAccess.id }).update({
+              status: 'COMPLETED',
+              completedAt: new Date().toISOString()
             });
           }
         } else {
           await tx.orm.public.PageAccess.create({
             id: randomUUID(),
-            pageId: seq.pageId,
-            studentId,
-            status: 'UNLOCKED',
-            unlockedAt: new Date().toISOString()
+            pageId: pkg!.pageId,
+            studentId: targetSid,
+            status: 'COMPLETED',
+            unlockedAt: new Date().toISOString(),
+            completedAt: new Date().toISOString()
           });
+        }
+
+        // 2. Unlock next pages based on PageSequence
+        for (const seq of sequences) {
+          const existingAccess = await tx.orm.public.PageAccess.where({ 
+            pageId: seq.pageId, 
+            studentId: targetSid 
+          }).first();
+
+          if (existingAccess) {
+            if (existingAccess.status === 'LOCKED') {
+              await tx.orm.public.PageAccess.where({ id: existingAccess.id }).update({
+                status: 'UNLOCKED',
+                unlockedAt: new Date().toISOString()
+              });
+            }
+          } else {
+            await tx.orm.public.PageAccess.create({
+              id: randomUUID(),
+              pageId: seq.pageId,
+              studentId: targetSid,
+              status: 'UNLOCKED',
+              unlockedAt: new Date().toISOString()
+            });
+          }
         }
       }
     }
 
+    const groupMemberStudentIds = attemptGroupId
+      ? (await tx.orm.public.ClassGroupMember.where({ groupId: attemptGroupId }).all()).map(m => m.studentId)
+      : [];
+
     return { 
       attemptId,
+      packageId: pkg!.id,
+      groupId: attemptGroupId,
+      groupMemberStudentIds,
       score: roundedScore, 
       passed, 
       hasEssay, 
@@ -514,7 +648,7 @@ export async function submitQuiz(
 
   // ponytail: Dispatch WebSocket event immediately after commit
   try {
-    const { emitQuizCompleted } = await import('@/lib/socket/emitter');
+    const { emitQuizCompleted, emitQuizAssigned } = await import('@/lib/socket/emitter');
     emitQuizCompleted({
       attemptId,
       studentId: result.studentId,
@@ -527,6 +661,15 @@ export async function submitQuiz(
       className: result.className,
       completedAt: new Date().toISOString()
     });
+    if (result.groupId && result.groupMemberStudentIds.length > 0) {
+      emitQuizAssigned({
+        packageId: result.packageId,
+        pageSlug: result.pageSlug || null,
+        studentIds: result.groupMemberStudentIds,
+        classId: result.classId,
+        assignedAt: new Date().toISOString(),
+      });
+    }
   } catch (socketErr) {
     console.error('[submitQuiz] Socket emit error:', socketErr);
   }

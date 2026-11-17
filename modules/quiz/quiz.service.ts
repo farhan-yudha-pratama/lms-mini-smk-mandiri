@@ -20,6 +20,7 @@ export async function getReportFilterPackages(scope: TeacherScope) {
       return {
         id: pkg.id,
         title: pkg.title,
+        assignmentMode: (pkg as any).assignmentMode || 'INDIVIDUAL',
         pageTitle: page?.title || pkg.title,
         categoryName: cat?.name || 'Tugas Mandiri',
         categoryOrderIndex: cat?.orderIndex ?? 999999,
@@ -131,6 +132,7 @@ export async function createQuizPackage(data: QuizFormValues) {
     passingScore: data.passingScore,
     timeLimit: data.timeLimit || null,
     shuffleQuestions: data.shuffleQuestions,
+    assignmentMode: data.assignmentMode ?? 'INDIVIDUAL',
     isActive: data.isActive,
     isHidden: data.isHidden,
     openAt: data.openAt || null,
@@ -160,11 +162,27 @@ export async function updateQuizPackage(id: string, data: QuizFormValues) {
     passingScore: data.passingScore,
     timeLimit: data.timeLimit || null,
     shuffleQuestions: data.shuffleQuestions,
+    assignmentMode: data.assignmentMode ?? 'INDIVIDUAL',
     isActive: data.isActive,
     isHidden: data.isHidden,
     openAt: data.openAt || null,
     closeAt: data.closeAt || null,
   });
+
+  // Jika paket baru diubah ke mode GROUP, pastikan default anti-cheat longgar untuk kenyamanan diskusi kelompok
+  if ((currentPackage as any).assignmentMode !== 'GROUP' && data.assignmentMode === 'GROUP') {
+    const variants = await db.orm.public.QuizVariant.where({ quizPackageId: id }).all();
+    for (const v of variants) {
+      const cfg = await db.orm.public.QuizAntiCheatConfig.where({ quizVariantId: v.id }).first();
+      if (cfg) {
+        await db.orm.public.QuizAntiCheatConfig.where({ id: cfg.id }).update({
+          enableFullscreen: false,
+          preventTabSwitch: false,
+          preventCopyPaste: false,
+        });
+      }
+    }
+  }
 
   return { id, ...data };
 }
@@ -192,6 +210,9 @@ export async function deleteQuizPackage(id: string) {
 }
 
 export async function createQuizVariant(data: QuizVariantFormValues) {
+  const pkg = await db.orm.public.QuizPackage.where({ id: data.quizPackageId }).first();
+  const isGroupMode = (pkg as any)?.assignmentMode === 'GROUP';
+
   const variant = await db.orm.public.QuizVariant.create({
     id: randomUUID(),
     quizPackageId: data.quizPackageId,
@@ -202,9 +223,9 @@ export async function createQuizVariant(data: QuizVariantFormValues) {
   await db.orm.public.QuizAntiCheatConfig.create({
     id: randomUUID(),
     quizVariantId: variant.id,
-    enableFullscreen: true,
-    preventTabSwitch: true,
-    preventCopyPaste: true,
+    enableFullscreen: !isGroupMode,
+    preventTabSwitch: !isGroupMode,
+    preventCopyPaste: !isGroupMode,
   });
 
   return variant;

@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import VariantList from '@/components/quiz/VariantList';
 import QuizAssignmentView from '@/components/quiz/QuizAssignmentView';
+import GroupAssignmentView from '@/components/quiz/GroupAssignmentView';
 import QuizPackageForm from '@/components/quiz/QuizPackageForm';
 
 export type EditQuizClientProps = {
@@ -16,6 +17,7 @@ export type EditQuizClientProps = {
     passingScore: number;
     timeLimit: number | null;
     shuffleQuestions: boolean;
+    assignmentMode?: 'INDIVIDUAL' | 'GROUP';
     isActive: boolean;
     isHidden: boolean;
     openAt: string | null;
@@ -23,6 +25,7 @@ export type EditQuizClientProps = {
     variants?: Array<{
       id: string;
       name: string;
+      isActive?: boolean;
       questionsCount?: number;
     }>;
   };
@@ -156,6 +159,18 @@ export default function EditQuizClient({
                   <span className="truncate max-w-[180px] sm:max-w-[240px]">Materi: {linkedPageTitle || 'Halaman'}</span>
                 </span>
               )}
+
+              {/* Assignment Mode Badge */}
+              <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 sm:py-1 rounded-full text-[11px] sm:text-xs font-semibold border shrink-0 ${
+                pkg.assignmentMode === 'GROUP'
+                  ? 'bg-purple-50 text-purple-700 border-purple-200'
+                  : 'bg-gray-50 text-gray-700 border-gray-200'
+              }`}>
+                <span className="material-symbols-outlined text-[13px] sm:text-[15px]">
+                  {pkg.assignmentMode === 'GROUP' ? 'groups' : 'person'}
+                </span>
+                <span>{pkg.assignmentMode === 'GROUP' ? 'Mode Kelompok' : 'Mode Individu'}</span>
+              </span>
 
               {/* Active Status Badge */}
               {pkg.isActive ? (
@@ -296,7 +311,7 @@ export default function EditQuizClient({
             }`}
           >
             <span className="material-symbols-outlined text-base sm:text-lg">groups</span>
-            <span>Penugasan Kelas</span>
+            <span>{pkg.assignmentMode === 'GROUP' ? 'Penugasan Kelompok' : 'Penugasan Kelas'}</span>
             <span className={`px-1.5 sm:px-2 py-0.2 sm:py-0.5 rounded-full text-[10px] sm:text-xs font-semibold ${
               activeTab === 'assignments'
                 ? 'bg-blue-100 text-blue-700'
@@ -345,28 +360,52 @@ export default function EditQuizClient({
           </div>
         )}
 
-        {/* TAB 2: PENUGASAN SISWA PER KELAS */}
+        {/* TAB 2: PENUGASAN SISWA / KELOMPOK PER KELAS */}
         {activeTab === 'assignments' && (
           <div className="space-y-4 sm:space-y-5 animate-in fade-in duration-200">
-            {/* Guidance Banner */}
-            <div className="bg-purple-50/70 border border-purple-200/80 rounded-xl p-3.5 sm:p-5 flex items-start gap-2.5 sm:gap-3.5">
-              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center shrink-0 mt-0.5">
-                <span className="material-symbols-outlined text-base sm:text-xl">diversity_3</span>
-              </div>
-              <div className="space-y-0.5 text-xs sm:text-sm leading-relaxed">
-                <h4 className="font-bold text-purple-950 text-xs sm:text-sm">Distribusi Paket Ujian ke Kelas</h4>
-                <p className="text-purple-800 text-[11px] sm:text-xs">
-                  Pilih kelas untuk mengacak kuis otomatis atau menetapkan varian soal spesifik ke murid.
-                </p>
-              </div>
-            </div>
+            {pkg.assignmentMode === 'GROUP' ? (
+              <>
+                <div className="bg-purple-50/70 border border-purple-200/80 rounded-xl p-3.5 sm:p-5 flex items-start gap-2.5 sm:gap-3.5">
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center shrink-0 mt-0.5">
+                    <span className="material-symbols-outlined text-base sm:text-xl">groups</span>
+                  </div>
+                  <div className="space-y-0.5 text-xs sm:text-sm leading-relaxed">
+                    <h4 className="font-bold text-purple-950 text-xs sm:text-sm">Pengaturan Kelompok Kelas & Tugas Kelompok</h4>
+                    <p className="text-purple-800 text-[11px] sm:text-xs">
+                      Buat peraturan pembagian kelompok (Acak atau Manual), pilih varian tugas per kelompok, atur visibilitas antar guru (Privat/Berbagi), atau salin kelompok dari tugas lain.
+                    </p>
+                  </div>
+                </div>
 
-            {/* Quiz Assignment View Component */}
-            <QuizAssignmentView 
-              packageId={pkg.id}
-              classes={classes}
-              variants={pkg.variants || []}
-            />
+                <GroupAssignmentView
+                  packageId={pkg.id}
+                  classes={classes}
+                  variants={pkg.variants || []}
+                />
+              </>
+            ) : (
+              <>
+                {/* Guidance Banner */}
+                <div className="bg-purple-50/70 border border-purple-200/80 rounded-xl p-3.5 sm:p-5 flex items-start gap-2.5 sm:gap-3.5">
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center shrink-0 mt-0.5">
+                    <span className="material-symbols-outlined text-base sm:text-xl">diversity_3</span>
+                  </div>
+                  <div className="space-y-0.5 text-xs sm:text-sm leading-relaxed">
+                    <h4 className="font-bold text-purple-950 text-xs sm:text-sm">Distribusi Paket Ujian ke Kelas</h4>
+                    <p className="text-purple-800 text-[11px] sm:text-xs">
+                      Pilih kelas untuk mengacak kuis otomatis atau menetapkan varian soal spesifik ke murid.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Quiz Assignment View Component */}
+                <QuizAssignmentView 
+                  packageId={pkg.id}
+                  classes={classes}
+                  variants={pkg.variants || []}
+                />
+              </>
+            )}
           </div>
         )}
 

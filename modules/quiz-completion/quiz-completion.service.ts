@@ -13,7 +13,7 @@ export interface QuizArchiveItem {
   studentEmail: string;
   classroomId: string | null;
   classroomName: string | null;
-  sourceType: 'MATERIAL_QUIZ' | 'ASSIGNMENT';
+  sourceType: 'MATERIAL_QUIZ' | 'ASSIGNMENT' | 'GROUP_TASK';
   sourceId: string;
   sourceTitle: string;
   categoryName: string | null;
@@ -54,8 +54,15 @@ export async function recordQuizCompletion(attemptId: string) {
   const attempt = await db.orm.public.QuizAttempt.where({ id: attemptId }).first();
   if (!attempt) return null;
 
-  // 1. Cek idempotency: Jangan duplikasi jika sourceId sudah pernah dicatat
-  const existingRecord = await db.orm.public.QuizCompletionRecord.where({ sourceId: attemptId }).first();
+  if ((attempt as any).groupId) {
+    return await recordGroupQuizCompletion(attemptId);
+  }
+
+  // 1. Cek idempotency: Jangan duplikasi jika (sourceId, studentId) sudah pernah dicatat
+  const existingRecord = await db.orm.public.QuizCompletionRecord.where({
+    sourceId: attemptId,
+    studentId: attempt.studentId,
+  }).first();
   if (existingRecord) {
     if (existingRecord.score !== (attempt.score ?? 0)) {
       await db.orm.public.QuizCompletionRecord.where({ id: existingRecord.id }).update({
@@ -149,6 +156,140 @@ export async function recordQuizCompletion(attemptId: string) {
 }
 
 /**
+ * Mencatat/menyinkronkan hasil tugas kelompok (1 QuizAttempt -> seluruh anggota ClassGroupMember)
+ */
+export async function recordGroupQuizCompletion(attemptId: string) {
+  const attempt = await db.orm.public.QuizAttempt.where({ id: attemptId }).first();
+  if (!attempt || !(attempt as any).groupId) return null;
+
+  const groupId = (attempt as any).groupId as string;
+  const [group, members, variant, questions, answers, allUsers, allClassrooms] = await Promise.all([
+    db.orm.public.ClassGroup.where({ id: groupId }).first(),
+    db.orm.public.ClassGroupMember.where({ groupId }).all(),
+    db.orm.public.QuizVariant.where({ id: attempt.quizVariantId }).first(),
+    db.orm.public.Question.where({ quizVariantId: attempt.quizVariantId }).all(),
+    db.orm.public.StudentAnswer.where({ quizAttemptId: attempt.id }).all(),
+    db.orm.public.User.all(),
+    db.orm.public.Classroom.all(),
+  ]);
+  if (!group || !variant) return null;
+
+  const pkg = await db.orm.public.QuizPackage.where({ id: variant.quizPackageId }).first();
+  if (!pkg) return null;
+
+  let pageTitle: string | null = null;
+  let pageSlug: string | null = null;
+  let categoryName: string | null = null;
+  if (pkg.pageId) {
+    const page = await db.orm.public.Page.where({ id: pkg.pageId }).first();
+    if (page) {
+      pageTitle = page.title;
+      pageSlug = page.slug;
+      const category = await db.orm.public.MaterialCategory.where({ id: page.categoryId }).first();
+      if (category) categoryName = category.name;
+    }
+  }
+
+  const userMap = new Map(allUsers.map(u => [u.id, u]));
+  const classroomMap = new Map(allClassrooms.map(c => [c.id, c.name]));
+
+  const groupMembersSummary = JSON.stringify(
+    members.map(m => ({
+      studentId: m.studentId,
+      name: userMap.get(m.studentId)?.name || 'Siswa',
+      isSubmitter: m.studentId === attempt.studentId,
+    }))
+  );
+
+  const passingScore = pkg.passingScore || 70;
+  const baseScore = attempt.score ?? 0;
+  const totalQuestions = questions.length;
+  const correctAnswers = answers.filter(a => a.isCorrect === true).length;
+  const essayCount = questions.filter(
+    q =>
+      q.questionType === 'ESSAY' ||
+      (q.questionType === 'CODE_CHALLENGE' &&
+        q.codeLanguage?.toLowerCase() !== 'sql' &&
+        !(q.codeLanguage?.toLowerCase() === 'php' && Boolean(q.testCases)))
+  ).length;
+
+  let timeTakenSeconds: number | null = null;
+  if (attempt.startedAt && attempt.finishedAt) {
+    timeTakenSeconds = Math.max(
+      0,
+      Math.floor((new Date(attempt.finishedAt).getTime() - new Date(attempt.startedAt).getTime()) / 1000)
+    );
+  }
+
+  const completedAt = attempt.finishedAt || new Date().toISOString();
+  const createdRecords = [];
+
+  for (const m of members) {
+    const student = userMap.get(m.studentId);
+    if (!student) continue;
+
+    const effectiveScore = m.scoreOverride !== null && m.scoreOverride !== undefined ? m.scoreOverride : baseScore;
+    const isPassed = effectiveScore >= passingScore;
+
+    const existing = await db.orm.public.QuizCompletionRecord.where({
+      sourceId: attempt.id,
+      studentId: m.studentId,
+    }).first();
+
+    if (existing) {
+      await db.orm.public.QuizCompletionRecord.where({ id: existing.id }).update({
+        score: effectiveScore,
+        isPassed,
+        groupId: group.id,
+        groupName: group.name,
+        groupVariantName: variant.name,
+        groupMembersSummary,
+        groupBaseScore: baseScore,
+        completedAt,
+      });
+      createdRecords.push(existing);
+    } else {
+      const rec = await db.orm.public.QuizCompletionRecord.create({
+        id: randomUUID(),
+        studentId: student.id,
+        studentName: student.name,
+        studentEmail: student.email,
+        classroomId: student.classId || group.classroomId || null,
+        classroomName:
+          (student.classId && classroomMap.get(student.classId)) ||
+          classroomMap.get(group.classroomId) ||
+          null,
+        sourceType: 'GROUP_TASK',
+        sourceId: attempt.id,
+        sourceTitle: pkg.title,
+        categoryName,
+        pageTitle,
+        pageSlug,
+        score: effectiveScore,
+        passingScore,
+        isPassed,
+        totalQuestions,
+        correctAnswers,
+        essayCount,
+        timeTakenSeconds,
+        groupId: group.id,
+        groupName: group.name,
+        groupVariantName: variant.name,
+        groupMembersSummary,
+        groupBaseScore: baseScore,
+        completedAt,
+        createdAt: new Date().toISOString(),
+      });
+      createdRecords.push(rec);
+    }
+
+    await updateStudentScoreSummary(student.id);
+  }
+
+  return createdRecords;
+}
+
+/**
  * Menghitung ulang dan memperbarui satu baris StudentScoreSummary
  */
 export async function updateStudentScoreSummary(studentId: string) {
@@ -166,7 +307,7 @@ export async function updateStudentScoreSummary(studentId: string) {
   const assignmentPackages = allPackages.filter(p => !p.pageId);
 
   const materialRecords = records.filter(r => r.sourceType === 'MATERIAL_QUIZ');
-  const assignmentRecords = records.filter(r => r.sourceType === 'ASSIGNMENT');
+  const assignmentRecords = records.filter(r => r.sourceType === 'ASSIGNMENT' || r.sourceType === 'GROUP_TASK');
 
   const totalMaterialQuizCompleted = materialRecords.length;
   const totalMaterialQuizPassed = materialRecords.filter(r => r.isPassed).length;
