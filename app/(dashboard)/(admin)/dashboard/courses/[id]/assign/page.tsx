@@ -3,7 +3,7 @@ import { db } from '@/prisma/db';
 import AssignClient from './AssignClient';
 import Link from 'next/link';
 import { getSession } from '@/lib/session';
-import { hasAnyPermission } from '@/lib/permissions';
+import { hasAnyPermission, hasPermission } from '@/lib/permissions';
 import { redirect } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
@@ -122,11 +122,30 @@ export default async function AssignCoursePage({ params }: { params: Promise<{ i
       pageCount: pageCountMap.get(c.id) || 0,
     }));
 
+  const userByIdMap = new Map(allUsers.map((u) => [u.id, u]));
+  const classroomNameById = new Map(allClassrooms.map((c) => [c.id, c.name]));
+
+  const enrolledStudentItems = enrolledStudents
+    .map((cs) => {
+      const stu = userByIdMap.get(cs.studentId);
+      if (!stu || stu.role !== 'MURID') return null;
+      return {
+        id: stu.id,
+        name: stu.name,
+        email: stu.email,
+        classId: stu.classId || null,
+        className: (stu.classId && classroomNameById.get(stu.classId)) || 'Tanpa Kelas',
+      };
+    })
+    .filter((s): s is NonNullable<typeof s> => Boolean(s))
+    .sort((a, b) => a.className.localeCompare(b.className) || a.name.localeCompare(b.name));
+
   const stats = {
     totalTeachers: assignedTeachers.length,
     totalCategories: assignedCategories.length,
-    totalStudents: enrolledStudents.length,
+    totalStudents: enrolledStudentItems.length,
   };
+  const canManageStudents = hasPermission(session, 'COURSES_MANAGE');
 
   return (
     <div className="p-3 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-4 sm:space-y-6">
@@ -171,6 +190,8 @@ export default async function AssignCoursePage({ params }: { params: Promise<{ i
         classrooms={classrooms}
         assignedCategories={assignedCategories}
         unassignedCategories={unassignedCategories}
+        enrolledStudents={enrolledStudentItems}
+        canManageStudents={canManageStudents}
         stats={stats}
       />
     </div>

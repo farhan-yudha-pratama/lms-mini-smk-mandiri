@@ -318,3 +318,111 @@ export async function getTeacherCourses(teacherId: string) {
   }
   return courses;
 }
+
+async function notifyAndRevalidateStudentRemoval(courseId: string, studentIds: string[]) {
+  if (studentIds.length > 0) {
+    try {
+      const { emitQuizAssigned } = await import('@/lib/socket/emitter');
+      emitQuizAssigned({
+        packageId: '',
+        studentIds,
+        assignedAt: new Date().toISOString(),
+      });
+    } catch (err) {
+      console.error('[notifyAndRevalidateStudentRemoval] Socket emit error:', err);
+    }
+  }
+  revalidateCourseAssignmentPaths(courseId);
+  revalidatePath('/student/tugas');
+  revalidatePath('/student/materi');
+}
+
+export async function removeStudentsFromCourseAction(courseId: string, studentIds: string[]) {
+  try {
+    await requirePermission('COURSES_MANAGE');
+    const { RemoveCourseStudentsSchema, removeStudentsFromCourse } = await import(
+      '@/modules/course/course-student.service'
+    );
+    const parsed = RemoveCourseStudentsSchema.parse({ courseId, studentIds });
+
+    const [course, allUsers, result] = await Promise.all([
+      db.orm.public.Course.where({ id: parsed.courseId }).first(),
+      db.orm.public.User.where({ role: 'MURID' }).all(),
+      removeStudentsFromCourse(parsed.courseId, parsed.studentIds),
+    ]);
+
+    if (result.removedCount > 0) {
+      const userMap = new Map(allUsers.map((u) => [u.id, u.name]));
+      const names = result.removedStudentIds.map((id) => userMap.get(id) || id);
+      const preview = names.length <= 3 ? names.join(', ') : `${names.slice(0, 3).join(', ')} (+${names.length - 3} lainnya)`;
+      try {
+        const { logAudit } = await import('@/lib/audit');
+        await logAudit({
+          action: 'REMOVE_STUDENT_COURSE',
+          message: `Mengeluarkan ${result.removedCount} siswa (${preview}) dari mata pelajaran ${course?.name || parsed.courseId}`,
+          meta: { courseId: parsed.courseId, studentIds: result.removedStudentIds },
+        });
+      } catch (auditErr) {
+        console.error('[removeStudentsFromCourseAction] Audit log error:', auditErr);
+      }
+      await notifyAndRevalidateStudentRemoval(parsed.courseId, result.removedStudentIds);
+    }
+
+    return {
+      success: true,
+      removedCount: result.removedCount,
+      removedStudentIds: result.removedStudentIds,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Gagal mengeluarkan siswa dari mata pelajaran',
+    };
+  }
+}
+
+export async function removeClassStudentsFromCourseAction(courseId: string, classId: string) {
+  try {
+    await requirePermission('COURSES_MANAGE');
+    const { RemoveCourseClassSchema, removeClassStudentsFromCourse } = await import(
+      '@/modules/course/course-student.service'
+    );
+    const parsed = RemoveCourseClassSchema.parse({ courseId, classId });
+
+    const [course, result] = await Promise.all([
+      db.orm.public.Course.where({ id: parsed.courseId }).first(),
+      removeClassStudentsFromCourse(parsed.courseId, parsed.classId),
+    ]);
+
+    if (result.removedCount > 0) {
+      try {
+        const { logAudit } = await import('@/lib/audit');
+        await logAudit({
+          action: 'REMOVE_CLASS_STUDENTS_COURSE',
+          message: `Mengeluarkan seluruh siswa kelas ${result.className} (${result.removedCount} siswa) dari mata pelajaran ${course?.name || parsed.courseId}`,
+          meta: {
+            courseId: parsed.courseId,
+            classId: parsed.classId,
+            className: result.className,
+            studentIds: result.removedStudentIds,
+          },
+        });
+      } catch (auditErr) {
+        console.error('[removeClassStudentsFromCourseAction] Audit log error:', auditErr);
+      }
+      await notifyAndRevalidateStudentRemoval(parsed.courseId, result.removedStudentIds);
+    }
+
+    return {
+      success: true,
+      removedCount: result.removedCount,
+      removedStudentIds: result.removedStudentIds,
+      className: result.className,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Gagal mengeluarkan siswa sekelas dari mata pelajaran',
+    };
+  }
+}

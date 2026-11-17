@@ -9,6 +9,8 @@ import {
   updateTeacherCourseClassesAction,
   assignMaterialCategoryToCourse,
   removeMaterialCategoryFromCourse,
+  removeStudentsFromCourseAction,
+  removeClassStudentsFromCourseAction,
 } from '@/app/actions/course';
 import { getSocket } from '@/lib/socket/client';
 
@@ -35,6 +37,14 @@ interface CategoryItem {
   pageCount?: number;
 }
 
+export interface EnrolledStudentItem {
+  id: string;
+  name: string;
+  email: string;
+  classId: string | null;
+  className: string;
+}
+
 interface AssignClientProps {
   course: {
     id: string;
@@ -49,6 +59,8 @@ interface AssignClientProps {
   classrooms: ClassroomItem[];
   assignedCategories: CategoryItem[];
   unassignedCategories: CategoryItem[];
+  enrolledStudents?: EnrolledStudentItem[];
+  canManageStudents?: boolean;
   stats: {
     totalTeachers: number;
     totalCategories: number;
@@ -56,7 +68,7 @@ interface AssignClientProps {
   };
 }
 
-type TabMode = 'teachers' | 'materials';
+type TabMode = 'teachers' | 'materials' | 'students';
 
 export default function AssignClient({
   course,
@@ -65,6 +77,8 @@ export default function AssignClient({
   classrooms,
   assignedCategories,
   unassignedCategories,
+  enrolledStudents = [],
+  canManageStudents = false,
   stats,
 }: AssignClientProps) {
   const router = useRouter();
@@ -77,6 +91,24 @@ export default function AssignClient({
   // Search states
   const [teacherSearch, setTeacherSearch] = useState('');
   const [materialSearch, setMaterialSearch] = useState('');
+  const [studentSearch, setStudentSearch] = useState('');
+  const [studentClassFilter, setStudentClassFilter] = useState('ALL');
+  const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
+
+  // Reactive student list state
+  const [enrolledList, setEnrolledList] = useState<EnrolledStudentItem[]>(enrolledStudents);
+  useEffect(() => {
+    setEnrolledList(enrolledStudents);
+    setSelectedStudentIds((prev) => prev.filter((id) => enrolledStudents.some((s) => s.id === id)));
+  }, [enrolledStudents]);
+
+  const [loadingStudents, setLoadingStudents] = useState(false);
+  const [studentRemovalConfirm, setStudentRemovalConfirm] = useState<
+    | { mode: 'SINGLE'; student: EnrolledStudentItem }
+    | { mode: 'BULK'; studentIds: string[] }
+    | { mode: 'CLASS'; classId: string; className: string; count: number }
+    | null
+  >(null);
 
   // Form selection states
   const [selectedTeacherId, setSelectedTeacherId] = useState('');
@@ -192,6 +224,89 @@ export default function AssignClient({
       (c) => c.name.toLowerCase().includes(q) || c.slug.toLowerCase().includes(q)
     );
   }, [assignedCategories, materialSearch]);
+
+  const enrolledClassOptions = useMemo(() => {
+    const counts = new Map<string, { id: string; name: string; count: number }>();
+    for (const stu of enrolledList) {
+      const key = stu.classId || '__UNASSIGNED__';
+      const cur = counts.get(key) || { id: key, name: stu.className || 'Tanpa Kelas', count: 0 };
+      cur.count += 1;
+      counts.set(key, cur);
+    }
+    return Array.from(counts.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [enrolledList]);
+
+  const filteredEnrolledStudents = useMemo(() => {
+    return enrolledList.filter((stu) => {
+      if (studentClassFilter !== 'ALL') {
+        const key = stu.classId || '__UNASSIGNED__';
+        if (key !== studentClassFilter) return false;
+      }
+      if (studentSearch.trim()) {
+        const q = studentSearch.toLowerCase().trim();
+        return (
+          stu.name.toLowerCase().includes(q) ||
+          stu.email.toLowerCase().includes(q) ||
+          stu.className.toLowerCase().includes(q)
+        );
+      }
+      return true;
+    });
+  }, [enrolledList, studentClassFilter, studentSearch]);
+
+  const selectedClassOption = useMemo(
+    () => (studentClassFilter === 'ALL' ? null : enrolledClassOptions.find((c) => c.id === studentClassFilter) || null),
+    [studentClassFilter, enrolledClassOptions]
+  );
+
+  const handleConfirmStudentRemoval = async () => {
+    if (!studentRemovalConfirm) return;
+    setLoadingStudents(true);
+    try {
+      if (studentRemovalConfirm.mode === 'CLASS') {
+        const res = await removeClassStudentsFromCourseAction(courseId, studentRemovalConfirm.classId);
+        if (res.success) {
+          const removedSet = new Set(res.removedStudentIds || []);
+          setEnrolledList((prev) => prev.filter((s) => !removedSet.has(s.id)));
+          setSelectedStudentIds((prev) => prev.filter((id) => !removedSet.has(id)));
+          setStudentClassFilter('ALL');
+          showToast(
+            'success',
+            `Berhasil mengeluarkan ${res.removedCount} siswa kelas ${studentRemovalConfirm.className} dari ${course.name}.`
+          );
+          setStudentRemovalConfirm(null);
+          router.refresh();
+        } else {
+          showToast('error', res.message || 'Gagal mengeluarkan siswa kelas.');
+        }
+      } else {
+        const targetIds =
+          studentRemovalConfirm.mode === 'SINGLE'
+            ? [studentRemovalConfirm.student.id]
+            : studentRemovalConfirm.studentIds;
+        const res = await removeStudentsFromCourseAction(courseId, targetIds);
+        if (res.success) {
+          const removedSet = new Set(res.removedStudentIds || targetIds);
+          setEnrolledList((prev) => prev.filter((s) => !removedSet.has(s.id)));
+          setSelectedStudentIds((prev) => prev.filter((id) => !removedSet.has(id)));
+          showToast(
+            'success',
+            studentRemovalConfirm.mode === 'SINGLE'
+              ? `${studentRemovalConfirm.student.name} berhasil dikeluarkan dari ${course.name}.`
+              : `${res.removedCount} siswa berhasil dikeluarkan dari ${course.name}.`
+          );
+          setStudentRemovalConfirm(null);
+          router.refresh();
+        } else {
+          showToast('error', res.message || 'Gagal mengeluarkan siswa.');
+        }
+      }
+    } catch (err: any) {
+      showToast('error', err?.message || 'Terjadi kesalahan saat mengeluarkan siswa.');
+    } finally {
+      setLoadingStudents(false);
+    }
+  };
 
   // Actions
   const handleAssignTeacher = async () => {
@@ -419,7 +534,7 @@ export default function AssignClient({
             </div>
             <div className="min-w-0 mt-1 sm:mt-0">
               <div className="text-base sm:text-lg font-bold text-purple-900 leading-tight">
-                {stats.totalStudents}
+                {enrolledList.length}
               </div>
               <div className="text-[10px] sm:text-xs text-purple-700 truncate">Siswa Terdaftar</div>
             </div>
@@ -470,6 +585,28 @@ export default function AssignClient({
             }`}
           >
             {assignedCategories.length}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('students')}
+          className={`flex-1 py-3 px-4 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all active:scale-98 ${
+            activeTab === 'students'
+              ? 'bg-purple-600 text-white shadow-sm ring-2 ring-purple-600/20'
+              : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+          }`}
+        >
+          <span className="material-symbols-outlined text-lg">groups</span>
+          <span>Siswa Terdaftar</span>
+          <span
+            className={`px-2 py-0.5 text-xs rounded-full font-bold transition-colors ${
+              activeTab === 'students'
+                ? 'bg-purple-700/80 text-white'
+                : 'bg-purple-50 text-purple-700 border border-purple-200'
+            }`}
+          >
+            {enrolledList.length}
           </span>
         </button>
       </div>
@@ -905,6 +1042,328 @@ export default function AssignClient({
                 ))}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================== */}
+      {/* TAB CONTENT 3: SISWA TERDAFTAR */}
+      {/* ============================================================== */}
+      {activeTab === 'students' && (
+        <div className="bg-white rounded-2xl border border-gray-200 p-4 sm:p-6 lg:p-8 shadow-sm space-y-6 animate-in fade-in duration-150">
+          {/* Section Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-4 border-b border-gray-100">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0 border border-purple-100">
+                <span className="material-symbols-outlined text-2xl">groups</span>
+              </div>
+              <div>
+                <h3 className="text-base sm:text-lg font-bold text-gray-900">
+                  Daftar Siswa Terdaftar
+                </h3>
+                <p className="text-xs sm:text-sm text-gray-500">
+                  Cari siswa, filter per kelas, dan keluarkan siswa satuan, terpilih, atau 1 kelas sekaligus dari mata pelajaran ini.
+                </p>
+              </div>
+            </div>
+            <span className="px-3 py-1 text-xs font-bold rounded-full bg-purple-50 text-purple-700 border border-purple-200 self-start sm:self-auto shrink-0">
+              {enrolledList.length} Siswa Aktif
+            </span>
+          </div>
+
+          {!canManageStudents && (
+            <div className="bg-amber-50 border border-amber-200 text-amber-800 rounded-xl p-3.5 text-xs sm:text-sm flex items-start gap-2.5">
+              <span className="material-symbols-outlined text-lg text-amber-600 shrink-0">lock</span>
+              <span>
+                Mode lihat saja: hanya pengelola dengan permission <code className="font-mono font-bold">COURSES_MANAGE</code> yang dapat mengeluarkan siswa dari mata pelajaran.
+              </span>
+            </div>
+          )}
+
+          {/* Filter Bar: Search & Kelas */}
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
+            <div className="relative md:col-span-7">
+              <span className="material-symbols-outlined absolute left-3.5 top-3 text-base text-gray-400">
+                search
+              </span>
+              <input
+                type="text"
+                placeholder="Cari siswa berdasarkan nama, email, atau kelas..."
+                value={studentSearch}
+                onChange={(e) => setStudentSearch(e.target.value)}
+                className="w-full bg-white border border-gray-200 rounded-xl pl-10 pr-9 py-2.5 text-xs sm:text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent shadow-2xs"
+              />
+              {studentSearch && (
+                <button
+                  type="button"
+                  onClick={() => setStudentSearch('')}
+                  className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
+                >
+                  <span className="material-symbols-outlined text-base">close</span>
+                </button>
+              )}
+            </div>
+
+            <div className="md:col-span-5">
+              <select
+                value={studentClassFilter}
+                onChange={(e) => setStudentClassFilter(e.target.value)}
+                className="w-full bg-white border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent shadow-2xs"
+              >
+                <option value="ALL">Semua Kelas ({enrolledList.length} Siswa)</option>
+                {enrolledClassOptions.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name} ({c.count} Siswa)
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Bulk & Class Removal Actions Bar */}
+          {canManageStudents && (selectedClassOption || selectedStudentIds.length > 0) && (
+            <div className="bg-red-50/70 border border-red-200 rounded-2xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+              <div className="text-xs sm:text-sm text-red-900 font-medium flex items-center gap-2">
+                <span className="material-symbols-outlined text-red-600 text-lg shrink-0">person_remove</span>
+                <span>
+                  {selectedStudentIds.length > 0
+                    ? `${selectedStudentIds.length} siswa dipilih untuk dikeluarkan.`
+                    : `Filter aktif: Kelas ${selectedClassOption?.name} (${selectedClassOption?.count} siswa).`}
+                </span>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                {selectedStudentIds.length > 0 && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedStudentIds([])}
+                      className="px-3 py-1.5 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-xl text-xs font-semibold"
+                    >
+                      Bersihkan Pilihan
+                    </button>
+                    <button
+                      type="button"
+                      disabled={loadingStudents}
+                      onClick={() =>
+                        setStudentRemovalConfirm({ mode: 'BULK', studentIds: selectedStudentIds })
+                      }
+                      className="px-3.5 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-semibold inline-flex items-center gap-1.5 shadow-2xs"
+                    >
+                      <span className="material-symbols-outlined text-sm">delete_sweep</span>
+                      Keluarkan Terpilih ({selectedStudentIds.length})
+                    </button>
+                  </>
+                )}
+                {selectedClassOption && (
+                  <button
+                    type="button"
+                    disabled={loadingStudents}
+                    onClick={() =>
+                      setStudentRemovalConfirm({
+                        mode: 'CLASS',
+                        classId: selectedClassOption.id,
+                        className: selectedClassOption.name,
+                        count: selectedClassOption.count,
+                      })
+                    }
+                    className="px-3.5 py-1.5 bg-red-700 hover:bg-red-800 text-white rounded-xl text-xs font-semibold inline-flex items-center gap-1.5 shadow-2xs"
+                  >
+                    <span className="material-symbols-outlined text-sm">group_remove</span>
+                    Keluarkan 1 Kelas {selectedClassOption.name} ({selectedClassOption.count})
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Student List */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-gray-400 px-1">
+              {canManageStudents && filteredEnrolledStudents.length > 0 ? (
+                <label className="inline-flex items-center gap-2 cursor-pointer text-gray-600 normal-case font-semibold">
+                  <input
+                    type="checkbox"
+                    checked={
+                      filteredEnrolledStudents.length > 0 &&
+                      filteredEnrolledStudents.every((s) => selectedStudentIds.includes(s.id))
+                    }
+                    onChange={(e) => {
+                      const visibleIds = filteredEnrolledStudents.map((s) => s.id);
+                      if (e.target.checked) {
+                        setSelectedStudentIds((prev) => Array.from(new Set([...prev, ...visibleIds])));
+                      } else {
+                        const visibleSet = new Set(visibleIds);
+                        setSelectedStudentIds((prev) => prev.filter((id) => !visibleSet.has(id)));
+                      }
+                    }}
+                    className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                  />
+                  <span>Pilih Semua Terfilter ({filteredEnrolledStudents.length})</span>
+                </label>
+              ) : (
+                <span>Daftar Siswa Terdaftar</span>
+              )}
+              <span>{filteredEnrolledStudents.length} Ditampilkan</span>
+            </div>
+
+            {filteredEnrolledStudents.length === 0 ? (
+              <div className="p-8 sm:p-12 text-center border-2 border-dashed border-gray-200 rounded-2xl bg-gray-50/50">
+                <span className="material-symbols-outlined text-5xl text-gray-300 mb-2">
+                  group_off
+                </span>
+                <p className="text-sm sm:text-base font-bold text-gray-700">
+                  {studentSearch || studentClassFilter !== 'ALL'
+                    ? 'Tidak ada siswa yang cocok dengan filter'
+                    : 'Belum ada siswa yang bergabung di mata pelajaran ini'}
+                </p>
+                <p className="text-xs sm:text-sm text-gray-400 mt-1 max-w-sm mx-auto">
+                  {studentSearch || studentClassFilter !== 'ALL'
+                    ? 'Coba ubah kata kunci pencarian atau pilih kelas lainnya.'
+                    : 'Siswa dapat bergabung menggunakan Kode Gabung Siswa di atas.'}
+                </p>
+              </div>
+            ) : (
+              <div className="divide-y divide-gray-100 border border-gray-200 rounded-2xl overflow-hidden bg-white shadow-2xs">
+                {filteredEnrolledStudents.map((stu) => {
+                  const checked = selectedStudentIds.includes(stu.id);
+                  return (
+                    <div
+                      key={stu.id}
+                      className={`p-3.5 sm:p-4 hover:bg-gray-50/80 flex items-center justify-between gap-3 transition-colors ${
+                        checked ? 'bg-purple-50/40' : ''
+                      }`}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        {canManageStudents && (
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() =>
+                              setSelectedStudentIds((prev) =>
+                                prev.includes(stu.id)
+                                  ? prev.filter((id) => id !== stu.id)
+                                  : [...prev, stu.id]
+                              )
+                            }
+                            className="rounded border-gray-300 text-purple-600 focus:ring-purple-500 shrink-0"
+                          />
+                        )}
+                        <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-purple-50 text-purple-700 border border-purple-200 flex items-center justify-center font-bold text-xs sm:text-sm shrink-0">
+                          {stu.name.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="text-xs sm:text-sm font-bold text-gray-900 truncate">
+                              {stu.name}
+                            </p>
+                            <span className="px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-semibold bg-gray-100 text-gray-700 border border-gray-200">
+                              {stu.className}
+                            </span>
+                          </div>
+                          <p className="text-[11px] sm:text-xs text-gray-500 truncate mt-0.5">{stu.email}</p>
+                        </div>
+                      </div>
+
+                      {canManageStudents && (
+                        <button
+                          type="button"
+                          disabled={loadingStudents}
+                          onClick={() => setStudentRemovalConfirm({ mode: 'SINGLE', student: stu })}
+                          className="h-9 px-3 text-xs font-semibold text-red-600 hover:text-red-700 bg-red-50/80 hover:bg-red-100 border border-red-200 rounded-xl transition-all flex items-center gap-1.5 shrink-0 active:scale-95 shadow-2xs"
+                          title={`Keluarkan ${stu.name} dari ${course.name}`}
+                        >
+                          <span className="material-symbols-outlined text-sm sm:text-base">person_remove</span>
+                          <span className="hidden sm:inline">Keluarkan</span>
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================== */}
+      {/* MODAL: KONFIRMASI KELUARKAN SISWA / 1 KELAS */}
+      {/* ============================================================== */}
+      {studentRemovalConfirm && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 transition-all">
+          <div className="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-2xl p-5 sm:p-6 shadow-2xl space-y-4 animate-in slide-in-from-bottom-6 sm:slide-in-from-bottom-0 sm:fade-in duration-200">
+            <div className="w-12 h-1 bg-gray-200 rounded-full mx-auto sm:hidden mb-1"></div>
+
+            <div className="flex items-center gap-3 text-red-600">
+              <div className="w-11 h-11 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-2xl">
+                  {studentRemovalConfirm.mode === 'CLASS' ? 'group_remove' : 'person_remove'}
+                </span>
+              </div>
+              <div className="min-w-0">
+                <h3 className="text-base sm:text-lg font-bold text-gray-900">
+                  {studentRemovalConfirm.mode === 'CLASS'
+                    ? `Keluarkan Kelas ${studentRemovalConfirm.className}?`
+                    : studentRemovalConfirm.mode === 'BULK'
+                      ? `Keluarkan ${studentRemovalConfirm.studentIds.length} Siswa Terpilih?`
+                      : 'Keluarkan Siswa dari Mapel?'}
+                </h3>
+                <p className="text-xs text-gray-500">Konfirmasi pengeluaran keanggotaan siswa</p>
+              </div>
+            </div>
+
+            <p className="text-xs sm:text-sm text-gray-600 leading-relaxed">
+              {studentRemovalConfirm.mode === 'CLASS' ? (
+                <>
+                  Anda akan mengeluarkan seluruh <strong>{studentRemovalConfirm.count} siswa</strong> dari kelas{' '}
+                  <strong className="text-gray-900">{studentRemovalConfirm.className}</strong> pada mata pelajaran{' '}
+                  <strong className="text-gray-900">{course.name}</strong>.
+                </>
+              ) : studentRemovalConfirm.mode === 'BULK' ? (
+                <>
+                  Anda akan mengeluarkan <strong>{studentRemovalConfirm.studentIds.length} siswa terpilih</strong> dari
+                  mata pelajaran <strong className="text-gray-900">{course.name}</strong>.
+                </>
+              ) : (
+                <>
+                  Apakah Anda yakin ingin mengeluarkan{' '}
+                  <strong className="text-gray-900">{studentRemovalConfirm.student.name}</strong> ({studentRemovalConfirm.student.className}) dari mata pelajaran{' '}
+                  <strong className="text-gray-900">{course.name}</strong>?
+                </>
+              )}
+            </p>
+
+            <div className="text-xs text-gray-500 bg-gray-50 p-3 rounded-xl border border-gray-200 space-y-1">
+              <p className="font-semibold text-gray-700">Dampak yang terjadi:</p>
+              <ul className="list-disc list-inside space-y-0.5 text-gray-500">
+                <li>Siswa tidak lagi melihat materi dan tugas mapel ini.</li>
+                <li>Penugasan kuis/kelompok yang belum dikerjakan akan dibersihkan.</li>
+                <li>Riwayat nilai dan pengerjaan lama tetap aman tersimpan.</li>
+              </ul>
+            </div>
+
+            <div className="flex flex-col-reverse sm:flex-row justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setStudentRemovalConfirm(null)}
+                disabled={loadingStudents}
+                className="w-full sm:w-auto h-11 sm:h-auto px-4 py-2.5 border border-gray-300 rounded-xl text-xs sm:text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmStudentRemoval}
+                disabled={loadingStudents}
+                className="w-full sm:w-auto h-11 sm:h-auto inline-flex items-center justify-center gap-1.5 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs sm:text-sm font-semibold transition-colors shadow-sm active:scale-95"
+              >
+                {loadingStudents ? (
+                  <span className="material-symbols-outlined text-base animate-spin">progress_activity</span>
+                ) : (
+                  <span className="material-symbols-outlined text-base">person_remove</span>
+                )}
+                <span>Ya, Keluarkan</span>
+              </button>
+            </div>
           </div>
         </div>
       )}
