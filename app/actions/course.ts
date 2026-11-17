@@ -153,6 +153,7 @@ export async function assignTeacherToCourse(courseId: string, teacherId: string,
   }
 
   const assignedClassRows = await db.orm.public.CourseTeacherClass.where({ courseId: parsed.courseId, teacherId: parsed.teacherId }).all();
+  const assignedClassIds = assignedClassRows.map((r) => r.classroomId);
   const allClassrooms = assignedClassRows.length > 0 ? await db.orm.public.Classroom.all() : [];
   const classNameMap = new Map(allClassrooms.map((c) => [c.id, c.name]));
   const assignedClassNames = assignedClassRows.map((r) => classNameMap.get(r.classroomId) || r.classroomId);
@@ -164,6 +165,9 @@ export async function assignTeacherToCourse(courseId: string, teacherId: string,
       courseName: course?.name || 'Mata Pelajaran',
       teacherId: parsed.teacherId,
       teacherName: teacher?.name || 'Guru',
+      classIds: assignedClassIds,
+      classNames: assignedClassNames,
+      actionType: 'ASSIGNED',
       assignedAt: new Date().toISOString()
     });
   } catch (err) {
@@ -176,20 +180,21 @@ export async function assignTeacherToCourse(courseId: string, teacherId: string,
     await logAudit({
       action: 'ASSIGN_TEACHER_COURSE',
       message: `Guru ${teacher?.name || parsed.teacherId} ditugaskan sebagai pengampu mata pelajaran ${course?.name || parsed.courseId}${classSuffix}`,
-      meta: { courseId: parsed.courseId, teacherId: parsed.teacherId, courseName: course?.name, teacherName: teacher?.name, classIds: parsed.classIds || [] }
+      meta: { courseId: parsed.courseId, teacherId: parsed.teacherId, courseName: course?.name, teacherName: teacher?.name, classIds: assignedClassIds }
     });
   } catch (auditErr) {
     console.error('[assignTeacherToCourse] Audit log error:', auditErr);
   }
 
   revalidateCourseAssignmentPaths(parsed.courseId);
-  return { success: true, record };
+  return { success: true, record, teacherId: parsed.teacherId, classIds: assignedClassIds, classNames: assignedClassNames };
 }
 
 export async function updateTeacherCourseClassesAction(courseId: string, teacherId: string, classIds: string[]) {
   try {
     await requireAnyPermission(['COURSES_MANAGE', 'COURSES_ASSIGN_TEACHER']);
     const parsed = UpdateTeacherClassesSchema.parse({ courseId, teacherId, classIds });
+    const uniqueClassIds = Array.from(new Set(parsed.classIds));
 
     const existingTeacher = await db.orm.public.CourseTeacher.where({ courseId: parsed.courseId, teacherId: parsed.teacherId }).first();
     if (!existingTeacher) {
@@ -200,7 +205,7 @@ export async function updateTeacherCourseClassesAction(courseId: string, teacher
       });
     }
 
-    await syncTeacherCourseClasses(parsed.courseId, parsed.teacherId, parsed.classIds);
+    await syncTeacherCourseClasses(parsed.courseId, parsed.teacherId, uniqueClassIds);
 
     const [course, teacher, classrooms] = await Promise.all([
       db.orm.public.Course.where({ id: parsed.courseId }).first(),
@@ -208,7 +213,7 @@ export async function updateTeacherCourseClassesAction(courseId: string, teacher
       db.orm.public.Classroom.all(),
     ]);
     const classNameMap = new Map(classrooms.map((c) => [c.id, c.name]));
-    const classNames = parsed.classIds.map((id) => classNameMap.get(id) || id);
+    const classNames = uniqueClassIds.map((id) => classNameMap.get(id) || id);
 
     try {
       const { emitCourseTeacherAssigned } = await import('@/lib/socket/emitter');
@@ -217,6 +222,9 @@ export async function updateTeacherCourseClassesAction(courseId: string, teacher
         courseName: course?.name || 'Mata Pelajaran',
         teacherId: parsed.teacherId,
         teacherName: teacher?.name || 'Guru',
+        classIds: uniqueClassIds,
+        classNames,
+        actionType: 'CLASSES_UPDATED',
         assignedAt: new Date().toISOString(),
       });
     } catch (err) {
@@ -228,14 +236,20 @@ export async function updateTeacherCourseClassesAction(courseId: string, teacher
       await logAudit({
         action: 'UPDATE_TEACHER_COURSE_CLASSES',
         message: `Memperbarui penugasan kelas guru ${teacher?.name || parsed.teacherId} pada mapel ${course?.name || parsed.courseId}: ${classNames.length > 0 ? classNames.join(', ') : 'Tidak ada kelas'}`,
-        meta: { courseId: parsed.courseId, teacherId: parsed.teacherId, classIds: parsed.classIds },
+        meta: { courseId: parsed.courseId, teacherId: parsed.teacherId, classIds: uniqueClassIds },
       });
     } catch (auditErr) {
       console.error('[updateTeacherCourseClassesAction] Audit log error:', auditErr);
     }
 
     revalidateCourseAssignmentPaths(parsed.courseId);
-    return { success: true, message: 'Penugasan kelas guru berhasil diperbarui.' };
+    return {
+      success: true,
+      message: 'Penugasan kelas guru berhasil diperbarui.',
+      teacherId: parsed.teacherId,
+      classIds: uniqueClassIds,
+      classNames,
+    };
   } catch (error) {
     return { success: false, message: error instanceof Error ? error.message : 'Gagal memperbarui penugasan kelas guru' };
   }

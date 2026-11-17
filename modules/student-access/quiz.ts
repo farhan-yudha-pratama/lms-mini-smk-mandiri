@@ -38,7 +38,7 @@ export async function getStudentQuizHistory(studentId: string) {
     const rawTitle = quizPackage?.title || record?.sourceTitle || 'Kuis Materi';
     const cleanTitle = rawTitle.replace(/^\[ARSIP\]\s*/i, '');
 
-    const resolvedCourseId = course?.id || quizPackage?.courseId || (enrolledCourseIds.length > 0 ? enrolledCourseIds[0] : '');
+    const resolvedCourseId = course?.id || quizPackage?.courseId || '';
     const resolvedCourse = courses.find(c => c.id === resolvedCourseId);
 
     return {
@@ -57,10 +57,8 @@ export async function getStudentQuizHistory(studentId: string) {
     };
   });
 
-  // Filter untuk mapel yang relevan dengan siswa
-  if (enrolledCourseIds.length > 0) {
-    results = results.filter(r => enrolledCourseIds.includes(r.courseId) || !r.courseId);
-  }
+  // Strict Course Scope: hanya tampilkan riwayat dari mata pelajaran yang diikuti siswa
+  results = results.filter(r => Boolean(r.courseId) && enrolledCourseIds.includes(r.courseId));
 
   // Urutkan berdasarkan startedAt DESC (terbaru di atas)
   results.sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime());

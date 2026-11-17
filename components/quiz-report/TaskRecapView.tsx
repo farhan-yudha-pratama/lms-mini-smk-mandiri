@@ -44,30 +44,41 @@ export default function TaskRecapView({
     });
   };
 
-  // Initial load
+  // Initial load & reload when teacher class scope props update
   useEffect(() => {
-    loadData();
+    const classValid = !selectedClassId || classes.some(c => c.id === selectedClassId);
+    const courseValid = !selectedCourseId || courses.some(c => c.id === selectedCourseId);
+    if (!classValid) setSelectedClassId('');
+    if (!courseValid) setSelectedCourseId('');
+    loadData({
+      classId: classValid ? selectedClassId : '',
+      courseId: courseValid ? selectedCourseId : '',
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [classes, courses]);
 
   // Real-time synchronization via Socket.io
   useEffect(() => {
     const socket = getSocket();
-    if (!socket) return;
-
-    socket.emit('join:reports');
-
     const handleSync = () => {
       loadData();
     };
 
-    socket.on('quiz:started', handleSync);
-    socket.on('quiz:completed', handleSync);
+    window.addEventListener('lms:teacher-scope-updated', handleSync);
+    if (socket) {
+      socket.emit('join:reports');
+      socket.on('quiz:started', handleSync);
+      socket.on('quiz:completed', handleSync);
+    }
 
     return () => {
-      socket.off('quiz:started', handleSync);
-      socket.off('quiz:completed', handleSync);
+      window.removeEventListener('lms:teacher-scope-updated', handleSync);
+      if (socket) {
+        socket.off('quiz:started', handleSync);
+        socket.off('quiz:completed', handleSync);
+      }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedClassId, selectedCourseId]);
 
   // Reset category when course changes

@@ -6,6 +6,7 @@ import {
   resolvePackageCourseIds,
   type TeacherScope,
 } from '@/modules/course/teacher-scope.service';
+import { canEditGroupForScope, isGroupVisibleToScope } from '@/modules/quiz-group/quiz-group.service';
 
 export interface QuizReportItem {
   id: string;
@@ -31,6 +32,12 @@ export interface QuizReportItem {
   needsReview: boolean;
   essayCount: number;
   totalQuestions: number;
+  isGroupTask?: boolean;
+  groupId?: string | null;
+  groupName?: string | null;
+  groupBaseScore?: number | null;
+  scoreOverride?: number | null;
+  submitterName?: string | null;
 }
 
 export interface QuizReportsResponse {
@@ -58,6 +65,14 @@ export async function assertCanAccessAttempt(scope: TeacherScope, attemptId: str
 
   const attempt = await db.orm.public.QuizAttempt.where({ id: attemptId }).first();
   if (!attempt) throw new Error('Riwayat kuis tidak ditemukan');
+
+  if ((attempt as any).groupId) {
+    const group = await db.orm.public.ClassGroup.where({ id: (attempt as any).groupId }).first();
+    if (!group || !isGroupVisibleToScope(group, scope) || !isClassAllowedForCourse(scope, group.courseId, group.classroomId)) {
+      throw new Error('FORBIDDEN');
+    }
+    return;
+  }
 
   const [student, variant] = await Promise.all([
     db.orm.public.User.where({ id: attempt.studentId }).first(),
@@ -118,8 +133,8 @@ export async function getQuizReports(params: {
 }): Promise<QuizReportsResponse> {
   const { classId, packageId, courseId, search, page = 1, limit = 50, reviewFilter = 'ALL', teacherId, scope } = params;
 
-  // 1. Fetch reference collections including questions for essay detection
-  const [classrooms, categories, pages, quizPackages, quizVariants, allStudents, allQuestions, courses, allStudentCourses, allAnswers] = await Promise.all([
+  // 1. Fetch reference collections including questions and class groups
+  const [classrooms, categories, pages, quizPackages, quizVariants, allStudents, allQuestions, courses, allStudentCourses, allAnswers, allClassGroups, allGroupMembers] = await Promise.all([
     db.orm.public.Classroom.all(),
     db.orm.public.MaterialCategory.all(),
     db.orm.public.Page.all(),
@@ -130,7 +145,16 @@ export async function getQuizReports(params: {
     db.orm.public.Course.all(),
     db.orm.public.CourseStudent.all(),
     db.orm.public.StudentAnswer.all(),
+    db.orm.public.ClassGroup.all(),
+    db.orm.public.ClassGroupMember.all(),
   ]);
+
+  const classGroupMap = new Map(allClassGroups.map(g => [g.id, g]));
+  const groupMembersByGroup = new Map<string, typeof allGroupMembers>();
+  for (const gm of allGroupMembers) {
+    if (!groupMembersByGroup.has(gm.groupId)) groupMembersByGroup.set(gm.groupId, []);
+    groupMembersByGroup.get(gm.groupId)!.push(gm);
+  }
 
   // Lookup dictionaries
   const classMap = new Map(classrooms.map(c => [c.id, c.name]));
@@ -232,7 +256,24 @@ export async function getQuizReports(params: {
   // 2. Fetch attempts
   const allAttempts = await db.orm.public.QuizAttempt.all();
   const relevantAttempts = allAttempts.filter(a => {
-    if (!targetStudentIds.has(a.studentId) || !targetVariantIds.has(a.quizVariantId)) return false;
+    if (!targetVariantIds.has(a.quizVariantId)) return false;
+
+    const aGroupId = (a as any).groupId as string | null;
+    if (aGroupId) {
+      const group = classGroupMap.get(aGroupId);
+      if (!group) return false;
+      if (scope && !isGroupVisibleToScope(group, scope)) return false;
+      if (classId && group.classroomId !== classId) return false;
+      const gMembers = groupMembersByGroup.get(group.id) || [];
+      const hasTargetMember = gMembers.some(m => targetStudentIds.has(m.studentId));
+      if (!hasTargetMember && !targetStudentIds.has(a.studentId)) return false;
+      if (scope && !scope.isUnrestricted) {
+        return isClassAllowedForCourse(scope, group.courseId, group.classroomId);
+      }
+      return true;
+    }
+
+    if (!targetStudentIds.has(a.studentId)) return false;
     if (scope && !scope.isUnrestricted) {
       const student = studentMap.get(a.studentId);
       const variant = variantMap.get(a.quizVariantId);
@@ -294,6 +335,78 @@ export async function getQuizReports(params: {
 
     if (!canAccessClassAndPackage || !pkg) {
       reportItems = [];
+    } else if ((pkg as any).assignmentMode === 'GROUP') {
+      const visibleGroups = allClassGroups
+        .filter(
+          g =>
+            g.quizPackageId === packageId &&
+            g.classroomId === classId &&
+            (!scope || isGroupVisibleToScope(g, scope))
+        )
+        .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+
+      reportItems = [];
+      for (const group of visibleGroups) {
+        const attempt = relevantAttempts.find(a => (a as any).groupId === group.id) || null;
+        const members = groupMembersByGroup.get(group.id) || [];
+        const variantId = attempt?.quizVariantId || group.quizVariantId || null;
+        const variantInfo = variantId ? variantQuestionMap.get(variantId) : null;
+        const essayCount = variantInfo?.essayCount || 0;
+        const hasEssay = essayCount > 0;
+        const totalQuestions = variantInfo?.total || 0;
+
+        let needsReview = false;
+        if (hasEssay && attempt && attempt.status !== 'IN_PROGRESS' && attempt.status !== 'GRADED') {
+          const attemptAnswers = attemptAnswerMap.get(attempt.id) || [];
+          const variantEssayIds = variantId ? (variantEssayMap.get(variantId) || []) : [];
+          needsReview = variantEssayIds.some(qId => {
+            const ans = attemptAnswers.find(a => a.questionId === qId);
+            return !ans || ans.isCorrect === null;
+          });
+        }
+
+        const submitterName = attempt ? (studentMap.get(attempt.studentId)?.name || 'Siswa') : null;
+        const baseScore = attempt?.score ?? null;
+
+        for (const member of members) {
+          const student = studentMap.get(member.studentId);
+          if (!student) continue;
+          const effectiveScore = member.scoreOverride ?? baseScore;
+          const isPassed = effectiveScore !== null && effectiveScore >= passingScore;
+
+          reportItems.push({
+            id: `${group.id}:${student.id}`,
+            attemptId: attempt?.id || null,
+            studentId: student.id,
+            studentName: student.name,
+            studentEmail: student.email,
+            classId: student.classId,
+            className,
+            packageId,
+            packageTitle: pkgTitle,
+            pageTitle,
+            categoryName: catName,
+            courseName,
+            passingScore,
+            score: effectiveScore,
+            status: (attempt?.status || 'NOT_STARTED') as any,
+            startedAt: attempt?.startedAt || null,
+            finishedAt: attempt?.finishedAt || null,
+            assignedVariantId: variantId,
+            isPassed,
+            hasEssay,
+            needsReview,
+            essayCount,
+            totalQuestions,
+            isGroupTask: true,
+            groupId: group.id,
+            groupName: group.name,
+            groupBaseScore: baseScore,
+            scoreOverride: member.scoreOverride ?? null,
+            submitterName,
+          });
+        }
+      }
     } else {
       const assignments = await db.orm.public.QuizAssignment.where({ quizPackageId: packageId }).all();
       const attemptStudentIds = new Set(relevantAttempts.map(a => a.studentId));
@@ -358,20 +471,17 @@ export async function getQuizReports(params: {
     }
   } else {
     // CASE 2: General view (All classes and/or all packages, or only one filter active)
-    // Map all relevant attempts into report items
-    reportItems = relevantAttempts.map(attempt => {
-      const student = studentMap.get(attempt.studentId);
+    // Map all relevant attempts into report items (expand group attempts to each member)
+    reportItems = [];
+    for (const attempt of relevantAttempts) {
       const variant = variantMap.get(attempt.quizVariantId);
       const pkg = variant ? packageMap.get(variant.quizPackageId) : null;
       const pageObj = pkg?.pageId ? pageMap.get(pkg.pageId) : null;
       const cat = pageObj ? categoryMap.get(pageObj.categoryId) : null;
-      const catName = cat ? cat.name : 'Umum';
+      const catName = cat ? cat.name : (pkg && !pkg.pageId ? 'Tugas Mandiri' : 'Umum');
       const cId = cat?.courseId || pkg?.courseId || null;
       const courseName = cId ? (courseMap.get(cId) || 'Tanpa Mata Pelajaran') : 'Tanpa Mata Pelajaran';
-      const className = (student?.classId && classMap.get(student.classId)) || 'Tanpa Kelas';
       const passingScore = pkg?.passingScore || 70;
-      const score = attempt.score ?? null;
-      const isPassed = score !== null && score >= passingScore;
 
       const variantInfo = attempt.quizVariantId ? variantQuestionMap.get(attempt.quizVariantId) : null;
       const essayCount = variantInfo?.essayCount || 0;
@@ -387,7 +497,62 @@ export async function getQuizReports(params: {
         });
       }
 
-      return {
+      const aGroupId = (attempt as any).groupId as string | null;
+      if (aGroupId) {
+        const group = classGroupMap.get(aGroupId);
+        if (!group || (scope && !isGroupVisibleToScope(group, scope))) continue;
+        const members = groupMembersByGroup.get(group.id) || [];
+        const submitterName = studentMap.get(attempt.studentId)?.name || 'Siswa';
+        const baseScore = attempt.score ?? null;
+
+        for (const member of members) {
+          const student = studentMap.get(member.studentId);
+          if (!student) continue;
+          const className = (student.classId && classMap.get(student.classId)) || 'Tanpa Kelas';
+          const effectiveScore = member.scoreOverride ?? baseScore;
+          const isPassed = effectiveScore !== null && effectiveScore >= passingScore;
+
+          reportItems.push({
+            id: `${attempt.id}:${student.id}`,
+            attemptId: attempt.id,
+            studentId: student.id,
+            studentName: student.name,
+            studentEmail: student.email,
+            classId: student.classId || null,
+            className,
+            packageId: pkg?.id || '',
+            packageTitle: pkg?.title || 'Kuis',
+            pageTitle: pageObj?.title || pkg?.title || 'Halaman Kuis',
+            categoryName: catName,
+            courseName,
+            passingScore,
+            score: effectiveScore,
+            status: attempt.status as any,
+            startedAt: attempt.startedAt || null,
+            finishedAt: attempt.finishedAt || null,
+            assignedVariantId: attempt.quizVariantId,
+            isPassed,
+            hasEssay,
+            needsReview,
+            essayCount,
+            totalQuestions,
+            isGroupTask: true,
+            groupId: group.id,
+            groupName: group.name,
+            groupBaseScore: baseScore,
+            scoreOverride: member.scoreOverride ?? null,
+            submitterName,
+          });
+        }
+        continue;
+      }
+
+      const student = studentMap.get(attempt.studentId);
+      const className = (student?.classId && classMap.get(student.classId)) || 'Tanpa Kelas';
+      const score = attempt.score ?? null;
+      const isPassed = score !== null && score >= passingScore;
+
+      reportItems.push({
         id: attempt.id,
         attemptId: attempt.id,
         studentId: attempt.studentId,
@@ -411,8 +576,8 @@ export async function getQuizReports(params: {
         needsReview,
         essayCount,
         totalQuestions,
-      };
-    });
+      });
+    }
   }
 
   // 3. Search query filter
@@ -617,51 +782,60 @@ export async function completeQuizAttempt(attemptId: string) {
 
   // Pastikan akses halaman materi selesai dan buka materi prasyarat berikutnya jika ada
   if (pkg?.pageId) {
-    const currentPageAccess = await db.orm.public.PageAccess.where({
-      pageId: pkg.pageId,
-      studentId: attempt.studentId
-    }).first();
-
-    if (currentPageAccess) {
-      if (currentPageAccess.status !== 'COMPLETED') {
-        await db.orm.public.PageAccess.where({ id: currentPageAccess.id }).update({
-          status: 'COMPLETED',
-          completedAt: new Date().toISOString()
-        });
+    const targetStudentIds = [attempt.studentId];
+    if ((attempt as any).groupId) {
+      const members = await db.orm.public.ClassGroupMember.where({ groupId: (attempt as any).groupId }).all();
+      for (const m of members) {
+        if (!targetStudentIds.includes(m.studentId)) targetStudentIds.push(m.studentId);
       }
-    } else {
-      await db.orm.public.PageAccess.create({
-        id: randomUUID(),
-        pageId: pkg.pageId,
-        studentId: attempt.studentId,
-        status: 'COMPLETED',
-        unlockedAt: new Date().toISOString(),
-        completedAt: new Date().toISOString()
-      });
     }
-
     const sequences = await db.orm.public.PageSequence.where({ prerequisitePageId: pkg.pageId }).all();
-    for (const seq of sequences) {
-      const existingAccess = await db.orm.public.PageAccess.where({
-        pageId: seq.pageId,
-        studentId: attempt.studentId
+    for (const targetSid of targetStudentIds) {
+      const currentPageAccess = await db.orm.public.PageAccess.where({
+        pageId: pkg.pageId,
+        studentId: targetSid
       }).first();
 
-      if (existingAccess) {
-        if (existingAccess.status === 'LOCKED') {
-          await db.orm.public.PageAccess.where({ id: existingAccess.id }).update({
-            status: 'UNLOCKED',
-            unlockedAt: new Date().toISOString()
+      if (currentPageAccess) {
+        if (currentPageAccess.status !== 'COMPLETED') {
+          await db.orm.public.PageAccess.where({ id: currentPageAccess.id }).update({
+            status: 'COMPLETED',
+            completedAt: new Date().toISOString()
           });
         }
       } else {
         await db.orm.public.PageAccess.create({
           id: randomUUID(),
-          pageId: seq.pageId,
-          studentId: attempt.studentId,
-          status: 'UNLOCKED',
-          unlockedAt: new Date().toISOString()
+          pageId: pkg.pageId,
+          studentId: targetSid,
+          status: 'COMPLETED',
+          unlockedAt: new Date().toISOString(),
+          completedAt: new Date().toISOString()
         });
+      }
+
+      for (const seq of sequences) {
+        const existingAccess = await db.orm.public.PageAccess.where({
+          pageId: seq.pageId,
+          studentId: targetSid
+        }).first();
+
+        if (existingAccess) {
+          if (existingAccess.status === 'LOCKED') {
+            await db.orm.public.PageAccess.where({ id: existingAccess.id }).update({
+              status: 'UNLOCKED',
+              unlockedAt: new Date().toISOString()
+            });
+          }
+        } else {
+          await db.orm.public.PageAccess.create({
+            id: randomUUID(),
+            pageId: seq.pageId,
+            studentId: targetSid,
+            status: 'UNLOCKED',
+            unlockedAt: new Date().toISOString()
+          });
+        }
       }
     }
   }
@@ -738,7 +912,20 @@ async function executeSingleReset(targetAttempt: any, studentId: string, package
     await db.orm.public.AuditLog.where({ id: log.id }).delete();
   }
 
-  // Bersihkan arsip permanen dan reset status akses materi (Opsi B: Strict Sequential)
+  // Bersihkan arsip permanen, override anggota kelompok, dan reset status akses materi
+  const affectedStudentIds = [studentId];
+  if ((targetAttempt as any).groupId) {
+    const groupMembers = await db.orm.public.ClassGroupMember.where({ groupId: (targetAttempt as any).groupId }).all();
+    for (const gm of groupMembers) {
+      if (gm.scoreOverride !== null && gm.scoreOverride !== undefined) {
+        await db.orm.public.ClassGroupMember.where({ id: gm.id }).update({ scoreOverride: null });
+      }
+      if (!affectedStudentIds.includes(gm.studentId)) {
+        affectedStudentIds.push(gm.studentId);
+      }
+    }
+  }
+
   const pkg = await db.orm.public.QuizPackage.where({ id: packageId }).first();
   let pageSlug: string | null = null;
 
@@ -746,41 +933,40 @@ async function executeSingleReset(targetAttempt: any, studentId: string, package
     const page = await db.orm.public.Page.where({ id: pkg.pageId }).first();
     if (page) {
       pageSlug = page.slug;
-
-      // 1. Hapus QuizCompletionRecord terkait materi ini agar getQuizStatus tidak membaca nilai lama
-      const records = await db.orm.public.QuizCompletionRecord.where({
-        studentId,
-        pageSlug: page.slug
-      }).all();
-      for (const r of records) {
-        await db.orm.public.QuizCompletionRecord.where({ id: r.id }).delete();
-      }
-
-      // 2. Revert PageAccess materi ini ke UNLOCKED (belum selesai)
-      const thisAccess = await db.orm.public.PageAccess.where({
-        pageId: pkg.pageId,
-        studentId
-      }).first();
-      if (thisAccess) {
-        await db.orm.public.PageAccess.where({ id: thisAccess.id }).update({
-          status: 'UNLOCKED',
-          completedAt: null
-        });
-      }
-
-      // 3. Opsi B (Strict Sequential): Kunci kembali materi berikutnya yang mensyaratkan kelulusan materi ini
       const sequences = await db.orm.public.PageSequence.where({ prerequisitePageId: pkg.pageId }).all();
-      for (const seq of sequences) {
-        const dependentAccess = await db.orm.public.PageAccess.where({
-          pageId: seq.pageId,
-          studentId
+
+      for (const sid of affectedStudentIds) {
+        const records = await db.orm.public.QuizCompletionRecord.where({
+          studentId: sid,
+          pageSlug: page.slug
+        }).all();
+        for (const r of records) {
+          await db.orm.public.QuizCompletionRecord.where({ id: r.id }).delete();
+        }
+
+        const thisAccess = await db.orm.public.PageAccess.where({
+          pageId: pkg.pageId,
+          studentId: sid
         }).first();
-        if (dependentAccess && dependentAccess.status !== 'LOCKED') {
-          await db.orm.public.PageAccess.where({ id: dependentAccess.id }).update({
-            status: 'LOCKED',
-            unlockedAt: null,
+        if (thisAccess) {
+          await db.orm.public.PageAccess.where({ id: thisAccess.id }).update({
+            status: 'UNLOCKED',
             completedAt: null
           });
+        }
+
+        for (const seq of sequences) {
+          const dependentAccess = await db.orm.public.PageAccess.where({
+            pageId: seq.pageId,
+            studentId: sid
+          }).first();
+          if (dependentAccess && dependentAccess.status !== 'LOCKED') {
+            await db.orm.public.PageAccess.where({ id: dependentAccess.id }).update({
+              status: 'LOCKED',
+              unlockedAt: null,
+              completedAt: null
+            });
+          }
         }
       }
     }
@@ -794,15 +980,17 @@ async function executeSingleReset(targetAttempt: any, studentId: string, package
     await db.orm.public.QuizCompletionRecord.where({ id: r.id }).delete();
   }
 
-  // ponytail: Dispatch real-time WebSocket reset event
+  // ponytail: Dispatch real-time WebSocket reset event untuk seluruh anggota terkait
   try {
     const { emitQuizReset } = await import('@/lib/socket/emitter');
-    emitQuizReset({
-      studentId,
-      packageId,
-      pageSlug,
-      resetAt: new Date().toISOString()
-    });
+    for (const sid of affectedStudentIds) {
+      emitQuizReset({
+        studentId: sid,
+        packageId,
+        pageSlug,
+        resetAt: new Date().toISOString()
+      });
+    }
   } catch (socketErr) {
     console.error('Socket emit error in executeSingleReset:', socketErr);
   }
@@ -968,7 +1156,13 @@ export async function resetQuizAttempt(studentId: string, packageId: string, att
   if (attemptId) {
     targetAttempt = await db.orm.public.QuizAttempt.where({ id: attemptId }).first();
     if (targetAttempt && targetAttempt.studentId !== studentId) {
-      targetAttempt = null;
+      const attemptGroupId = (targetAttempt as any).groupId as string | null;
+      const isMember = attemptGroupId
+        ? Boolean(await db.orm.public.ClassGroupMember.where({ groupId: attemptGroupId, studentId }).first())
+        : false;
+      if (!isMember) {
+        targetAttempt = null;
+      }
     }
   }
 
@@ -977,6 +1171,20 @@ export async function resetQuizAttempt(studentId: string, packageId: string, att
     const variantIds = variants.map(v => v.id);
     const attempts = await db.orm.public.QuizAttempt.where({ studentId }).all();
     targetAttempt = attempts.find(a => variantIds.includes(a.quizVariantId));
+
+    if (!targetAttempt) {
+      const memberships = await db.orm.public.ClassGroupMember.where({ studentId }).all();
+      for (const m of memberships) {
+        const group = await db.orm.public.ClassGroup.where({ id: m.groupId }).first();
+        if (group && group.quizPackageId === packageId) {
+          const groupAttempt = await db.orm.public.QuizAttempt.where({ groupId: group.id }).first();
+          if (groupAttempt) {
+            targetAttempt = groupAttempt;
+            break;
+          }
+        }
+      }
+    }
   }
 
   if (!targetAttempt) {
@@ -1204,53 +1412,61 @@ export async function gradeQuizAttempt(
   const beforeScore = attempt.score;
 
   if (passed && pkg?.pageId) {
-    // 1. Mark CURRENT page as COMPLETED
-    const currentPageAccess = await db.orm.public.PageAccess.where({
-      pageId: pkg.pageId,
-      studentId: attempt.studentId
-    }).first();
-
-    if (currentPageAccess) {
-      if (currentPageAccess.status !== 'COMPLETED') {
-        await db.orm.public.PageAccess.where({ id: currentPageAccess.id }).update({
-          status: 'COMPLETED',
-          completedAt: new Date().toISOString()
-        });
+    const targetStudentIds = [attempt.studentId];
+    if ((attempt as any).groupId) {
+      const members = await db.orm.public.ClassGroupMember.where({ groupId: (attempt as any).groupId }).all();
+      for (const m of members) {
+        if (!targetStudentIds.includes(m.studentId)) targetStudentIds.push(m.studentId);
       }
-    } else {
-      await db.orm.public.PageAccess.create({
-        id: randomUUID(),
-        pageId: pkg.pageId,
-        studentId: attempt.studentId,
-        status: 'COMPLETED',
-        unlockedAt: new Date().toISOString(),
-        completedAt: new Date().toISOString()
-      });
     }
-
-    // 2. Unlock next pages based on PageSequence
     const sequences = await db.orm.public.PageSequence.where({ prerequisitePageId: pkg.pageId }).all();
-    for (const seq of sequences) {
-      const existingAccess = await db.orm.public.PageAccess.where({ 
-        pageId: seq.pageId, 
-        studentId: attempt.studentId 
+
+    for (const targetSid of targetStudentIds) {
+      const currentPageAccess = await db.orm.public.PageAccess.where({
+        pageId: pkg.pageId,
+        studentId: targetSid
       }).first();
 
-      if (existingAccess) {
-        if (existingAccess.status === 'LOCKED') {
-          await db.orm.public.PageAccess.where({ id: existingAccess.id }).update({
-            status: 'UNLOCKED',
-            unlockedAt: new Date().toISOString()
+      if (currentPageAccess) {
+        if (currentPageAccess.status !== 'COMPLETED') {
+          await db.orm.public.PageAccess.where({ id: currentPageAccess.id }).update({
+            status: 'COMPLETED',
+            completedAt: new Date().toISOString()
           });
         }
       } else {
         await db.orm.public.PageAccess.create({
           id: randomUUID(),
-          pageId: seq.pageId,
-          studentId: attempt.studentId,
-          status: 'UNLOCKED',
-          unlockedAt: new Date().toISOString()
+          pageId: pkg.pageId,
+          studentId: targetSid,
+          status: 'COMPLETED',
+          unlockedAt: new Date().toISOString(),
+          completedAt: new Date().toISOString()
         });
+      }
+
+      for (const seq of sequences) {
+        const existingAccess = await db.orm.public.PageAccess.where({ 
+          pageId: seq.pageId, 
+          studentId: targetSid 
+        }).first();
+
+        if (existingAccess) {
+          if (existingAccess.status === 'LOCKED') {
+            await db.orm.public.PageAccess.where({ id: existingAccess.id }).update({
+              status: 'UNLOCKED',
+              unlockedAt: new Date().toISOString()
+            });
+          }
+        } else {
+          await db.orm.public.PageAccess.create({
+            id: randomUUID(),
+            pageId: seq.pageId,
+            studentId: targetSid,
+            status: 'UNLOCKED',
+            unlockedAt: new Date().toISOString()
+          });
+        }
       }
     }
   }
@@ -1274,15 +1490,24 @@ export async function gradeQuizAttempt(
     });
 
     const page = pkg?.pageId ? await db.orm.public.Page.where({ id: pkg.pageId }).first() : null;
-    emitQuizGraded({
-      studentId: attempt.studentId,
-      attemptId,
-      packageId: pkg?.id,
-      pageSlug: page?.slug || null,
-      score: roundedScore,
-      isPassed: passed,
-      gradedAt: new Date().toISOString()
-    });
+    const gradedStudentIds = [attempt.studentId];
+    if ((attempt as any).groupId) {
+      const members = await db.orm.public.ClassGroupMember.where({ groupId: (attempt as any).groupId }).all();
+      for (const m of members) {
+        if (!gradedStudentIds.includes(m.studentId)) gradedStudentIds.push(m.studentId);
+      }
+    }
+    for (const sid of gradedStudentIds) {
+      emitQuizGraded({
+        studentId: sid,
+        attemptId,
+        packageId: pkg?.id,
+        pageSlug: page?.slug || null,
+        score: roundedScore,
+        isPassed: passed,
+        gradedAt: new Date().toISOString()
+      });
+    }
   } catch (err) {
     console.error('Socket emit error in gradeQuizAttempt:', err);
   }
@@ -1880,4 +2105,63 @@ export async function getTaskRecapList(params: {
 
   items.sort((a, b) => a.orderIndex - b.orderIndex);
   return { items };
+}
+
+/**
+ * Penyesuaian (override) nilai individu anggota kelompok oleh Guru di Laporan.
+ */
+export async function overrideGroupMemberScore(
+  groupId: string,
+  studentId: string,
+  scoreOverride: number | null,
+  scope: TeacherScope
+) {
+  const group = await db.orm.public.ClassGroup.where({ id: groupId }).first();
+  if (!group) throw new Error('Kelompok tidak ditemukan');
+
+  if (!scope.isUnrestricted) {
+    if (!canEditGroupForScope(group, scope) || !isClassAllowedForCourse(scope, group.courseId, group.classroomId)) {
+      throw new Error('FORBIDDEN');
+    }
+  }
+
+  const member = await db.orm.public.ClassGroupMember.where({ groupId, studentId }).first();
+  if (!member) throw new Error('Siswa bukan anggota kelompok ini');
+
+  const sanitizedScore =
+    scoreOverride === null || scoreOverride === undefined
+      ? null
+      : Math.max(0, Math.min(100, Math.round(Number(scoreOverride) * 100) / 100));
+
+  await db.orm.public.ClassGroupMember.where({ id: member.id }).update({
+    scoreOverride: sanitizedScore,
+  });
+
+  const attempt = await db.orm.public.QuizAttempt.where({ groupId }).first();
+  if (attempt && (attempt.status === 'COMPLETED' || attempt.status === 'GRADED')) {
+    try {
+      const { recordGroupQuizCompletion } = await import('@/modules/quiz-completion/quiz-completion.service');
+      await recordGroupQuizCompletion(attempt.id);
+    } catch (err) {
+      console.error('[overrideGroupMemberScore] Failed syncing QuizCompletionRecord:', err);
+    }
+
+    try {
+      const pkg = await db.orm.public.QuizPackage.where({ id: group.quizPackageId }).first();
+      const page = pkg?.pageId ? await db.orm.public.Page.where({ id: pkg.pageId }).first() : null;
+      const effective = sanitizedScore ?? attempt.score ?? 0;
+      const { emitQuizGraded } = await import('@/lib/socket/emitter');
+      emitQuizGraded({
+        studentId,
+        attemptId: attempt.id,
+        packageId: group.quizPackageId,
+        pageSlug: page?.slug || null,
+        score: effective,
+        isPassed: effective >= (pkg?.passingScore || 70),
+        gradedAt: new Date().toISOString(),
+      });
+    } catch {}
+  }
+
+  return { groupId, studentId, scoreOverride: sanitizedScore };
 }

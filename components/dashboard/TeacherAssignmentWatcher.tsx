@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getSocket } from '@/lib/socket/client';
 import type { CourseTeacherAssignedEvent, CourseTeacherRemovedEvent } from '@/lib/socket/emitter';
@@ -24,6 +24,7 @@ export default function TeacherAssignmentWatcher({
 }: TeacherAssignmentWatcherProps) {
   const router = useRouter();
   const [notifications, setNotifications] = useState<ToastNotification[]>([]);
+  const lastEventKeyRef = useRef<string>('');
 
   useEffect(() => {
     if (!currentUserId) return;
@@ -31,56 +32,82 @@ export default function TeacherAssignmentWatcher({
     const socket = getSocket();
     if (!socket) return;
 
-    // Join personal user room for direct events
-    socket.emit('join:user', currentUserId);
+    const joinUserRoom = () => {
+      socket.emit('join:user', currentUserId);
+    };
+
+    // Join personal user room on initial mount & every reconnect
+    if (socket.connected) joinUserRoom();
 
     const handleAssigned = (data: CourseTeacherAssignedEvent) => {
-      if (data.teacherId === currentUserId) {
-        // Trigger Next.js App Router background data refresh
-        router.refresh();
+      if (data.teacherId !== currentUserId) return;
+      const eventKey = `assigned:${data.courseId}:${data.assignedAt}`;
+      if (lastEventKeyRef.current === eventKey) return;
+      lastEventKeyRef.current = eventKey;
 
-        const notifId = 'notif_' + Date.now();
-        const newNotif: ToastNotification = {
-          id: notifId,
-          type: 'assigned',
-          title: '🎉 Ditugaskan ke Mata Pelajaran Baru!',
-          message: `Anda telah ditugaskan sebagai pengampu mata pelajaran "${data.courseName}". Modul materi kini telah terbuka di dasbor Anda.`,
-          courseId: data.courseId,
-        };
+      // Trigger Next.js App Router background data refresh & notify active report views
+      router.refresh();
+      window.dispatchEvent(new CustomEvent('lms:teacher-scope-updated', { detail: data }));
 
-        setNotifications((prev) => [newNotif, ...prev]);
+      const classListText = data.classNames && data.classNames.length > 0 ? data.classNames.join(', ') : '';
+      const isClassUpdate = data.actionType === 'CLASSES_UPDATED';
 
-        // Auto remove after 9 seconds
-        setTimeout(() => {
-          setNotifications((prev) => prev.filter((n) => n.id !== notifId));
-        }, 9000);
-      }
+      const notifId = 'notif_' + Date.now();
+      const newNotif: ToastNotification = {
+        id: notifId,
+        type: 'assigned',
+        title: isClassUpdate
+          ? classListText
+            ? '🏫 Penugasan Kelas Diperbarui'
+            : '⚠️ Penugasan Kelas Dikosongkan'
+          : '🎉 Ditugaskan ke Mata Pelajaran Baru!',
+        message: isClassUpdate
+          ? classListText
+            ? `Kelas ajar Anda pada "${data.courseName}" diperbarui menjadi: ${classListText}. Laporan & data siswa disegarkan otomatis.`
+            : `Daftar kelas ajar Anda pada "${data.courseName}" dikosongkan oleh administrator.`
+          : classListText
+            ? `Anda ditugaskan sebagai pengampu "${data.courseName}" untuk kelas: ${classListText}.`
+            : `Anda telah ditugaskan sebagai pengampu mata pelajaran "${data.courseName}".`,
+        courseId: data.courseId,
+      };
+
+      setNotifications((prev) => [newNotif, ...prev]);
+
+      setTimeout(() => {
+        setNotifications((prev) => prev.filter((n) => n.id !== notifId));
+      }, 9000);
     };
 
     const handleRemoved = (data: CourseTeacherRemovedEvent) => {
-      if (data.teacherId === currentUserId) {
-        router.refresh();
+      if (data.teacherId !== currentUserId) return;
+      const eventKey = `removed:${data.courseId}:${data.removedAt}`;
+      if (lastEventKeyRef.current === eventKey) return;
+      lastEventKeyRef.current = eventKey;
 
-        const notifId = 'notif_' + Date.now();
-        const newNotif: ToastNotification = {
-          id: notifId,
-          type: 'removed',
-          title: 'Pemberitahuan Penugasan',
-          message: `Akses pengampu untuk mata pelajaran "${data.courseName}" telah dicabut.`,
-        };
+      router.refresh();
+      window.dispatchEvent(new CustomEvent('lms:teacher-scope-updated', { detail: data }));
 
-        setNotifications((prev) => [newNotif, ...prev]);
+      const notifId = 'notif_' + Date.now();
+      const newNotif: ToastNotification = {
+        id: notifId,
+        type: 'removed',
+        title: 'Pemberitahuan Penugasan',
+        message: `Akses pengampu untuk mata pelajaran "${data.courseName}" telah dicabut.`,
+      };
 
-        setTimeout(() => {
-          setNotifications((prev) => prev.filter((n) => n.id !== notifId));
-        }, 8000);
-      }
+      setNotifications((prev) => [newNotif, ...prev]);
+
+      setTimeout(() => {
+        setNotifications((prev) => prev.filter((n) => n.id !== notifId));
+      }, 8000);
     };
 
+    socket.on('connect', joinUserRoom);
     socket.on('course:teacher_assigned', handleAssigned);
     socket.on('course:teacher_removed', handleRemoved);
 
     return () => {
+      socket.off('connect', joinUserRoom);
       socket.off('course:teacher_assigned', handleAssigned);
       socket.off('course:teacher_removed', handleRemoved);
     };

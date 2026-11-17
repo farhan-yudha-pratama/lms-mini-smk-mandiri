@@ -13,7 +13,13 @@ export async function getStudentAttemptDetails(attemptId: string) {
   if (!attempt) throw new Error('Attempt not found');
 
   if (attempt.studentId !== session.userId) {
-    throw new Error('Unauthorized');
+    const attemptGroupId = (attempt as any).groupId as string | null;
+    const isGroupMember = attemptGroupId
+      ? Boolean(await db.orm.public.ClassGroupMember.where({ groupId: attemptGroupId, studentId: session.userId }).first())
+      : false;
+    if (!isGroupMember) {
+      throw new Error('Unauthorized');
+    }
   }
 
   // Get answers

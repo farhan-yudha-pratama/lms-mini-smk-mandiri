@@ -83,6 +83,18 @@ export default function AssignClient({
   const [selectedClassIds, setSelectedClassIds] = useState<string[]>([]);
   const [selectedCategoryId, setSelectedCategoryId] = useState('');
 
+  // Reactive local lists so status & classes update instantly without waiting for RSC refresh
+  const [assignedList, setAssignedList] = useState<TeacherItem[]>(assignedTeachers);
+  const [availableList, setAvailableList] = useState<TeacherItem[]>(availableTeachers);
+
+  useEffect(() => {
+    setAssignedList(assignedTeachers);
+  }, [assignedTeachers]);
+
+  useEffect(() => {
+    setAvailableList(availableTeachers);
+  }, [availableTeachers]);
+
   // Loading states
   const [loadingTeacher, setLoadingTeacher] = useState(false);
   const [loadingCategory, setLoadingCategory] = useState(false);
@@ -123,29 +135,55 @@ export default function AssignClient({
     const socket = getSocket();
     if (!socket) return;
 
-    const handleSync = (data: { courseId: string }) => {
-      if (data.courseId === courseId) {
-        router.refresh();
+    const handleAssigned = (data: { courseId: string; teacherId?: string; classIds?: string[] }) => {
+      if (data.courseId !== courseId) return;
+      if (data.teacherId && Array.isArray(data.classIds)) {
+        const nextClassIds = data.classIds;
+        setAssignedList((prev) => {
+          if (prev.some((t) => t.id === data.teacherId)) {
+            return prev.map((t) => (t.id === data.teacherId ? { ...t, classIds: nextClassIds } : t));
+          }
+          const found = availableList.find((t) => t.id === data.teacherId);
+          return found ? [...prev, { ...found, classIds: nextClassIds }] : prev;
+        });
+        setAvailableList((prev) => prev.filter((t) => t.id !== data.teacherId));
       }
+      router.refresh();
     };
 
-    socket.on('course:teacher_assigned', handleSync);
-    socket.on('course:teacher_removed', handleSync);
+    const handleRemoved = (data: { courseId: string; teacherId?: string }) => {
+      if (data.courseId !== courseId) return;
+      if (data.teacherId) {
+        setAssignedList((prev) => {
+          const removed = prev.find((t) => t.id === data.teacherId);
+          if (removed) {
+            setAvailableList((av) =>
+              av.some((t) => t.id === removed.id) ? av : [...av, { ...removed, classIds: [] }]
+            );
+          }
+          return prev.filter((t) => t.id !== data.teacherId);
+        });
+      }
+      router.refresh();
+    };
+
+    socket.on('course:teacher_assigned', handleAssigned);
+    socket.on('course:teacher_removed', handleRemoved);
 
     return () => {
-      socket.off('course:teacher_assigned', handleSync);
-      socket.off('course:teacher_removed', handleSync);
+      socket.off('course:teacher_assigned', handleAssigned);
+      socket.off('course:teacher_removed', handleRemoved);
     };
-  }, [courseId, router]);
+  }, [courseId, router, availableList]);
 
   // Filtered lists
   const filteredAssignedTeachers = useMemo(() => {
-    if (!teacherSearch.trim()) return assignedTeachers;
+    if (!teacherSearch.trim()) return assignedList;
     const q = teacherSearch.toLowerCase();
-    return assignedTeachers.filter(
+    return assignedList.filter(
       (t) => t.name.toLowerCase().includes(q) || t.email.toLowerCase().includes(q)
     );
-  }, [assignedTeachers, teacherSearch]);
+  }, [assignedList, teacherSearch]);
 
   const filteredAssignedCategories = useMemo(() => {
     if (!materialSearch.trim()) return assignedCategories;
@@ -162,7 +200,16 @@ export default function AssignClient({
     try {
       const res = await assignTeacherToCourse(courseId, selectedTeacherId, selectedClassIds);
       if (res && (res as any).success) {
-        const teacher = availableTeachers.find((t) => t.id === selectedTeacherId);
+        const teacher = availableList.find((t) => t.id === selectedTeacherId);
+        const nextClassIds = (res as any).classIds ?? selectedClassIds;
+        if (teacher) {
+          setAssignedList((prev) =>
+            prev.some((t) => t.id === teacher.id)
+              ? prev.map((t) => (t.id === teacher.id ? { ...t, classIds: nextClassIds } : t))
+              : [...prev, { ...teacher, classIds: nextClassIds }]
+          );
+          setAvailableList((prev) => prev.filter((t) => t.id !== teacher.id));
+        }
         showToast('success', `Guru ${teacher?.name || ''} berhasil ditugaskan sebagai pengampu.`);
         setSelectedTeacherId('');
         setSelectedClassIds([]);
@@ -192,6 +239,11 @@ export default function AssignClient({
         editingClassIds
       );
       if (res.success) {
+        const nextClassIds = (res as any).classIds ?? editingClassIds;
+        const targetId = teacherToEditClasses.id;
+        setAssignedList((prev) =>
+          prev.map((t) => (t.id === targetId ? { ...t, classIds: nextClassIds } : t))
+        );
         showToast('success', `Penugasan kelas untuk ${teacherToEditClasses.name} berhasil disimpan.`);
         setTeacherToEditClasses(null);
         router.refresh();
@@ -209,8 +261,13 @@ export default function AssignClient({
     if (!teacherToDelete) return;
     setLoadingTeacher(true);
     try {
-      await removeTeacherFromCourse(courseId, teacherToDelete.id);
-      showToast('success', `Hak pengampu guru ${teacherToDelete.name} telah dicabut.`);
+      const removed = teacherToDelete;
+      await removeTeacherFromCourse(courseId, removed.id);
+      setAssignedList((prev) => prev.filter((t) => t.id !== removed.id));
+      setAvailableList((prev) =>
+        prev.some((t) => t.id === removed.id) ? prev : [...prev, { ...removed, classIds: [] }]
+      );
+      showToast('success', `Hak pengampu guru ${removed.name} telah dicabut.`);
       setTeacherToDelete(null);
       router.refresh();
     } catch (err: any) {
@@ -338,7 +395,7 @@ export default function AssignClient({
             </div>
             <div className="min-w-0 mt-1 sm:mt-0">
               <div className="text-base sm:text-lg font-bold text-blue-900 leading-tight">
-                {stats.totalTeachers}
+                {assignedList.length}
               </div>
               <div className="text-[10px] sm:text-xs text-blue-700 truncate">Guru Pengampu</div>
             </div>
@@ -438,7 +495,7 @@ export default function AssignClient({
               </div>
             </div>
             <span className="px-3 py-1 text-xs font-bold rounded-full bg-blue-50 text-blue-700 border border-blue-200 self-start sm:self-auto shrink-0">
-              {assignedTeachers.length} Guru Aktif
+              {assignedList.length} Guru Aktif
             </span>
           </div>
 
@@ -451,15 +508,15 @@ export default function AssignClient({
               <select
                 value={selectedTeacherId}
                 onChange={(e) => setSelectedTeacherId(e.target.value)}
-                disabled={availableTeachers.length === 0 || loadingTeacher}
+                disabled={availableList.length === 0 || loadingTeacher}
                 className="flex-1 min-w-0 bg-white border border-gray-300 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-60 shadow-2xs"
               >
                 <option value="">
-                  {availableTeachers.length === 0
+                  {availableList.length === 0
                     ? 'Semua guru yang ada sudah ditugaskan'
                     : '-- Pilih Guru / Tenaga Pengajar --'}
                 </option>
-                {availableTeachers.map((t) => (
+                {availableList.map((t) => (
                   <option key={t.id} value={t.id}>
                     {t.name} ({t.email}) [{t.role}]
                   </option>
@@ -537,7 +594,7 @@ export default function AssignClient({
           </div>
 
           {/* Search Filter Bar */}
-          {assignedTeachers.length > 2 && (
+          {assignedList.length > 2 && (
             <div className="relative">
               <span className="material-symbols-outlined absolute left-3.5 top-3 text-base text-gray-400">
                 search
@@ -612,6 +669,19 @@ export default function AssignClient({
                           >
                             {t.role === 'SUPERADMIN' ? 'Superadmin' : 'Guru Pengampu'}
                           </span>
+                          {t.role !== 'SUPERADMIN' && (
+                            (t.classIds && t.classIds.length > 0) ? (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 inline-flex items-center gap-1">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                Siap Mengajar ({t.classIds.length} Kelas)
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200 inline-flex items-center gap-1">
+                                <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                                Menunggu Penugasan Kelas
+                              </span>
+                            )
+                          )}
                         </div>
                         <p className="text-[11px] sm:text-xs text-gray-500 truncate mt-0.5">{t.email}</p>
                         <div className="flex flex-wrap items-center gap-1.5 mt-1.5">

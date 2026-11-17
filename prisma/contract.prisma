@@ -31,6 +31,17 @@ enum PageAccessStatus {
   COMPLETED
 }
 
+enum PackageAssignmentMode {
+  INDIVIDUAL
+  GROUP
+}
+
+enum GroupRuleMode {
+  RANDOM_COUNT
+  RANDOM_SIZE
+  MANUAL
+}
+
 model Classroom {
   id          String   @id
   name        String
@@ -44,6 +55,7 @@ model Classroom {
   scoreSummaries     StudentScoreSummary[]
   completionRecords  QuizCompletionRecord[]
   teacherClasses     CourseTeacherClass[]
+  classGroups        ClassGroup[]
 }
 
 model User {
@@ -72,6 +84,8 @@ model User {
   projects        StudentProject[]
   permissions     UserPermission[]
   teacherClasses  CourseTeacherClass[]
+  createdClassGroups ClassGroup[] @relation("GroupCreator")
+  groupMemberships   ClassGroupMember[]
 }
 
 model MaterialCategory {
@@ -167,6 +181,7 @@ model QuizPackage {
   passingScore     Float    @default(70.0)
   timeLimit        Int?
   shuffleQuestions Boolean  @default(false)
+  assignmentMode   PackageAssignmentMode @default(INDIVIDUAL)
   isActive         Boolean  @default(true)
   createdAt    TimestamptzString @default(now())
   updatedAt    temporal.updatedAtString()
@@ -175,6 +190,7 @@ model QuizPackage {
   page             Page?    @relation(fields: [pageId], references: [id])
   variants        QuizVariant[]
   assignments     QuizAssignment[]
+  classGroups     ClassGroup[]
 }
 
 // Konfigurasi Anti-Cheat terpisah per Varian Kuis
@@ -201,6 +217,7 @@ model QuizVariant {
   attempts        QuizAttempt[]
   assignments     QuizAssignment[]
   antiCheatConfig QuizAntiCheatConfig?
+  classGroups     ClassGroup[]
 }
 
 model Question {
@@ -237,6 +254,7 @@ model QuizAttempt {
   id          String            @id @default(uuid())
   quizVariantId String
   studentId   String
+  groupId     String?
   score       Float?
   status      QuizAttemptStatus @default(IN_PROGRESS)
   startedAt   TimestamptzString @default(now())
@@ -244,7 +262,10 @@ model QuizAttempt {
 
   variant     QuizVariant     @relation(fields: [quizVariantId], references: [id])
   student     User            @relation(fields: [studentId], references: [id])
+  group       ClassGroup?     @relation(fields: [groupId], references: [id], onDelete: SetNull)
   answers     StudentAnswer[]
+
+  @@index([groupId])
 }
 
 model StudentAnswer {
@@ -311,6 +332,7 @@ model AuditLog {
 enum HistorySourceType {
   MATERIAL_QUIZ
   ASSIGNMENT
+  GROUP_TASK
 }
 
 /// Tabel denormalisasi (cache agregasi nilai per murid).
@@ -376,6 +398,12 @@ model QuizCompletionRecord {
   essayCount          Int               @default(0)
   timeTakenSeconds    Int?
 
+  groupId             String?
+  groupName           String?
+  groupVariantName    String?
+  groupMembersSummary String?
+  groupBaseScore      Float?
+
   completedAt         TimestamptzString
   createdAt           TimestamptzString @default(now())
 
@@ -406,6 +434,7 @@ model Course {
   students    CourseStudent[]
   projects    StudentProject[]
   teacherClasses CourseTeacherClass[]
+  classGroups ClassGroup[]
 }
 
 model CourseTeacher {
@@ -506,4 +535,49 @@ model PermissionPackage {
   isSystem    Boolean           @default(false)
   createdAt   TimestamptzString @default(now())
   updatedAt   TimestamptzString @default(now())
+}
+
+
+// ============================================================
+// TAMBAHAN v1.4.0 - Class Groups & Group Tasks
+// ============================================================
+model ClassGroup {
+  id                 String            @id @default(uuid())
+  quizPackageId      String
+  classroomId        String
+  courseId           String
+  createdByTeacherId String
+  name               String
+  taskNote           String?
+  quizVariantId      String?
+  isShared           Boolean           @default(false)
+  ruleMode           GroupRuleMode     @default(MANUAL)
+  ruleValue          Int?
+  createdAt          TimestamptzString @default(now())
+  updatedAt          temporal.updatedAtString()
+
+  package   QuizPackage        @relation(fields: [quizPackageId], references: [id], onDelete: Cascade)
+  classroom Classroom          @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+  course    Course             @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  creator   User               @relation("GroupCreator", fields: [createdByTeacherId], references: [id], onDelete: Cascade)
+  variant   QuizVariant?       @relation(fields: [quizVariantId], references: [id], onDelete: SetNull)
+  members   ClassGroupMember[]
+  attempts  QuizAttempt[]
+
+  @@index([quizPackageId, classroomId])
+  @@index([createdByTeacherId])
+}
+
+model ClassGroupMember {
+  id            String            @id @default(uuid())
+  groupId       String
+  studentId     String
+  scoreOverride Float?
+  createdAt     TimestamptzString @default(now())
+
+  group   ClassGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  student User       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, studentId])
+  @@index([studentId])
 }

@@ -6,7 +6,8 @@ import {
   resetQuizAttemptAction,
   completeQuizAttemptAction,
   getQuizAttemptDetailAction,
-  gradeQuizAttemptAction
+  gradeQuizAttemptAction,
+  overrideGroupMemberScoreAction
 } from '@/modules/quiz-report/quiz-report.action';
 import { QuizReportItem, QuizReportsResponse, UnfinishedStudentsResponse } from '@/modules/quiz-report/quiz-report.service';
 import UnfinishedStudentsView from './UnfinishedStudentsView';
@@ -90,6 +91,11 @@ export default function QuizReportView({
   const [completingId, setCompletingId] = useState<string | null>(null);
   const [bulkResetModalOpen, setBulkResetModalOpen] = useState(false);
 
+  // GROUP MEMBER SCORE OVERRIDE MODAL STATE
+  const [overrideTarget, setOverrideTarget] = useState<QuizReportItem | null>(null);
+  const [overrideValue, setOverrideValue] = useState<string>('');
+  const [savingOverride, setSavingOverride] = useState(false);
+
   // DETAIL & ESSAY REVIEW MODAL STATE
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -165,6 +171,53 @@ export default function QuizReportView({
     timestamp: string;
   } | null>(null);
   const [isSocketConnected, setIsSocketConnected] = useState(false);
+
+  const [scopeUpdatedBanner, setScopeUpdatedBanner] = useState<string | null>(null);
+
+  // Sync RSC refreshed reports & sanitize filters when teacher class scope changes
+  useEffect(() => {
+    const classValid = !selectedClassId || classes.some(c => c.id === selectedClassId);
+    const courseValid = !selectedCourseId || courses.some(c => c.id === selectedCourseId);
+    const packageValid = !selectedPackageId || packages.some(p => p.id === selectedPackageId);
+
+    if (!classValid) setSelectedClassId('');
+    if (!courseValid) setSelectedCourseId('');
+    if (!packageValid) setSelectedPackageId('');
+
+    if (initialReports) {
+      const noFilters =
+        (!classValid || !selectedClassId) &&
+        (!packageValid || !selectedPackageId) &&
+        (!courseValid || !selectedCourseId) &&
+        !searchQuery &&
+        reviewFilter === 'ALL' &&
+        page === 1 &&
+        limit === 50;
+      if (noFilters) {
+        setData(initialReports);
+      } else {
+        loadReports({
+          classId: classValid ? selectedClassId : '',
+          courseId: courseValid ? selectedCourseId : '',
+          packageId: packageValid ? selectedPackageId : '',
+        });
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialReports, classes, courses, packages]);
+
+  useEffect(() => {
+    const handleScopeUpdated = (e: Event) => {
+      const detail = (e as CustomEvent)?.detail;
+      const classText = detail?.classNames?.length > 0 ? ` (${detail.classNames.join(', ')})` : '';
+      setScopeUpdatedBanner(`Penugasan kelas ajar${classText} diperbarui. Data laporan disegarkan otomatis.`);
+      loadReports();
+      setTimeout(() => setScopeUpdatedBanner(null), 6000);
+    };
+    window.addEventListener('lms:teacher-scope-updated', handleScopeUpdated);
+    return () => window.removeEventListener('lms:teacher-scope-updated', handleScopeUpdated);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedClassId, selectedPackageId, selectedCourseId, searchQuery, page, limit, reviewFilter]);
 
   // Real-time synchronization via Socket.io
   useEffect(() => {
@@ -583,6 +636,22 @@ export default function QuizReportView({
             <p className="font-bold text-amber-950">Penugasan Kelas Belum Lengkap</p>
             <p className="mt-0.5">{missingClassBanner}</p>
           </div>
+        </div>
+      )}
+
+      {scopeUpdatedBanner && (
+        <div className="bg-emerald-50 border border-emerald-300 text-emerald-900 rounded-xl p-3.5 flex items-center justify-between gap-3 shadow-xs animate-in fade-in slide-in-from-top-2">
+          <div className="flex items-center gap-2.5 text-xs sm:text-sm font-semibold">
+            <span className="material-symbols-outlined text-emerald-600 text-xl shrink-0">sync</span>
+            <span>{scopeUpdatedBanner}</span>
+          </div>
+          <button
+            onClick={() => setScopeUpdatedBanner(null)}
+            className="text-emerald-700 hover:text-emerald-900 p-1"
+            title="Tutup"
+          >
+            <span className="material-symbols-outlined text-sm">close</span>
+          </button>
         </div>
       )}
 
@@ -1063,6 +1132,19 @@ export default function QuizReportView({
                       <td className="px-4 py-3.5">
                         <div className="font-bold text-gray-900 leading-snug">{row.studentName}</div>
                         <div className="text-xs text-gray-500 font-mono">{row.studentEmail}</div>
+                        {row.isGroupTask && row.groupName && (
+                          <div className="mt-1 flex flex-wrap items-center gap-1">
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-200">
+                              <span className="material-symbols-outlined text-[11px]">groups</span>
+                              {row.groupName}
+                            </span>
+                            {row.submitterName && (
+                              <span className="text-[10px] text-gray-500">
+                                Pengirim: {row.submitterName}
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </td>
 
                       {/* 4. Halaman / Kuis */}
@@ -1122,6 +1204,11 @@ export default function QuizReportView({
                             <span className="text-[10px] text-gray-400 block font-normal">
                               KKM: {row.passingScore}
                             </span>
+                            {row.isGroupTask && row.scoreOverride !== null && row.scoreOverride !== undefined && (
+                              <span className="text-[10px] text-purple-700 font-semibold block">
+                                Disesuaikan (Kel: {row.groupBaseScore ?? '-'})
+                              </span>
+                            )}
                           </div>
                         ) : (
                           <span className="text-gray-300 font-bold">-</span>
@@ -1188,6 +1275,28 @@ export default function QuizReportView({
                                 {completingId === row.id ? 'sync' : 'task_alt'}
                               </span>
                               {completingId === row.id ? 'Selesai...' : 'Selesaikan'}
+                            </button>
+                          )}
+
+                          {/* OVERRIDE NILAI ANGGOTA KELOMPOK */}
+                          {(canGrade || role === 'SUPERADMIN') && row.isGroupTask && row.groupId && hasStarted && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOverrideTarget(row);
+                                setOverrideValue(
+                                  row.scoreOverride !== null && row.scoreOverride !== undefined
+                                    ? String(row.scoreOverride)
+                                    : row.score !== null
+                                      ? String(row.score)
+                                      : ''
+                                );
+                              }}
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded text-xs font-bold border-2 border-purple-300 bg-purple-50 text-purple-800 hover:bg-purple-100 transition-all shadow-sm"
+                              title="Sesuaikan nilai individu untuk anggota kelompok ini"
+                            >
+                              <span className="material-symbols-outlined text-[15px]">tune</span>
+                              Nilai Anggota
                             </button>
                           )}
 
@@ -1665,6 +1774,94 @@ export default function QuizReportView({
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* MODAL OVERRIDE NILAI ANGGOTA KELOMPOK */}
+      {overrideTarget && overrideTarget.groupId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-white border border-gray-200 rounded-xl shadow-xl w-full max-w-md p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+              <div>
+                <h3 className="text-base font-bold text-gray-900">Sesuaikan Nilai Anggota Kelompok</h3>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  {overrideTarget.studentName} • {overrideTarget.groupName}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setOverrideTarget(null)}
+                className="text-gray-400 hover:text-gray-600 p-1"
+              >
+                <span className="material-symbols-outlined text-base">close</span>
+              </button>
+            </div>
+
+            <div className="text-xs bg-purple-50 border border-purple-200 text-purple-900 rounded-lg p-3">
+              Skor Dasar Kelompok: <strong>{overrideTarget.groupBaseScore ?? '-'}</strong>. Isi nilai baru (0–100) jika anggota ini memiliki kontribusi berbeda, atau klik Ikuti Nilai Kelompok.
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1">Nilai Individu (0 – 100)</label>
+              <input
+                type="number"
+                min={0}
+                max={100}
+                step="0.1"
+                value={overrideValue}
+                onChange={(e) => setOverrideValue(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-bold"
+              />
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-2">
+              {overrideTarget.scoreOverride !== null && overrideTarget.scoreOverride !== undefined && (
+                <button
+                  type="button"
+                  disabled={savingOverride}
+                  onClick={async () => {
+                    setSavingOverride(true);
+                    const res = await overrideGroupMemberScoreAction(overrideTarget.groupId!, overrideTarget.studentId, null);
+                    setSavingOverride(false);
+                    if (res.success) {
+                      setOverrideTarget(null);
+                      loadReports();
+                    }
+                  }}
+                  className="px-3 py-2 text-xs font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg"
+                >
+                  Ikuti Nilai Kelompok
+                </button>
+              )}
+              <div className="flex items-center gap-2 ml-auto">
+                <button
+                  type="button"
+                  disabled={savingOverride}
+                  onClick={() => setOverrideTarget(null)}
+                  className="px-4 py-2 text-xs font-bold text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  disabled={savingOverride || overrideValue === ''}
+                  onClick={async () => {
+                    setSavingOverride(true);
+                    const num = Math.max(0, Math.min(100, Number(overrideValue) || 0));
+                    const res = await overrideGroupMemberScoreAction(overrideTarget.groupId!, overrideTarget.studentId, num);
+                    setSavingOverride(false);
+                    if (res.success) {
+                      setOverrideTarget(null);
+                      loadReports();
+                    }
+                  }}
+                  className="px-4 py-2 text-xs font-bold text-white bg-purple-600 hover:bg-purple-700 rounded-lg disabled:opacity-50"
+                >
+                  {savingOverride ? 'Menyimpan...' : 'Simpan Nilai'}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

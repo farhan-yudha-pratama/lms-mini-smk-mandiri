@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { startQuizAction } from '@/modules/quiz-engine/quiz-engine.action';
+import { startQuizAction, startGroupQuizAction } from '@/modules/quiz-engine/quiz-engine.action';
 import { getStudentTasksAction } from '@/modules/quiz-assignment/quiz-assignment.action';
 import { StudentTaskItem } from '@/modules/quiz-assignment/quiz-assignment.service';
 import QuizEngineModal from '@/components/quiz-engine/QuizEngineModal';
@@ -36,7 +36,7 @@ export default function TaskListClient({ initialTasks, studentId }: TaskListClie
   // Search & Filter state
   const [searchInput, setSearchInput] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [typeFilter, setTypeFilter] = useState<'ALL' | 'LINKED' | 'INDEPENDENT'>('ALL');
+  const [typeFilter, setTypeFilter] = useState<'ALL' | 'LINKED' | 'INDEPENDENT' | 'GROUP'>('ALL');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'UNFINISHED' | 'COMPLETED'>('ALL');
 
   // Real-time toast state
@@ -156,16 +156,19 @@ export default function TaskListClient({ initialTasks, studentId }: TaskListClie
   }, [toastNotification]);
 
   // Filter & Search computations
-  const linkedCount = useMemo(() => tasks.filter(t => Boolean(t.page || t.pkg?.pageId)).length, [tasks]);
-  const independentCount = useMemo(() => tasks.filter(t => !Boolean(t.page || t.pkg?.pageId)).length, [tasks]);
+  const linkedCount = useMemo(() => tasks.filter(t => !t.groupInfo && Boolean(t.page || t.pkg?.pageId)).length, [tasks]);
+  const independentCount = useMemo(() => tasks.filter(t => !t.groupInfo && !Boolean(t.page || t.pkg?.pageId)).length, [tasks]);
+  const groupCount = useMemo(() => tasks.filter(t => Boolean(t.groupInfo)).length, [tasks]);
 
   const filteredTasks = useMemo(() => {
     return tasks.filter(t => {
+      const isGroup = Boolean(t.groupInfo);
       const isLinked = Boolean(t.page || t.pkg?.pageId);
 
-      // Filter: Tipe Tugas (Terikat Materi vs Mandiri)
-      if (typeFilter === 'LINKED' && !isLinked) return false;
-      if (typeFilter === 'INDEPENDENT' && isLinked) return false;
+      // Filter: Tipe Tugas (Terikat Materi vs Mandiri vs Kelompok)
+      if (typeFilter === 'LINKED' && (isGroup || !isLinked)) return false;
+      if (typeFilter === 'INDEPENDENT' && (isGroup || isLinked)) return false;
+      if (typeFilter === 'GROUP' && !isGroup) return false;
 
       // Filter: Status Pengerjaan
       if (statusFilter === 'UNFINISHED') {
@@ -180,8 +183,11 @@ export default function TaskListClient({ initialTasks, studentId }: TaskListClie
         const matchTitle = t.pkg?.title?.toLowerCase().includes(query);
         const matchCourse = t.courseName?.toLowerCase().includes(query);
         const matchPage = t.page?.title?.toLowerCase().includes(query);
+        const matchGroup = t.groupInfo?.groupName?.toLowerCase().includes(query) ||
+          t.groupInfo?.variantName?.toLowerCase().includes(query) ||
+          t.groupInfo?.members?.some(m => m.name.toLowerCase().includes(query));
 
-        if (!matchTitle && !matchCourse && !matchPage) {
+        if (!matchTitle && !matchCourse && !matchPage && !matchGroup) {
           return false;
         }
       }
@@ -198,7 +204,9 @@ export default function TaskListClient({ initialTasks, studentId }: TaskListClie
     }
 
     setLoadingId(task.assignment.id);
-    const res = await startQuizAction(task.assignment.id);
+    const res = task.groupInfo
+      ? await startGroupQuizAction(task.groupInfo.groupId)
+      : await startQuizAction(task.assignment.id);
     if (res.success) {
       setAttemptId((res as any).attemptId);
       setShowModal(true);
@@ -300,6 +308,23 @@ export default function TaskListClient({ initialTasks, studentId }: TaskListClie
                 {independentCount}
               </span>
             </button>
+
+            {/* Tugas Kelompok */}
+            <button
+              type="button"
+              onClick={() => setTypeFilter('GROUP')}
+              className={`px-3 py-1.5 border-2 border-black font-black uppercase text-xs tracking-tight transition-all flex items-center gap-1.5 ${
+                typeFilter === 'GROUP'
+                  ? 'bg-[#FDE047] text-black shadow-[2px_2px_0px_0px_#000] -translate-y-0.5'
+                  : 'bg-white text-black hover:bg-[#EAF4ED] active:translate-x-[1px] active:translate-y-[1px]'
+              }`}
+            >
+              <span className="material-symbols-outlined text-sm">groups</span>
+              <span>Tugas Kelompok</span>
+              <span className={`text-[10px] px-1.5 py-0.2 border border-black ${typeFilter === 'GROUP' ? 'bg-[#092328] text-white' : 'bg-black/10'}`}>
+                {groupCount}
+              </span>
+            </button>
           </div>
 
           {/* Filter Status Pengerjaan */}
@@ -362,7 +387,17 @@ export default function TaskListClient({ initialTasks, studentId }: TaskListClie
                 <div className="space-y-2 flex-1 min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     {/* Badge Tipe Tugas */}
-                    {isLinked ? (
+                    {t.groupInfo ? (
+                      <>
+                        <span className="bg-[#FDE047] text-black border-2 border-black px-2 py-0.5 font-black uppercase text-[11px] shadow-[2px_2px_0px_0px_#000] flex items-center gap-1">
+                          <span className="material-symbols-outlined text-xs">groups</span>
+                          Tugas Kelompok
+                        </span>
+                        <span className="bg-white text-black border-2 border-black px-2 py-0.5 font-black uppercase text-[11px] shadow-[2px_2px_0px_0px_#000]">
+                          {t.groupInfo.groupName}
+                        </span>
+                      </>
+                    ) : isLinked ? (
                       <span className="bg-[#2A835F] text-white border-2 border-black px-2 py-0.5 font-black uppercase text-[11px] shadow-[2px_2px_0px_0px_#000] flex items-center gap-1">
                         <span className="material-symbols-outlined text-xs">menu_book</span>
                         Terikat Materi
@@ -391,6 +426,46 @@ export default function TaskListClient({ initialTasks, studentId }: TaskListClie
                   <h3 className="font-black text-lg md:text-xl text-black leading-snug uppercase tracking-tight">
                     {t.pkg.title}
                   </h3>
+
+                  {/* Group Info Box (Anggota & Tugas Kelompoknya) */}
+                  {t.groupInfo && (
+                    <div className="bg-[#EAF4ED] border-2 border-black p-3 space-y-2 shadow-[2px_2px_0px_0px_#000]">
+                      <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                        <span className="font-black uppercase text-[#092328] flex items-center gap-1">
+                          <span className="material-symbols-outlined text-sm">task</span>
+                          Topik Tugas: {t.groupInfo.variantName}
+                        </span>
+                        {t.groupInfo.startedByName && (
+                          <span className="bg-[#FEF08A] border border-black px-1.5 py-0.5 text-[10px] font-black uppercase">
+                            Sedang dikerjakan: {t.groupInfo.startedByName}
+                          </span>
+                        )}
+                        {t.groupInfo.submittedByName && (
+                          <span className="bg-[#8BBB92] border border-black px-1.5 py-0.5 text-[10px] font-black uppercase">
+                            Dikirim oleh: {t.groupInfo.submittedByName}
+                          </span>
+                        )}
+                      </div>
+                      {(t.groupInfo.taskNote || t.pkg.description) && (
+                        <p className="text-xs font-bold text-black/80 leading-relaxed">
+                          {t.groupInfo.taskNote || t.pkg.description}
+                        </p>
+                      )}
+                      <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-black/15">
+                        <span className="text-[10px] font-black uppercase text-black/60 mr-1">Anggota:</span>
+                        {t.groupInfo.members.map((m) => (
+                          <span
+                            key={m.studentId}
+                            className={`px-2 py-0.5 border border-black text-[11px] font-black ${
+                              m.isSelf ? 'bg-[#092328] text-[#8BBB92]' : 'bg-white text-black'
+                            }`}
+                          >
+                            {m.name}{m.isSelf ? ' (Anda)' : ''}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Time metadata */}
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-bold text-black/70">
