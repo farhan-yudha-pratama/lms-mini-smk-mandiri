@@ -1,6 +1,51 @@
 import { db } from '@/prisma/db';
 import { randomUUID } from 'crypto';
 import { getUnlockedPageIdsForStudent } from '@/modules/student-access/student-access.service';
+import {
+  isClassAllowedForCourse,
+  isPackageAllowedForScope,
+  resolvePackageCourseIds,
+  type TeacherScope,
+} from '@/modules/course/teacher-scope.service';
+
+export async function assertTeacherCanAccessQuizAssignment(
+  scope: TeacherScope,
+  packageId: string,
+  options?: { classId?: string; studentIds?: string[] }
+) {
+  if (scope.isUnrestricted) return;
+
+  const pkg = await db.orm.public.QuizPackage.where({ id: packageId }).first();
+  if (!pkg) throw new Error('Paket kuis tidak ditemukan');
+
+  const [pages, categories] = await Promise.all([
+    pkg.pageId ? db.orm.public.Page.where({ id: pkg.pageId }).all() : Promise.resolve([]),
+    db.orm.public.MaterialCategory.all(),
+  ]);
+  const pageMap = new Map(pages.map(p => [p.id, p]));
+  const categoryMap = new Map(categories.map(c => [c.id, c]));
+
+  if (!isPackageAllowedForScope(scope, pkg, pageMap, categoryMap)) {
+    throw new Error('FORBIDDEN');
+  }
+
+  const { candidateCourseIds } = resolvePackageCourseIds(pkg, pageMap, categoryMap);
+
+  if (options?.classId) {
+    const classAllowed = candidateCourseIds.some(cId => isClassAllowedForCourse(scope, cId, options.classId));
+    if (!classAllowed) throw new Error('FORBIDDEN');
+  }
+
+  if (options?.studentIds && options.studentIds.length > 0) {
+    const allStudents = await db.orm.public.User.where({ role: 'MURID' }).all();
+    const studentMap = new Map(allStudents.map(s => [s.id, s]));
+    for (const sId of options.studentIds) {
+      const student = studentMap.get(sId);
+      const allowed = candidateCourseIds.some(cId => isClassAllowedForCourse(scope, cId, student?.classId));
+      if (!allowed) throw new Error('FORBIDDEN');
+    }
+  }
+}
 
 // Get all assignments for a class and package
 export async function getAssignmentsByPackageAndClass(packageId: string, classId: string) {

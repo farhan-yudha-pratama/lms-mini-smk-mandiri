@@ -230,7 +230,13 @@ export default function QuizAssignmentView({
         )}
       </div>
 
-      {!selectedClassId ? (
+      {classes.length === 0 ? (
+        <div className="text-center py-10 sm:py-14 text-amber-800 text-xs sm:text-sm bg-amber-50/70 rounded-xl border border-amber-200 px-4">
+          <span className="material-symbols-outlined text-3xl text-amber-600 block mb-2">warning</span>
+          <p className="font-bold text-amber-950 mb-1">Belum Ada Kelas Ditugaskan</p>
+          Anda belum ditugaskan ke kelas mana pun untuk mata pelajaran kuis ini. Hubungi administrator untuk mengatur kelas ajar di menu Mata Pelajaran.
+        </div>
+      ) : !selectedClassId ? (
         <div className="text-center py-10 sm:py-14 text-gray-500 text-xs sm:text-sm bg-gray-50/70 rounded-xl border border-dashed border-gray-300 px-4">
           <span className="material-symbols-outlined text-3xl text-gray-400 block mb-2">groups</span>
           Silakan pilih kelas terlebih dahulu untuk melihat dan membagikan paket soal ke murid.

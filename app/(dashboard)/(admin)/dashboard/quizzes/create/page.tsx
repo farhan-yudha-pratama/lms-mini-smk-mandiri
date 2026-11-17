@@ -1,20 +1,29 @@
 import { getQuizzesWithPageStatus } from '@/modules/quiz/quiz.service';
 import QuizPackageForm from '@/components/quiz/QuizPackageForm';
 import Link from 'next/link';
-import { db } from '@/prisma/db';
+import { getSession } from '@/lib/session';
+import { hasAnyPermission } from '@/lib/permissions';
+import { redirect } from 'next/navigation';
+import { getScopedCourses, resolveTeacherScope } from '@/modules/course/teacher-scope.service';
 
 export const dynamic = 'force-dynamic';
 
 export default async function CreateQuizPage({ searchParams }: { searchParams: Promise<{ pageId?: string }> }) {
+  const session = await getSession();
+  if (!session || !hasAnyPermission(session, ['QUIZZES_MANAGE', 'QUIZZES_CREATE'])) {
+    redirect('/dashboard/quizzes');
+  }
+
+  const scope = await resolveTeacherScope(session);
   const resolvedSearchParams = await searchParams;
   const defaultPageId = resolvedSearchParams.pageId;
 
-  // Get all pages to populate dropdown, we only want pages without quizzes
-  const allPages = await getQuizzesWithPageStatus();
+  const teacherId = scope.isUnrestricted ? undefined : scope.userId;
+  const [allPages, courses] = await Promise.all([
+    getQuizzesWithPageStatus(teacherId),
+    getScopedCourses(scope),
+  ]);
   const availablePages = allPages.filter(p => !p.hasQuizPackage || p.id === defaultPageId);
-  
-  // Get all courses
-  const courses = await db.orm.public.Course.all();
 
   return (
     <div className="p-6 max-w-3xl mx-auto">

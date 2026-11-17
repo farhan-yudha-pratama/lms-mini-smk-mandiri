@@ -1,6 +1,8 @@
 import { getSession } from '@/lib/session';
+import { hasAnyPermission } from '@/lib/permissions';
 import { redirect } from 'next/navigation';
 import { getStudentsProjectMonitoringData } from '@/modules/sandbox/sandbox.service';
+import { resolveTeacherScope } from '@/modules/course/teacher-scope.service';
 import StudentProjectsTableClient from './StudentProjectsTableClient';
 
 export const metadata = {
@@ -11,12 +13,12 @@ export const metadata = {
 export default async function StudentProjectsPage() {
   const session = await getSession();
 
-  if (!session || !session.userId || (session.role !== 'SUPERADMIN' && session.role !== 'GURU')) {
+  if (!session || !session.userId || !hasAnyPermission(session, ['STUDENT_PROJECTS_VIEW', 'STUDENT_PROJECTS_INSPECT'])) {
     redirect('/dashboard');
   }
 
-  const teacherId = session.role === 'GURU' ? session.userId : undefined;
-  const data = await getStudentsProjectMonitoringData(teacherId);
+  const scope = await resolveTeacherScope(session);
+  const data = await getStudentsProjectMonitoringData(scope);
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto p-4 sm:p-6">

@@ -1,8 +1,12 @@
 import { db } from '@/prisma/db';
 import { PageAccessStatus } from '@/app/(dashboard)/(admin)/dashboard/student-access/types';
+import { isClassAllowedForCourse, type TeacherScope } from '@/modules/course/teacher-scope.service';
 
-export async function getStudents() {
-  const students = await db.orm.public.User.where({ role: 'MURID' }).all();
+export async function getStudents(scope?: TeacherScope) {
+  let students = await db.orm.public.User.where({ role: 'MURID' }).all();
+  if (scope && !scope.isUnrestricted) {
+    students = students.filter(s => s.classId && scope.allowedClassIds.has(s.classId));
+  }
   
   // Cache all necessary data to avoid N+1 queries
   const allStudentCourses = await db.orm.public.CourseStudent.all();
@@ -12,10 +16,11 @@ export async function getStudents() {
   const allAccesses = await db.orm.public.PageAccess.all();
 
   const result = students.map(student => {
-    // 1. Get courses for this student
+    // 1. Get courses for this student (scoped to teacher's assigned classes per course)
     const joinedCourseIds = allStudentCourses
       .filter(cs => cs.studentId === student.id)
-      .map(cs => cs.courseId);
+      .map(cs => cs.courseId)
+      .filter(cId => !scope || scope.isUnrestricted || isClassAllowedForCourse(scope, cId, student.classId));
 
     // 2. Filter categories
     const categories = allCategories.filter(c => c.courseId && joinedCourseIds.includes(c.courseId));
@@ -61,10 +66,13 @@ export async function getStudentById(studentId: string) {
   return students[0] || null;
 }
 
-export async function getStudentAccessData(studentId: string) {
+export async function getStudentAccessData(studentId: string, scope?: TeacherScope) {
+  const student = await db.orm.public.User.where({ id: studentId }).first();
   // Ambil course yang di-join oleh student
   const studentCourses = await db.orm.public.CourseStudent.where({ studentId }).all();
-  const joinedCourseIds = studentCourses.map(cs => cs.courseId);
+  const joinedCourseIds = studentCourses
+    .map(cs => cs.courseId)
+    .filter(cId => !scope || scope.isUnrestricted || isClassAllowedForCourse(scope, cId, student?.classId));
 
   // Get all categories and pages, filtered by joined courses
   const categories = await db.orm.public.MaterialCategory.all();

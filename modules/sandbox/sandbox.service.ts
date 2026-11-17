@@ -254,16 +254,18 @@ export async function getMaterialOptionsForStudent(studentId: string) {
   });
 }
 
+import { isClassAllowedForCourse, type TeacherScope } from '@/modules/course/teacher-scope.service';
+
 /**
  * Mengambil rekap seluruh siswa untuk monitoring admin/guru
  */
-export async function getStudentsProjectMonitoringData(teacherId?: string): Promise<{
+export async function getStudentsProjectMonitoringData(scopeOrTeacherId?: string | TeacherScope): Promise<{
   students: StudentProjectMonitoringItem[];
   classes: { id: string; name: string }[];
   courses: { id: string; name: string }[];
   stats: StudentMonitoringStats;
 }> {
-  const [allStudents, classrooms, allCourses, courseStudents, allProjects] = await Promise.all([
+  const [rawStudents, rawClassrooms, allCourses, courseStudents, allProjects] = await Promise.all([
     db.orm.public.User.where({ role: 'MURID' }).all(),
     db.orm.public.Classroom.all(),
     db.orm.public.Course.all(),
@@ -271,14 +273,21 @@ export async function getStudentsProjectMonitoringData(teacherId?: string): Prom
     db.orm.public.StudentProject.all(),
   ]);
 
-  // Jika guru, saring mata pelajaran yang diajar
+  const scope = typeof scopeOrTeacherId === 'object' ? scopeOrTeacherId : undefined;
+  const teacherId = typeof scopeOrTeacherId === 'string' ? scopeOrTeacherId : undefined;
+
   let courses = allCourses;
-  if (teacherId) {
+  let classrooms = rawClassrooms;
+  let allStudents = rawStudents;
+
+  if (scope && !scope.isUnrestricted) {
+    courses = allCourses.filter(c => scope.allowedCourseIds.has(c.id));
+    classrooms = rawClassrooms.filter(c => scope.allowedClassIds.has(c.id));
+    allStudents = rawStudents.filter(s => s.classId && scope.allowedClassIds.has(s.classId));
+  } else if (teacherId) {
     const teacherCourses = await db.orm.public.CourseTeacher.where({ teacherId }).all();
     const teacherCourseIds = new Set((teacherCourses as { courseId: string }[]).map(tc => tc.courseId));
-    if (teacherCourseIds.size > 0) {
-      courses = allCourses.filter(c => teacherCourseIds.has(c.id));
-    }
+    courses = allCourses.filter(c => teacherCourseIds.has(c.id));
   }
 
   // Lookup maps
@@ -291,7 +300,13 @@ export async function getStudentsProjectMonitoringData(teacherId?: string): Prom
   }
 
   const studentCoursesMap = new Map<string, string[]>();
+  const studentClassMap = new Map<string, string | null | undefined>(
+    allStudents.map(s => [s.id, s.classId])
+  );
   for (const cs of courseStudents as { studentId: string; courseId: string }[]) {
+    if (scope && !scope.isUnrestricted && !isClassAllowedForCourse(scope, cs.courseId, studentClassMap.get(cs.studentId))) {
+      continue;
+    }
     const list = studentCoursesMap.get(cs.studentId) || [];
     list.push(cs.courseId);
     studentCoursesMap.set(cs.studentId, list);
@@ -310,7 +325,12 @@ export async function getStudentsProjectMonitoringData(teacherId?: string): Prom
   }
 
   const students: StudentProjectMonitoringItem[] = (allStudents as StudentUserRow[]).map(s => {
-    const sProjects = (studentProjectsMap.get(s.id) || []).sort(
+    const rawStudentProjects = studentProjectsMap.get(s.id) || [];
+    const scopedProjects =
+      scope && !scope.isUnrestricted
+        ? rawStudentProjects.filter(p => !p.courseId || isClassAllowedForCourse(scope, p.courseId, s.classId))
+        : rawStudentProjects;
+    const sProjects = scopedProjects.sort(
       (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
     );
 

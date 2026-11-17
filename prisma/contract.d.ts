@@ -34,9 +34,9 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'d9d5f39f76b6093aaedc62232eb682aff37e1d75f01200d59ba644fdffc3147a'>;
+  StorageHashBase<'0daabda74b74436bb2a27408880f8b8d0c4e8011cd4817cdbe08435ccd3dd02c'>;
 export type ExecutionHash =
-  ExecutionHashBase<'11d74163877447a8b85343d0a88826d6d951dd9672d1d56cf0d863b84b4efede'>;
+  ExecutionHashBase<'da7f10970cb31482420be4185fec322270742af099fbe67aa492adb01c684d75'>;
 export type ProfileHash =
   ProfileHashBase<'3916f444a8a17ad749191acf9e08dad97d1a327b88c2f1d45d12f240296aa8b2'>;
 
@@ -279,6 +279,13 @@ export type FieldOutputTypes = {
       readonly id: CodecTypes['pg/text@1']['output'];
       readonly courseId: CodecTypes['pg/text@1']['output'];
       readonly teacherId: CodecTypes['pg/text@1']['output'];
+    };
+    readonly CourseTeacherClass: {
+      readonly id: CodecTypes['pg/text@1']['output'];
+      readonly courseId: CodecTypes['pg/text@1']['output'];
+      readonly teacherId: CodecTypes['pg/text@1']['output'];
+      readonly classroomId: CodecTypes['pg/text@1']['output'];
+      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
     };
     readonly MaterialCategory: {
       readonly courseId: CodecTypes['pg/text@1']['output'] | null;
@@ -551,6 +558,13 @@ export type FieldInputTypes = {
       readonly courseId: CodecTypes['pg/text@1']['input'];
       readonly teacherId: CodecTypes['pg/text@1']['input'];
     };
+    readonly CourseTeacherClass: {
+      readonly id: CodecTypes['pg/text@1']['input'];
+      readonly courseId: CodecTypes['pg/text@1']['input'];
+      readonly teacherId: CodecTypes['pg/text@1']['input'];
+      readonly classroomId: CodecTypes['pg/text@1']['input'];
+      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
+    };
     readonly MaterialCategory: {
       readonly courseId: CodecTypes['pg/text@1']['input'] | null;
       readonly id: CodecTypes['pg/text@1']['input'];
@@ -819,6 +833,13 @@ export type StorageColumnTypes = {
     };
     readonly courseTeacher: {
       readonly courseId: CodecTypes['pg/text@1']['output'];
+      readonly id: CodecTypes['pg/text@1']['output'];
+      readonly teacherId: CodecTypes['pg/text@1']['output'];
+    };
+    readonly courseTeacherClass: {
+      readonly classroomId: CodecTypes['pg/text@1']['output'];
+      readonly courseId: CodecTypes['pg/text@1']['output'];
+      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
       readonly id: CodecTypes['pg/text@1']['output'];
       readonly teacherId: CodecTypes['pg/text@1']['output'];
     };
@@ -1093,6 +1114,13 @@ export type StorageColumnInputTypes = {
       readonly id: CodecTypes['pg/text@1']['input'];
       readonly teacherId: CodecTypes['pg/text@1']['input'];
     };
+    readonly courseTeacherClass: {
+      readonly classroomId: CodecTypes['pg/text@1']['input'];
+      readonly courseId: CodecTypes['pg/text@1']['input'];
+      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
+      readonly id: CodecTypes['pg/text@1']['input'];
+      readonly teacherId: CodecTypes['pg/text@1']['input'];
+    };
     readonly materialCategory: {
       readonly courseId: CodecTypes['pg/text@1']['input'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
@@ -1336,8 +1364,9 @@ export namespace Models {
     updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
     completionRecords: public_QuizCompletionRecord[];
     scoreSummaries: public_StudentScoreSummary[];
+    teacherClasses: public_CourseTeacherClass[];
     users: public_User[];
-    readonly [RelationKeys]?: 'completionRecords' | 'scoreSummaries' | 'users';
+    readonly [RelationKeys]?: 'completionRecords' | 'scoreSummaries' | 'teacherClasses' | 'users';
   };
   export type public_User = {
     id: CodecTypes['pg/text@1']['output'];
@@ -1363,6 +1392,7 @@ export namespace Models {
     quizAttempts: public_QuizAttempt[];
     scoreSummary: public_StudentScoreSummary | null;
     sessions: public_Session[];
+    teacherClasses: public_CourseTeacherClass[];
     readonly [RelationKeys]?:
       | 'auditLogs'
       | 'classroom'
@@ -1374,7 +1404,8 @@ export namespace Models {
       | 'quizAssignments'
       | 'quizAttempts'
       | 'scoreSummary'
-      | 'sessions';
+      | 'sessions'
+      | 'teacherClasses';
   };
   export type public_MaterialCategory = {
     courseId: CodecTypes['pg/text@1']['output'] | null;
@@ -1643,8 +1674,10 @@ export namespace Models {
     categories: public_MaterialCategory[];
     projects: public_StudentProject[];
     students: public_CourseStudent[];
+    teacherClasses: public_CourseTeacherClass[];
     teachers: public_CourseTeacher[];
-    readonly [RelationKeys]?: 'categories' | 'projects' | 'students' | 'teachers';
+    readonly [RelationKeys]?:
+      'categories' | 'projects' | 'students' | 'teacherClasses' | 'teachers';
   };
   export type public_CourseTeacher = {
     id: CodecTypes['pg/text@1']['output'];
@@ -1653,6 +1686,17 @@ export namespace Models {
     course: public_Course;
     teacher: public_User;
     readonly [RelationKeys]?: 'course' | 'teacher';
+  };
+  export type public_CourseTeacherClass = {
+    id: CodecTypes['pg/text@1']['output'];
+    courseId: CodecTypes['pg/text@1']['output'];
+    teacherId: CodecTypes['pg/text@1']['output'];
+    classroomId: CodecTypes['pg/text@1']['output'];
+    createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
+    classroom: public_Classroom;
+    course: public_Course;
+    teacher: public_User;
+    readonly [RelationKeys]?: 'classroom' | 'course' | 'teacher';
   };
   export type public_CourseStudent = {
     id: CodecTypes['pg/text@1']['output'];
@@ -1736,6 +1780,7 @@ export declare const models: {
     QuizCompletionRecord: Models.public_QuizCompletionRecord;
     Course: Models.public_Course;
     CourseTeacher: Models.public_CourseTeacher;
+    CourseTeacherClass: Models.public_CourseTeacherClass;
     CourseStudent: Models.public_CourseStudent;
     StudentProject: Models.public_StudentProject;
     Permission: Models.public_Permission;
@@ -2051,6 +2096,104 @@ type ContractBase = Omit<
                   readonly target: {
                     readonly namespaceId: 'public' & NamespaceId;
                     readonly tableName: 'user';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+              ];
+            };
+            readonly courseTeacherClass: {
+              columns: {
+                readonly id: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly courseId: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly teacherId: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly classroomId: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly createdAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                  readonly nullable: false;
+                  readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
+                };
+              };
+              primaryKey: { readonly columns: readonly ['id'] };
+              uniques: readonly [
+                { readonly columns: readonly ['courseId', 'teacherId', 'classroomId'] },
+              ];
+              indexes: readonly [
+                {
+                  readonly name: 'courseTeacherClass_teacherId_idx_bc266660';
+                  readonly prefix: 'courseTeacherClass_teacherId_idx';
+                  readonly columns: readonly ['teacherId'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'courseTeacherClass_courseId_teacherId_idx_53d44d4e';
+                  readonly prefix: 'courseTeacherClass_courseId_teacherId_idx';
+                  readonly columns: readonly ['courseId', 'teacherId'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'courseTeacherClass_courseId_idx_12f72d2a';
+                  readonly prefix: 'courseTeacherClass_courseId_idx';
+                  readonly columns: readonly ['courseId'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'courseTeacherClass_classroomId_idx_e4a392d3';
+                  readonly prefix: 'courseTeacherClass_classroomId_idx';
+                  readonly columns: readonly ['classroomId'];
+                  readonly unique: false;
+                },
+              ];
+              foreignKeys: readonly [
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'courseTeacherClass';
+                    readonly columns: readonly ['courseId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'course';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'courseTeacherClass';
+                    readonly columns: readonly ['teacherId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'user';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'courseTeacherClass';
+                    readonly columns: readonly ['classroomId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'classroom';
                     readonly columns: readonly ['id'];
                   };
                 },
@@ -4013,6 +4156,10 @@ type ContractBase = Omit<
       readonly namespace: 'public' & NamespaceId;
       readonly model: 'CourseTeacher';
     };
+    readonly courseTeacherClass: {
+      readonly namespace: 'public' & NamespaceId;
+      readonly model: 'CourseTeacherClass';
+    };
     readonly courseStudent: {
       readonly namespace: 'public' & NamespaceId;
       readonly model: 'CourseStudent';
@@ -4152,6 +4299,17 @@ type ContractBase = Omit<
                   readonly targetFields: readonly ['classroomId'];
                 };
               };
+              readonly teacherClasses: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'CourseTeacherClass';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['classroomId'];
+                };
+              };
               readonly users: {
                 readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'User' };
                 readonly cardinality: '1:N';
@@ -4247,6 +4405,17 @@ type ContractBase = Omit<
                 readonly to: {
                   readonly namespace: 'public' & NamespaceId;
                   readonly model: 'CourseStudent';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['courseId'];
+                };
+              };
+              readonly teacherClasses: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'CourseTeacherClass';
                 };
                 readonly cardinality: '1:N';
                 readonly on: {
@@ -4375,6 +4544,79 @@ type ContractBase = Omit<
                 readonly id: { readonly column: 'id' };
                 readonly courseId: { readonly column: 'courseId' };
                 readonly teacherId: { readonly column: 'teacherId' };
+              };
+            };
+          };
+          readonly CourseTeacherClass: {
+            readonly fields: {
+              readonly id: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly courseId: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly teacherId: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly classroomId: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly createdAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                };
+              };
+            };
+            readonly relations: {
+              readonly classroom: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'Classroom';
+                };
+                readonly cardinality: 'N:1';
+                readonly nullable: false;
+                readonly on: {
+                  readonly localFields: readonly ['classroomId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+              readonly course: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'Course';
+                };
+                readonly cardinality: 'N:1';
+                readonly nullable: false;
+                readonly on: {
+                  readonly localFields: readonly ['courseId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+              readonly teacher: {
+                readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'User' };
+                readonly cardinality: 'N:1';
+                readonly nullable: false;
+                readonly on: {
+                  readonly localFields: readonly ['teacherId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+            };
+            readonly storage: {
+              readonly table: 'courseTeacherClass';
+              readonly namespaceId: 'public';
+              readonly fields: {
+                readonly id: { readonly column: 'id' };
+                readonly courseId: { readonly column: 'courseId' };
+                readonly teacherId: { readonly column: 'teacherId' };
+                readonly classroomId: { readonly column: 'classroomId' };
+                readonly createdAt: { readonly column: 'createdAt' };
               };
             };
           };
@@ -6261,6 +6503,17 @@ type ContractBase = Omit<
                   readonly targetFields: readonly ['userId'];
                 };
               };
+              readonly teacherClasses: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'CourseTeacherClass';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['teacherId'];
+                };
+              };
             };
             readonly storage: {
               readonly table: 'user';
@@ -6460,6 +6713,14 @@ type ContractBase = Omit<
           readonly ref: {
             readonly namespace: 'public';
             readonly table: 'courseTeacher';
+            readonly column: 'id';
+          };
+          readonly onCreate: { readonly kind: 'generator'; readonly id: 'uuidv4' };
+        },
+        {
+          readonly ref: {
+            readonly namespace: 'public';
+            readonly table: 'courseTeacherClass';
             readonly column: 'id';
           };
           readonly onCreate: { readonly kind: 'generator'; readonly id: 'uuidv4' };

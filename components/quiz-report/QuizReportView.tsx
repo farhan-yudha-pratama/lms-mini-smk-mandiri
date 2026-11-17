@@ -51,6 +51,10 @@ export default function QuizReportView({
   classes,
   courses = [],
   role = 'MURID',
+  canFilterCourse = false,
+  canGrade = false,
+  canReset = false,
+  missingClassBanner = null,
   initialReports,
   initialUnfinishedReports,
 }: { 
@@ -58,6 +62,10 @@ export default function QuizReportView({
   classes: ClassType[]; 
   courses?: { id: string; name: string }[];
   role?: string;
+  canFilterCourse?: boolean;
+  canGrade?: boolean;
+  canReset?: boolean;
+  missingClassBanner?: string | null;
   initialReports?: QuizReportsResponse;
   initialUnfinishedReports?: UnfinishedStudentsResponse;
 }) {
@@ -564,8 +572,20 @@ export default function QuizReportView({
     return { score, passed, totalEarned, totalMax };
   }, [attemptDetail, essayGrades]);
 
+  const showCourseFilter = canFilterCourse || role === 'SUPERADMIN';
+
   return (
     <div className="space-y-6">
+      {missingClassBanner && (
+        <div className="bg-amber-50 border border-amber-300 text-amber-900 rounded-xl p-4 flex items-start gap-3 shadow-xs">
+          <span className="material-symbols-outlined text-amber-600 text-xl shrink-0 mt-0.5">warning</span>
+          <div className="text-xs sm:text-sm font-medium leading-relaxed">
+            <p className="font-bold text-amber-950">Penugasan Kelas Belum Lengkap</p>
+            <p className="mt-0.5">{missingClassBanner}</p>
+          </div>
+        </div>
+      )}
+
       {/* REAL-TIME NOTIFICATION BANNER */}
       {realtimeAlert && (
         <div className={`flex items-center justify-between p-4 border rounded-xl shadow-sm transition-all animate-in fade-in slide-in-from-top-2 ${
@@ -693,6 +713,7 @@ export default function QuizReportView({
           classes={classes}
           courses={courses}
           role={role}
+          canFilterCourse={showCourseFilter}
           onOpenDetail={handleOpenDetail}
         />
       ) : activeTab === 'UNFINISHED' ? (
@@ -701,6 +722,7 @@ export default function QuizReportView({
           classes={classes}
           courses={courses}
           role={role}
+          canFilterCourse={showCourseFilter}
           initialData={initialUnfinishedReports}
         />
       ) : (
@@ -725,9 +747,9 @@ export default function QuizReportView({
           )}
         </div>
 
-        <div className={`grid grid-cols-1 md:grid-cols-${role === 'SUPERADMIN' ? '4' : '3'} gap-4`}>
-          {/* Filter Course (Mata Pelajaran) - Superadmin Only */}
-          {role === 'SUPERADMIN' && (
+        <div className={`grid grid-cols-1 md:grid-cols-${showCourseFilter ? '4' : '3'} gap-4`}>
+          {/* Filter Course (Mata Pelajaran) */}
+          {showCourseFilter && (
             <div>
               <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
                 Filter Mapel
@@ -958,7 +980,7 @@ export default function QuizReportView({
           </div>
           
           <div className="flex items-center gap-2 flex-wrap">
-            {(role === 'SUPERADMIN' || role === 'GURU') && (
+            {(canReset || role === 'SUPERADMIN') && (
               <button 
                 type="button"
                 onClick={() => setBulkResetModalOpen(true)}
@@ -1154,7 +1176,7 @@ export default function QuizReportView({
                           )}
 
                           {/* SELESAIKAN BUTTON (Muncul jika status GRADED dan Lulus KKM) */}
-                          {row.status === 'GRADED' && row.isPassed && (
+                          {(canGrade || role === 'SUPERADMIN') && row.status === 'GRADED' && row.isPassed && (
                             <button
                               type="button"
                               onClick={() => handleCompleteQuiz(row)}
@@ -1170,6 +1192,7 @@ export default function QuizReportView({
                           )}
 
                           {/* RESET BUTTON */}
+                          {(canReset || role === 'SUPERADMIN') && (
                           <button
                             type="button"
                             onClick={() => handleReset(row)}
@@ -1186,6 +1209,7 @@ export default function QuizReportView({
                             </span>
                             {resettingId === row.id ? 'Reset...' : 'Reset'}
                           </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -1627,7 +1651,7 @@ export default function QuizReportView({
                     Tutup
                   </button>
 
-                  {attemptDetail.hasEssay && (
+                  {attemptDetail.hasEssay && (canGrade || role === 'SUPERADMIN') && (
                     <button
                       type="button"
                       onClick={handleSaveGrades}

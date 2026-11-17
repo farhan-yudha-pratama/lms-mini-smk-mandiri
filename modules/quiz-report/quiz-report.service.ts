@@ -1,5 +1,11 @@
 import { db } from '@/prisma/db';
 import { randomUUID } from 'crypto';
+import {
+  isClassAllowedForCourse,
+  isPackageAllowedForScope,
+  resolvePackageCourseIds,
+  type TeacherScope,
+} from '@/modules/course/teacher-scope.service';
 
 export interface QuizReportItem {
   id: string;
@@ -47,6 +53,58 @@ export interface QuizReportsResponse {
   };
 }
 
+export async function assertCanAccessAttempt(scope: TeacherScope, attemptId: string) {
+  if (scope.isUnrestricted) return;
+
+  const attempt = await db.orm.public.QuizAttempt.where({ id: attemptId }).first();
+  if (!attempt) throw new Error('Riwayat kuis tidak ditemukan');
+
+  const [student, variant] = await Promise.all([
+    db.orm.public.User.where({ id: attempt.studentId }).first(),
+    db.orm.public.QuizVariant.where({ id: attempt.quizVariantId }).first(),
+  ]);
+  if (!variant) throw new Error('Varian kuis tidak ditemukan');
+
+  const pkg = await db.orm.public.QuizPackage.where({ id: variant.quizPackageId }).first();
+  if (!pkg) throw new Error('Paket kuis tidak ditemukan');
+
+  const [pages, categories] = await Promise.all([
+    pkg.pageId ? db.orm.public.Page.where({ id: pkg.pageId }).all() : Promise.resolve([]),
+    db.orm.public.MaterialCategory.all(),
+  ]);
+  const pageMap = new Map(pages.map(p => [p.id, p]));
+  const categoryMap = new Map(categories.map(c => [c.id, c]));
+
+  const { candidateCourseIds } = resolvePackageCourseIds(pkg, pageMap, categoryMap);
+  const allowed = candidateCourseIds.some(cId => isClassAllowedForCourse(scope, cId, student?.classId));
+  if (!allowed) {
+    throw new Error('FORBIDDEN');
+  }
+}
+
+export async function assertCanAccessStudentPackage(scope: TeacherScope, studentId: string, packageId: string) {
+  if (scope.isUnrestricted) return;
+
+  const [student, pkg] = await Promise.all([
+    db.orm.public.User.where({ id: studentId }).first(),
+    db.orm.public.QuizPackage.where({ id: packageId }).first(),
+  ]);
+  if (!pkg) throw new Error('Paket kuis tidak ditemukan');
+
+  const [pages, categories] = await Promise.all([
+    pkg.pageId ? db.orm.public.Page.where({ id: pkg.pageId }).all() : Promise.resolve([]),
+    db.orm.public.MaterialCategory.all(),
+  ]);
+  const pageMap = new Map(pages.map(p => [p.id, p]));
+  const categoryMap = new Map(categories.map(c => [c.id, c]));
+
+  const { candidateCourseIds } = resolvePackageCourseIds(pkg, pageMap, categoryMap);
+  const allowed = candidateCourseIds.some(cId => isClassAllowedForCourse(scope, cId, student?.classId));
+  if (!allowed) {
+    throw new Error('FORBIDDEN');
+  }
+}
+
 export async function getQuizReports(params: {
   classId?: string;
   packageId?: string;
@@ -56,8 +114,9 @@ export async function getQuizReports(params: {
   limit?: number;
   reviewFilter?: 'ALL' | 'NEED_REVIEW' | 'HAS_ESSAY' | 'GRADED' | 'NO_ESSAY';
   teacherId?: string;
+  scope?: TeacherScope;
 }): Promise<QuizReportsResponse> {
-  const { classId, packageId, courseId, search, page = 1, limit = 50, reviewFilter = 'ALL', teacherId } = params;
+  const { classId, packageId, courseId, search, page = 1, limit = 50, reviewFilter = 'ALL', teacherId, scope } = params;
 
   // 1. Fetch reference collections including questions for essay detection
   const [classrooms, categories, pages, quizPackages, quizVariants, allStudents, allQuestions, courses, allStudentCourses, allAnswers] = await Promise.all([
@@ -117,8 +176,11 @@ export async function getQuizReports(params: {
     attemptAnswerMap.get(ans.quizAttemptId)!.push(ans);
   }
 
-  // Filter students if classId provided
+  // Filter students if classId provided (and enforce scope class boundary)
   let targetStudents = allStudents;
+  if (scope && !scope.isUnrestricted) {
+    targetStudents = targetStudents.filter(s => s.classId && scope.allowedClassIds.has(s.classId));
+  }
   if (classId) {
     targetStudents = targetStudents.filter(s => s.classId === classId);
   }
@@ -130,39 +192,37 @@ export async function getQuizReports(params: {
     targetVariants = targetVariants.filter(v => v.quizPackageId === packageId);
   }
 
-  // Teacher Filter
-  if (teacherId) {
+  // Teacher / Scope Filter (includes both page-linked AND standalone course packages)
+  if (scope && !scope.isUnrestricted) {
+    const validPackageIds = new Set(
+      quizPackages
+        .filter(p => isPackageAllowedForScope(scope, p, pageMap, categoryMap))
+        .map(p => p.id)
+    );
+    targetVariants = targetVariants.filter(v => validPackageIds.has(v.quizPackageId));
+  } else if (teacherId) {
     const teacherCourses = await db.orm.public.CourseTeacher.where({ teacherId }).all();
     const validCourseIds = new Set(teacherCourses.map(c => c.courseId));
-    
-    // valid categories
-    const validCategoryIds = new Set(
-      categories.filter(c => c.courseId && validCourseIds.has(c.courseId)).map(c => c.id)
-    );
-
-    // valid pages
-    const validPageIds = new Set(
-      pages.filter(p => validCategoryIds.has(p.categoryId)).map(p => p.id)
-    );
-
-    // valid packages
     const validPackageIds = new Set(
-      quizPackages.filter(p => p.pageId && validPageIds.has(p.pageId)).map(p => p.id)
+      quizPackages
+        .filter(p => {
+          const { candidateCourseIds } = resolvePackageCourseIds(p, pageMap, categoryMap);
+          return candidateCourseIds.some(cId => validCourseIds.has(cId));
+        })
+        .map(p => p.id)
     );
-
     targetVariants = targetVariants.filter(v => validPackageIds.has(v.quizPackageId));
   }
 
-  // Course Filter (For Superadmin)
+  // Course Filter
   if (courseId) {
-    const validCategoryIds = new Set(
-      categories.filter(c => c.courseId === courseId).map(c => c.id)
-    );
-    const validPageIds = new Set(
-      pages.filter(p => validCategoryIds.has(p.categoryId)).map(p => p.id)
-    );
     const validPackageIds = new Set(
-      quizPackages.filter(p => p.pageId && validPageIds.has(p.pageId)).map(p => p.id)
+      quizPackages
+        .filter(p => {
+          const { candidateCourseIds } = resolvePackageCourseIds(p, pageMap, categoryMap);
+          return candidateCourseIds.includes(courseId);
+        })
+        .map(p => p.id)
     );
     targetVariants = targetVariants.filter(v => validPackageIds.has(v.quizPackageId));
   }
@@ -172,7 +232,16 @@ export async function getQuizReports(params: {
   // 2. Fetch attempts
   const allAttempts = await db.orm.public.QuizAttempt.all();
   const relevantAttempts = allAttempts.filter(a => {
-    return targetStudentIds.has(a.studentId) && targetVariantIds.has(a.quizVariantId);
+    if (!targetStudentIds.has(a.studentId) || !targetVariantIds.has(a.quizVariantId)) return false;
+    if (scope && !scope.isUnrestricted) {
+      const student = studentMap.get(a.studentId);
+      const variant = variantMap.get(a.quizVariantId);
+      const pkg = variant ? packageMap.get(variant.quizPackageId) : null;
+      if (!pkg || !student?.classId) return false;
+      const { candidateCourseIds } = resolvePackageCourseIds(pkg, pageMap, categoryMap);
+      return candidateCourseIds.some(cId => isClassAllowedForCourse(scope, cId, student.classId));
+    }
+    return true;
   });
 
   // ponytail: Auto-sync setiap status 'GRADED' yang lulus KKM menjadi 'COMPLETED' (Sukses)
@@ -209,26 +278,37 @@ export async function getQuizReports(params: {
     const pkg = packageMap.get(packageId);
     const pageObj = pkg?.pageId ? pageMap.get(pkg.pageId) : null;
     const cat = pageObj ? categoryMap.get(pageObj.categoryId) : null;
-    const catName = cat ? cat.name : 'Umum';
-    const cId = cat?.courseId || pkg?.courseId || null;
-    const courseId = cId;
-    const courseName = courseId ? (courseMap.get(courseId) || 'Tanpa Mata Pelajaran') : 'Tanpa Mata Pelajaran';
+    const catName = cat ? cat.name : (pkg && !pkg.pageId ? 'Tugas Mandiri' : 'Umum');
+    const resolvedCourses = pkg ? resolvePackageCourseIds(pkg, pageMap, categoryMap) : { primaryCourseId: null, candidateCourseIds: [] };
+    const resolvedCourseId = resolvedCourses.primaryCourseId;
+    const courseName = resolvedCourseId ? (courseMap.get(resolvedCourseId) || 'Tanpa Mata Pelajaran') : 'Tanpa Mata Pelajaran';
     const pkgTitle = pkg ? pkg.title : 'Kuis';
     const pageTitle = pageObj ? pageObj.title : pkgTitle;
     const passingScore = pkg?.passingScore || 70;
     const className = classMap.get(classId) || 'Kelas Tidak Diketahui';
 
-    const assignments = await db.orm.public.QuizAssignment.where({ quizPackageId: packageId }).all();
+    const canAccessClassAndPackage =
+      !scope ||
+      scope.isUnrestricted ||
+      (Boolean(pkg) && resolvedCourses.candidateCourseIds.some(cId => isClassAllowedForCourse(scope, cId, classId)));
 
-    // Filter students by course enrollment
-    const enrolledStudentIds = new Set(
-      courseId 
-        ? allStudentCourses.filter(cs => cs.courseId === courseId).map(cs => cs.studentId)
-        : targetStudents.map(s => s.id) // If no course, everyone is enrolled
-    );
-    const validStudents = targetStudents.filter(s => enrolledStudentIds.has(s.id));
+    if (!canAccessClassAndPackage || !pkg) {
+      reportItems = [];
+    } else {
+      const assignments = await db.orm.public.QuizAssignment.where({ quizPackageId: packageId }).all();
+      const attemptStudentIds = new Set(relevantAttempts.map(a => a.studentId));
 
-    reportItems = validStudents.map(student => {
+      // Filter students by course enrollment (tetap tampilkan jika sudah punya attempt)
+      const enrolledStudentIds = new Set(
+        resolvedCourseId
+          ? allStudentCourses.filter(cs => cs.courseId === resolvedCourseId).map(cs => cs.studentId)
+          : targetStudents.map(s => s.id)
+      );
+      const validStudents = targetStudents.filter(
+        s => enrolledStudentIds.has(s.id) || attemptStudentIds.has(s.id)
+      );
+
+      reportItems = validStudents.map(student => {
       const attempt = relevantAttempts.find(a => a.studentId === student.id);
       const assignment = assignments.find(a => a.studentId === student.id);
       const score = attempt?.score ?? null;
@@ -274,7 +354,8 @@ export async function getQuizReports(params: {
         essayCount,
         totalQuestions,
       };
-    });
+      });
+    }
   } else {
     // CASE 2: General view (All classes and/or all packages, or only one filter active)
     // Map all relevant attempts into report items
@@ -629,6 +710,7 @@ export interface BulkResetParams {
   courseId?: string;
   targetMode: 'FAILED_KKM' | 'IN_PROGRESS' | 'ALL';
   teacherId?: string;
+  scope?: TeacherScope;
 }
 
 export interface BulkResetTarget {
@@ -736,31 +818,37 @@ async function findBulkResetTargets(params: BulkResetParams): Promise<{
     throw new Error('Harap pilih minimal salah satu filter (Kelas atau Materi) untuk melakukan reset massal.');
   }
 
-  const [classrooms, allPackages, allVariants, allStudents, allAttempts] = await Promise.all([
+  const [classrooms, allPackages, allVariants, allStudents, allAttempts, pages, categories] = await Promise.all([
     db.orm.public.Classroom.all(),
     db.orm.public.QuizPackage.all(),
     db.orm.public.QuizVariant.all(),
     db.orm.public.User.where({ role: 'MURID' }).all(),
-    db.orm.public.QuizAttempt.all()
+    db.orm.public.QuizAttempt.all(),
+    db.orm.public.Page.all(),
+    db.orm.public.MaterialCategory.all(),
   ]);
 
   const classMap = new Map(classrooms.map(c => [c.id, c.name]));
   const studentMap = new Map(allStudents.map(s => [s.id, s]));
   const packageMap = new Map(allPackages.map(p => [p.id, p]));
   const variantMap = new Map(allVariants.map(v => [v.id, v]));
+  const pageMap = new Map(pages.map(p => [p.id, p]));
+  const categoryMap = new Map(categories.map(c => [c.id, c]));
 
   // Filter Target Packages
   let targetPackages = allPackages;
   if (params.packageId) {
     targetPackages = targetPackages.filter(p => p.id === params.packageId);
+  }
+  if (params.scope && !params.scope.isUnrestricted) {
+    targetPackages = targetPackages.filter(p => isPackageAllowedForScope(params.scope!, p, pageMap, categoryMap));
   } else if (params.teacherId) {
     const teacherCourses = await db.orm.public.CourseTeacher.where({ teacherId: params.teacherId }).all();
     const validCourseIds = new Set(teacherCourses.map(c => c.courseId));
-    const pages = await db.orm.public.Page.all();
-    const categories = await db.orm.public.MaterialCategory.all();
-    const validCategoryIds = new Set(categories.filter(c => c.courseId && validCourseIds.has(c.courseId)).map(c => c.id));
-    const validPageIds = new Set(pages.filter(p => validCategoryIds.has(p.categoryId)).map(p => p.id));
-    targetPackages = targetPackages.filter(p => p.pageId && validPageIds.has(p.pageId));
+    targetPackages = targetPackages.filter(p => {
+      const { candidateCourseIds } = resolvePackageCourseIds(p, pageMap, categoryMap);
+      return candidateCourseIds.some(cId => validCourseIds.has(cId));
+    });
   }
 
   const targetPackageIds = new Set(targetPackages.map(p => p.id));
@@ -769,15 +857,27 @@ async function findBulkResetTargets(params: BulkResetParams): Promise<{
 
   // Filter Target Students
   let targetStudents = allStudents;
+  if (params.scope && !params.scope.isUnrestricted) {
+    targetStudents = targetStudents.filter(s => s.classId && params.scope!.allowedClassIds.has(s.classId));
+  }
   if (params.classId) {
     targetStudents = targetStudents.filter(s => s.classId === params.classId);
   }
   const targetStudentIds = new Set(targetStudents.map(s => s.id));
 
-  // Filter Attempts
-  const relevantAttempts = allAttempts.filter(a => 
-    targetStudentIds.has(a.studentId) && targetVariantIds.has(a.quizVariantId)
-  );
+  // Filter Attempts (per-course class boundary check)
+  const relevantAttempts = allAttempts.filter(a => {
+    if (!targetStudentIds.has(a.studentId) || !targetVariantIds.has(a.quizVariantId)) return false;
+    if (params.scope && !params.scope.isUnrestricted) {
+      const student = studentMap.get(a.studentId);
+      const variant = variantMap.get(a.quizVariantId);
+      const pkg = variant ? packageMap.get(variant.quizPackageId) : null;
+      if (!pkg || !student?.classId) return false;
+      const { candidateCourseIds } = resolvePackageCourseIds(pkg, pageMap, categoryMap);
+      return candidateCourseIds.some(cId => isClassAllowedForCourse(params.scope!, cId, student.classId));
+    }
+    return true;
+  });
 
   const targets: BulkResetTarget[] = [];
   for (const attempt of relevantAttempts) {
@@ -1243,6 +1343,7 @@ export async function getUnfinishedStudentsReport(params: {
   page?: number;
   limit?: number;
   teacherId?: string;
+  scope?: TeacherScope;
 }): Promise<UnfinishedStudentsResponse> {
   const {
     classId,
@@ -1253,7 +1354,8 @@ export async function getUnfinishedStudentsReport(params: {
     search,
     page = 1,
     limit = 50,
-    teacherId
+    teacherId,
+    scope
   } = params;
 
   // 1. Fetch collections in parallel
@@ -1286,31 +1388,45 @@ export async function getUnfinishedStudentsReport(params: {
   // Lookup maps
   const classMap = new Map(classrooms.map(c => [c.id, c.name]));
   const categoryMap = new Map(allCategories.map(c => [c.id, c.name]));
+  const categoryObjMap = new Map(allCategories.map(c => [c.id, c]));
   const pageMap = new Map(allPages.map(p => [p.id, p]));
 
-  // Teacher & Course Filter
-  let validCategoryIds = new Set(allCategories.map(c => c.id));
-  if (teacherId) {
-    const teacherCourseIds = new Set(allCourseTeachers.filter(t => t.teacherId === teacherId).map(t => t.courseId));
-    validCategoryIds = new Set(allCategories.filter(c => c.courseId && teacherCourseIds.has(c.courseId)).map(c => c.id));
+  // Teacher & Course Filter (supports both page-linked AND standalone courseId packages)
+  let validCourseIds: Set<string> | null = null;
+  if (scope && !scope.isUnrestricted) {
+    validCourseIds = new Set(scope.allowedCourseIds);
+  } else if (teacherId) {
+    validCourseIds = new Set(allCourseTeachers.filter(t => t.teacherId === teacherId).map(t => t.courseId));
   }
   if (courseId) {
-    // If courseId is provided, intersect with validCategoryIds
-    validCategoryIds = new Set(
-      allCategories.filter(c => c.courseId === courseId && validCategoryIds.has(c.id)).map(c => c.id)
-    );
+    validCourseIds = validCourseIds
+      ? new Set(validCourseIds.has(courseId) ? [courseId] : [])
+      : new Set([courseId]);
   }
+
+  const validCategoryIds = new Set(
+    allCategories
+      .filter(c => !validCourseIds || (c.courseId && validCourseIds.has(c.courseId)))
+      .map(c => c.id)
+  );
   const filteredPages = allPages.filter(p => validCategoryIds.has(p.categoryId));
   const filteredPageIds = new Set(filteredPages.map(p => p.id));
-  const filteredPackages = allPackages.filter(p => p.pageId && filteredPageIds.has(p.pageId));
+  const filteredPackages = allPackages.filter(p => {
+    if (p.pageId && filteredPageIds.has(p.pageId)) return true;
+    if (!p.pageId && p.courseId && (!validCourseIds || validCourseIds.has(p.courseId))) return true;
+    return false;
+  });
 
   // Active quiz packages (filter by packageId if specified)
   const targetPackages = packageId 
     ? filteredPackages.filter(p => p.id === packageId)
     : filteredPackages;
 
-  // Filter students by class if specified
+  // Filter students by class & teacher class scope
   let targetStudents = allStudents;
+  if (scope && !scope.isUnrestricted) {
+    targetStudents = targetStudents.filter(s => s.classId && scope.allowedClassIds.has(s.classId));
+  }
   if (classId) {
     targetStudents = targetStudents.filter(s => s.classId === classId);
   }
@@ -1349,13 +1465,24 @@ export async function getUnfinishedStudentsReport(params: {
     const studentAccesses = accessByStudent.get(student.id) || [];
     const studentAttempts = attemptsByStudent.get(student.id) || [];
 
-    // Filter pages and packages by student's courses
-    const studentCourseIds = allStudentCourses.filter(cs => cs.studentId === student.id).map(cs => cs.courseId);
-    const studentCategories = allCategories.filter(c => c.courseId && studentCourseIds.includes(c.courseId));
+    // Filter pages and packages by student's courses (and teacher's class assignment for each course)
+    const studentCourseIds = allStudentCourses
+      .filter(cs => cs.studentId === student.id)
+      .map(cs => cs.courseId)
+      .filter(cId => !scope || scope.isUnrestricted || isClassAllowedForCourse(scope, cId, student.classId));
+    const studentCourseIdSet = new Set(studentCourseIds);
+    const studentCategories = allCategories.filter(c => c.courseId && studentCourseIdSet.has(c.courseId));
     const studentCategoryIds = new Set(studentCategories.map(c => c.id));
     const studentPages = filteredPages.filter(p => studentCategoryIds.has(p.categoryId));
     const studentPageIds = new Set(studentPages.map(p => p.id));
-    const studentPackages = targetPackages.filter(pkg => pkg.pageId && studentPageIds.has(pkg.pageId));
+    const studentPackages = targetPackages.filter(pkg => {
+      if (pkg.pageId && studentPageIds.has(pkg.pageId)) return true;
+      if (!pkg.pageId) {
+        const { candidateCourseIds } = resolvePackageCourseIds(pkg, pageMap, categoryObjMap);
+        return candidateCourseIds.some(cId => studentCourseIdSet.has(cId));
+      }
+      return false;
+    });
 
     // Helper: is page unlocked for this student?
     const isPageUnlocked = (p: typeof filteredPages[0]): boolean => {
@@ -1560,11 +1687,12 @@ export async function getTaskRecapList(params: {
   classId?: string;
   courseId?: string;
   teacherId?: string;
+  scope?: TeacherScope;
 }): Promise<TaskRecapResponse> {
-  const { classId, courseId, teacherId } = params;
+  const { classId, courseId, teacherId, scope } = params;
 
   // Fetch all data we need in parallel
-  const [allPackages, allPages, allCategories, courses, allAttempts, allStudents, allStudentCourses, allVariants] = await Promise.all([
+  const [allPackages, allPages, allCategories, courses, allAttempts, allStudents, allStudentCourses, allVariants, allQuestions, allAnswers] = await Promise.all([
     db.orm.public.QuizPackage.all(),
     db.orm.public.Page.all(),
     db.orm.public.MaterialCategory.all(),
@@ -1573,12 +1701,37 @@ export async function getTaskRecapList(params: {
     db.orm.public.User.where({ role: 'MURID' }).all(),
     db.orm.public.CourseStudent.all(),
     db.orm.public.QuizVariant.all(),
+    db.orm.public.Question.all(),
+    db.orm.public.StudentAnswer.all(),
   ]);
 
   const packageMap = new Map(allPackages.map(p => [p.id, p]));
   const pageMap = new Map(allPages.map(p => [p.id, p]));
   const catMap = new Map(allCategories.map(c => [c.id, c]));
   const courseMap = new Map(courses.map(c => [c.id, c.name]));
+
+  const isManualReview = (q: any) =>
+    q.questionType === 'ESSAY' ||
+    (q.questionType === 'CODE_CHALLENGE' && q.codeLanguage?.toLowerCase() !== 'sql' && !(q.codeLanguage?.toLowerCase() === 'php' && Boolean(q.testCases)));
+
+  const variantQuestionMap = new Map<string, { total: number; essayCount: number; essayQuestionIds: string[] }>();
+  for (const q of allQuestions) {
+    const cur = variantQuestionMap.get(q.quizVariantId) || { total: 0, essayCount: 0, essayQuestionIds: [] };
+    cur.total += 1;
+    if (isManualReview(q)) {
+      cur.essayCount += 1;
+      cur.essayQuestionIds.push(q.id);
+    }
+    variantQuestionMap.set(q.quizVariantId, cur);
+  }
+
+  const attemptAnswerMap = new Map<string, any[]>();
+  for (const ans of allAnswers) {
+    const list = attemptAnswerMap.get(ans.quizAttemptId) || [];
+    list.push(ans);
+    attemptAnswerMap.set(ans.quizAttemptId, list);
+  }
+
   // Build classMap from all classrooms
   const allClassrooms = await db.orm.public.Classroom.all();
   const classMap = new Map(allClassrooms.map(c => [c.id, c.name]));
@@ -1604,44 +1757,27 @@ export async function getTaskRecapList(params: {
 
   // Filter students
   let targetStudents = allStudents;
+  if (scope && !scope.isUnrestricted) {
+    targetStudents = targetStudents.filter(s => s.classId && scope.allowedClassIds.has(s.classId));
+  }
   if (classId) {
     targetStudents = targetStudents.filter(s => s.classId === classId);
   }
 
-  // Teacher filter: only packages belonging to teacher's courses
-  let validPackageIds: Set<string> | null = null;
-  if (teacherId) {
+  // Teacher / Scope filter: includes both page-linked AND standalone packages
+  let validCourseIds: Set<string> | null = null;
+  if (scope && !scope.isUnrestricted) {
+    validCourseIds = new Set(scope.allowedCourseIds);
+  } else if (teacherId) {
     const teacherCourses = await db.orm.public.CourseTeacher.where({ teacherId }).all();
-    const validCourseIds = new Set(teacherCourses.map(c => c.courseId));
-    const validCategoryIds = new Set(
-      allCategories.filter(c => c.courseId && validCourseIds.has(c.courseId)).map(c => c.id)
-    );
-    const validPageIds = new Set(
-      allPages.filter(p => validCategoryIds.has(p.categoryId)).map(p => p.id)
-    );
-    validPackageIds = new Set(
-      allPackages.filter(p => p.pageId && validPageIds.has(p.pageId)).map(p => p.id)
-    );
-  }
-
-  // Course filter (for Superadmin)
-  let courseFilterPackageIds: Set<string> | null = null;
-  if (courseId) {
-    const validCategoryIds = new Set(
-      allCategories.filter(c => c.courseId === courseId).map(c => c.id)
-    );
-    const validPageIds = new Set(
-      allPages.filter(p => validCategoryIds.has(p.categoryId)).map(p => p.id)
-    );
-    courseFilterPackageIds = new Set(
-      allPackages.filter(p => p.pageId && validPageIds.has(p.pageId)).map(p => p.id)
-    );
+    validCourseIds = new Set(teacherCourses.map(c => c.courseId));
   }
 
   const activePackages = allPackages.filter(p => {
     if (!p.isActive) return false;
-    if (validPackageIds && !validPackageIds.has(p.id)) return false;
-    if (courseFilterPackageIds && !courseFilterPackageIds.has(p.id)) return false;
+    const { candidateCourseIds } = resolvePackageCourseIds(p, pageMap, catMap);
+    if (validCourseIds && !candidateCourseIds.some(cId => validCourseIds!.has(cId))) return false;
+    if (courseId && !candidateCourseIds.includes(courseId)) return false;
     return true;
   });
 
@@ -1651,19 +1787,27 @@ export async function getTaskRecapList(params: {
     const page = pkg.pageId ? pageMap.get(pkg.pageId) : null;
     if (pkg.pageId && !page) continue;
     const category = page ? catMap.get(page.categoryId) : null;
-    const catName = category?.name || 'Umum';
-    const cId = category?.courseId || pkg.courseId || null;
+    const catName = category?.name || (!pkg.pageId ? 'Tugas Mandiri' : 'Umum');
+    const { primaryCourseId, candidateCourseIds } = resolvePackageCourseIds(pkg, pageMap, catMap);
+    const cId = primaryCourseId;
     const courseName = cId ? (courseMap.get(cId) || 'Tanpa Mata Pelajaran') : 'Tanpa Mata Pelajaran';
     const passingScore = pkg.passingScore || 70;
 
-    // Filter students by course enrollment if package is tied to a course
+    // Filter students by course enrollment & teacher's per-course class assignment
     const enrolledStudentIds = cId
       ? new Set(allStudentCourses.filter(cs => cs.courseId === cId).map(cs => cs.studentId))
       : null;
 
-    const pkgStudents = enrolledStudentIds
-      ? targetStudents.filter(s => enrolledStudentIds.has(s.id))
-      : targetStudents;
+    const pkgStudents = targetStudents.filter(s => {
+      if (scope && !scope.isUnrestricted) {
+        const classAllowed = candidateCourseIds.some(cid => isClassAllowedForCourse(scope, cid, s.classId));
+        if (!classAllowed) return false;
+      }
+      if (enrolledStudentIds && !enrolledStudentIds.has(s.id)) {
+        return Boolean(attemptLookup.get(`${s.id}:${pkg.id}`));
+      }
+      return true;
+    });
 
     // Build student attempt list — cross-reference ALL pkgStudents with attempts
     const studentAttempts: QuizReportItem[] = pkgStudents.map(student => {
@@ -1671,6 +1815,18 @@ export async function getTaskRecapList(params: {
       const attempt = attemptLookup.get(key);
       const score = attempt?.score ?? null;
       const isPassed = score !== null && score >= passingScore;
+      const variantInfo = attempt?.quizVariantId ? variantQuestionMap.get(attempt.quizVariantId) : null;
+      const essayCount = variantInfo?.essayCount || 0;
+      const hasEssay = essayCount > 0;
+      const totalQuestions = variantInfo?.total || 0;
+      let needsReview = false;
+      if (hasEssay && attempt && attempt.status !== 'IN_PROGRESS' && attempt.status !== 'GRADED') {
+        const attemptAnswers = attemptAnswerMap.get(attempt.id) || [];
+        needsReview = (variantInfo?.essayQuestionIds || []).some(qId => {
+          const ans = attemptAnswers.find(a => a.questionId === qId);
+          return !ans || ans.isCorrect === null;
+        });
+      }
 
       return {
         id: attempt?.id || `unstarted-${student.id}-${pkg.id}`,
@@ -1692,10 +1848,10 @@ export async function getTaskRecapList(params: {
         finishedAt: attempt?.finishedAt || null,
         assignedVariantId: attempt?.quizVariantId || null,
         isPassed,
-        hasEssay: false,
-        needsReview: false,
-        essayCount: 0,
-        totalQuestions: 0,
+        hasEssay,
+        needsReview,
+        essayCount,
+        totalQuestions,
       };
     });
 

@@ -1,6 +1,39 @@
 import { db } from '@/prisma/db';
 import { QuizFormValues, QuizVariantFormValues } from './quiz.schema';
 import { randomUUID } from 'crypto';
+import { isPackageAllowedForScope, type TeacherScope } from '@/modules/course/teacher-scope.service';
+
+export async function getReportFilterPackages(scope: TeacherScope) {
+  const [quizPackages, pages, categories] = await Promise.all([
+    db.orm.public.QuizPackage.all(),
+    db.orm.public.Page.all(),
+    db.orm.public.MaterialCategory.all(),
+  ]);
+  const pageMap = new Map(pages.map(p => [p.id, p]));
+  const categoryMap = new Map(categories.map(c => [c.id, c]));
+
+  return quizPackages
+    .filter(pkg => isPackageAllowedForScope(scope, pkg, pageMap, categoryMap))
+    .map(pkg => {
+      const page = pkg.pageId ? pageMap.get(pkg.pageId) : null;
+      const cat = page ? categoryMap.get(page.categoryId) : null;
+      return {
+        id: pkg.id,
+        title: pkg.title,
+        pageTitle: page?.title || pkg.title,
+        categoryName: cat?.name || 'Tugas Mandiri',
+        categoryOrderIndex: cat?.orderIndex ?? 999999,
+        pageOrderIndex: page?.orderIndex ?? 999999,
+      };
+    })
+    .sort((a, b) => {
+      if (a.categoryOrderIndex !== b.categoryOrderIndex) return a.categoryOrderIndex - b.categoryOrderIndex;
+      const catCmp = a.categoryName.localeCompare(b.categoryName);
+      if (catCmp !== 0) return catCmp;
+      if (a.pageOrderIndex !== b.pageOrderIndex) return a.pageOrderIndex - b.pageOrderIndex;
+      return a.title.localeCompare(b.title);
+    });
+}
 
 export async function getQuizzesWithPageStatus(teacherId?: string) {
   let pages = await db.orm.public.Page.all();

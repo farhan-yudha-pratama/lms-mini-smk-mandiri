@@ -6,6 +6,7 @@ import Link from 'next/link';
 import {
   assignTeacherToCourse,
   removeTeacherFromCourse,
+  updateTeacherCourseClassesAction,
   assignMaterialCategoryToCourse,
   removeMaterialCategoryFromCourse,
 } from '@/app/actions/course';
@@ -17,6 +18,12 @@ interface TeacherItem {
   email: string;
   role?: string;
   avatar?: string | null;
+  classIds?: string[];
+}
+
+interface ClassroomItem {
+  id: string;
+  name: string;
 }
 
 interface CategoryItem {
@@ -39,6 +46,7 @@ interface AssignClientProps {
   };
   assignedTeachers: TeacherItem[];
   availableTeachers: TeacherItem[];
+  classrooms: ClassroomItem[];
   assignedCategories: CategoryItem[];
   unassignedCategories: CategoryItem[];
   stats: {
@@ -54,6 +62,7 @@ export default function AssignClient({
   course,
   assignedTeachers,
   availableTeachers,
+  classrooms,
   assignedCategories,
   unassignedCategories,
   stats,
@@ -71,15 +80,26 @@ export default function AssignClient({
 
   // Form selection states
   const [selectedTeacherId, setSelectedTeacherId] = useState('');
+  const [selectedClassIds, setSelectedClassIds] = useState<string[]>([]);
   const [selectedCategoryId, setSelectedCategoryId] = useState('');
 
   // Loading states
   const [loadingTeacher, setLoadingTeacher] = useState(false);
   const [loadingCategory, setLoadingCategory] = useState(false);
 
-  // Custom confirmation modals (Bottom sheet on mobile)
+  // Custom confirmation & edit modals (Bottom sheet on mobile)
   const [teacherToDelete, setTeacherToDelete] = useState<TeacherItem | null>(null);
+  const [teacherToEditClasses, setTeacherToEditClasses] = useState<TeacherItem | null>(null);
+  const [editingClassIds, setEditingClassIds] = useState<string[]>([]);
   const [categoryToRemove, setCategoryToRemove] = useState<CategoryItem | null>(null);
+
+  const classroomNameMap = useMemo(
+    () => new Map(classrooms.map((c) => [c.id, c.name])),
+    [classrooms]
+  );
+
+  const toggleClassIdInList = (list: string[], id: string) =>
+    list.includes(id) ? list.filter((item) => item !== id) : [...list, id];
 
   // In-page Toast notification
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -140,17 +160,46 @@ export default function AssignClient({
     if (!selectedTeacherId) return;
     setLoadingTeacher(true);
     try {
-      const res = await assignTeacherToCourse(courseId, selectedTeacherId);
+      const res = await assignTeacherToCourse(courseId, selectedTeacherId, selectedClassIds);
       if (res && (res as any).success) {
         const teacher = availableTeachers.find((t) => t.id === selectedTeacherId);
         showToast('success', `Guru ${teacher?.name || ''} berhasil ditugaskan sebagai pengampu.`);
         setSelectedTeacherId('');
+        setSelectedClassIds([]);
         router.refresh();
       } else {
         showToast('error', 'Gagal menugaskan guru.');
       }
     } catch (err: any) {
       showToast('error', err?.message || 'Terjadi kesalahan saat menugaskan guru.');
+    } finally {
+      setLoadingTeacher(false);
+    }
+  };
+
+  const handleOpenEditClasses = (teacher: TeacherItem) => {
+    setTeacherToEditClasses(teacher);
+    setEditingClassIds(teacher.classIds || []);
+  };
+
+  const handleSaveTeacherClasses = async () => {
+    if (!teacherToEditClasses) return;
+    setLoadingTeacher(true);
+    try {
+      const res = await updateTeacherCourseClassesAction(
+        courseId,
+        teacherToEditClasses.id,
+        editingClassIds
+      );
+      if (res.success) {
+        showToast('success', `Penugasan kelas untuk ${teacherToEditClasses.name} berhasil disimpan.`);
+        setTeacherToEditClasses(null);
+        router.refresh();
+      } else {
+        showToast('error', res.message || 'Gagal memperbarui penugasan kelas.');
+      }
+    } catch (err: any) {
+      showToast('error', err?.message || 'Terjadi kesalahan saat memperbarui penugasan kelas.');
     } finally {
       setLoadingTeacher(false);
     }
@@ -394,8 +443,8 @@ export default function AssignClient({
           </div>
 
           {/* Form Assign Guru Baru */}
-          <div className="bg-gray-50/90 border border-gray-200 rounded-2xl p-4 sm:p-5">
-            <label className="block text-xs sm:text-sm font-bold text-gray-800 mb-2">
+          <div className="bg-gray-50/90 border border-gray-200 rounded-2xl p-4 sm:p-5 space-y-3">
+            <label className="block text-xs sm:text-sm font-bold text-gray-800">
               Tugaskan Guru Baru ke Mata Pelajaran Ini
             </label>
             <div className="flex flex-col sm:flex-row gap-2.5">
@@ -429,9 +478,61 @@ export default function AssignClient({
                 <span>Tugaskan Guru</span>
               </button>
             </div>
-            <p className="text-[11px] text-gray-400 mt-2 flex items-center gap-1">
+
+            {classrooms.length > 0 && (
+              <div className="bg-white border border-gray-200 rounded-xl p-3 space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-semibold text-gray-700">
+                    Kelas yang Diajar ({selectedClassIds.length}/{classrooms.length} dipilih)
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedClassIds(classrooms.map((c) => c.id))}
+                      className="text-[11px] font-semibold text-blue-600 hover:text-blue-800"
+                    >
+                      Pilih Semua Kelas
+                    </button>
+                    {selectedClassIds.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedClassIds([])}
+                        className="text-[11px] font-semibold text-gray-500 hover:text-gray-700"
+                      >
+                        Kosongkan
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {classrooms.map((cls) => {
+                    const checked = selectedClassIds.includes(cls.id);
+                    return (
+                      <label
+                        key={cls.id}
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-medium cursor-pointer transition-colors ${
+                          checked
+                            ? 'bg-blue-50 border-blue-300 text-blue-800'
+                            : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => setSelectedClassIds((prev) => toggleClassIdInList(prev, cls.id))}
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span>{cls.name}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            <p className="text-[11px] text-gray-400 flex items-center gap-1">
               <span className="material-symbols-outlined text-xs">info</span>
-              <span>Guru yang baru ditugaskan akan langsung menerima notifikasi real-time di dasbor mereka.</span>
+              <span>Guru hanya dapat melihat dan menilai siswa dari kelas yang dipilih pada mata pelajaran ini.</span>
             </p>
           </div>
 
@@ -513,17 +614,49 @@ export default function AssignClient({
                           </span>
                         </div>
                         <p className="text-[11px] sm:text-xs text-gray-500 truncate mt-0.5">{t.email}</p>
+                        <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                          {t.role === 'SUPERADMIN' ? (
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                              Akses Semua Kelas (Superadmin)
+                            </span>
+                          ) : t.classIds && t.classIds.length > 0 ? (
+                            t.classIds.map((cId) => (
+                              <span
+                                key={cId}
+                                className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200"
+                              >
+                                {classroomNameMap.get(cId) || 'Kelas'}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">
+                              Belum ada kelas ditugaskan
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
 
-                    <button
-                      onClick={() => setTeacherToDelete(t)}
-                      className="h-9 px-3 text-xs font-semibold text-red-600 hover:text-red-700 bg-red-50/80 hover:bg-red-100 border border-red-200 rounded-xl transition-all flex items-center gap-1.5 shrink-0 active:scale-95 shadow-2xs"
-                      title={`Cabut hak pengampu ${t.name}`}
-                    >
-                      <span className="material-symbols-outlined text-sm sm:text-base">person_remove</span>
-                      <span className="hidden sm:inline">Cabut Akses</span>
-                    </button>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {t.role !== 'SUPERADMIN' && (
+                        <button
+                          onClick={() => handleOpenEditClasses(t)}
+                          className="h-9 px-3 text-xs font-semibold text-blue-700 hover:text-blue-800 bg-blue-50/80 hover:bg-blue-100 border border-blue-200 rounded-xl transition-all flex items-center gap-1.5 active:scale-95 shadow-2xs"
+                          title={`Atur kelas ajar untuk ${t.name}`}
+                        >
+                          <span className="material-symbols-outlined text-sm sm:text-base">meeting_room</span>
+                          <span className="hidden sm:inline">Atur Kelas</span>
+                        </button>
+                      )}
+                      <button
+                        onClick={() => setTeacherToDelete(t)}
+                        className="h-9 px-3 text-xs font-semibold text-red-600 hover:text-red-700 bg-red-50/80 hover:bg-red-100 border border-red-200 rounded-xl transition-all flex items-center gap-1.5 shrink-0 active:scale-95 shadow-2xs"
+                        title={`Cabut hak pengampu ${t.name}`}
+                      >
+                        <span className="material-symbols-outlined text-sm sm:text-base">person_remove</span>
+                        <span className="hidden sm:inline">Cabut Akses</span>
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -702,6 +835,99 @@ export default function AssignClient({
                 ))}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================== */}
+      {/* MODAL: ATUR KELAS GURU PENGAMPU */}
+      {/* ============================================================== */}
+      {teacherToEditClasses && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 transition-all">
+          <div className="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-2xl p-5 sm:p-6 shadow-2xl space-y-4 animate-in slide-in-from-bottom-6 sm:slide-in-from-bottom-0 sm:fade-in duration-200">
+            <div className="w-12 h-1 bg-gray-200 rounded-full mx-auto sm:hidden mb-1"></div>
+
+            <div className="flex items-center gap-3 text-blue-600">
+              <div className="w-11 h-11 rounded-2xl bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-2xl">meeting_room</span>
+              </div>
+              <div className="min-w-0">
+                <h3 className="text-base sm:text-lg font-bold text-gray-900">Atur Kelas Ajar Guru</h3>
+                <p className="text-xs text-gray-500 truncate">{teacherToEditClasses.name} • {course.name}</p>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-semibold text-gray-700">
+                  Pilih Kelas ({editingClassIds.length}/{classrooms.length})
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEditingClassIds(classrooms.map((c) => c.id))}
+                    className="font-semibold text-blue-600 hover:text-blue-800"
+                  >
+                    Pilih Semua
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditingClassIds([])}
+                    className="font-semibold text-gray-500 hover:text-gray-700"
+                  >
+                    Kosongkan
+                  </button>
+                </div>
+              </div>
+
+              <div className="max-h-60 overflow-y-auto border border-gray-200 rounded-xl divide-y divide-gray-100">
+                {classrooms.length === 0 ? (
+                  <p className="p-4 text-xs text-gray-500 text-center">Belum ada kelas aktif tersedia.</p>
+                ) : (
+                  classrooms.map((cls) => {
+                    const checked = editingClassIds.includes(cls.id);
+                    return (
+                      <label
+                        key={cls.id}
+                        className="flex items-center justify-between px-3.5 py-2.5 hover:bg-gray-50 cursor-pointer text-xs sm:text-sm"
+                      >
+                        <span className="font-medium text-gray-800">{cls.name}</span>
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => setEditingClassIds((prev) => toggleClassIdInList(prev, cls.id))}
+                          className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                      </label>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+
+            <div className="flex flex-col-reverse sm:flex-row justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setTeacherToEditClasses(null)}
+                disabled={loadingTeacher}
+                className="w-full sm:w-auto h-11 sm:h-auto px-4 py-2.5 border border-gray-300 rounded-xl text-xs sm:text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveTeacherClasses}
+                disabled={loadingTeacher}
+                className="w-full sm:w-auto h-11 sm:h-auto inline-flex items-center justify-center gap-1.5 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs sm:text-sm font-semibold transition-colors shadow-sm active:scale-95"
+              >
+                {loadingTeacher ? (
+                  <span className="material-symbols-outlined text-base animate-spin">progress_activity</span>
+                ) : (
+                  <span className="material-symbols-outlined text-base">save</span>
+                )}
+                <span>Simpan Kelas</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

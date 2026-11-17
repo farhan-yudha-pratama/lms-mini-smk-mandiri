@@ -1,17 +1,37 @@
 import { db } from '@/prisma/db';
 import QuizListTable, { MappedPackage } from './QuizListTable';
 import Link from 'next/link';
+import { getSession } from '@/lib/session';
+import { hasAnyPermission } from '@/lib/permissions';
+import { redirect } from 'next/navigation';
+import { isPackageAllowedForScope, resolveTeacherScope } from '@/modules/course/teacher-scope.service';
 
 export const dynamic = 'force-dynamic';
 
 export default async function QuizzesPage() {
-  const allPackages = await db.orm.public.QuizPackage.all();
-  const courses = await db.orm.public.Course.all();
-  const pages = await db.orm.public.Page.all();
-  const categories = await db.orm.public.MaterialCategory.all();
-  const variants = await db.orm.public.QuizVariant.all();
-  
-  const mappedPackages: MappedPackage[] = allPackages.map(pkg => {
+  const session = await getSession();
+  if (!session || !hasAnyPermission(session, ['QUIZZES_VIEW', 'QUIZZES_MANAGE', 'QUIZZES_GRADE'])) {
+    redirect('/dashboard');
+  }
+
+  const scope = await resolveTeacherScope(session);
+
+  const [allPackages, courses, pages, categories, variants] = await Promise.all([
+    db.orm.public.QuizPackage.all(),
+    db.orm.public.Course.all(),
+    db.orm.public.Page.all(),
+    db.orm.public.MaterialCategory.all(),
+    db.orm.public.QuizVariant.all(),
+  ]);
+
+  const pageMap = new Map(pages.map(p => [p.id, p]));
+  const categoryMap = new Map(categories.map(c => [c.id, c]));
+
+  const visiblePackages = allPackages.filter(pkg =>
+    isPackageAllowedForScope(scope, pkg, pageMap, categoryMap)
+  );
+
+  const mappedPackages: MappedPackage[] = visiblePackages.map(pkg => {
     const page = pkg.pageId ? pages.find(p => p.id === pkg.pageId) : null;
     const category = page ? categories.find(c => c.id === page.categoryId) : null;
     const resolvedCourseId = pkg.courseId || category?.courseId || null;

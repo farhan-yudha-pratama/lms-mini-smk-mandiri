@@ -2,11 +2,28 @@ import { db } from '@/prisma/db';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import ReviewClient from './ReviewClient';
+import { getSession } from '@/lib/session';
+import { hasAnyPermission } from '@/lib/permissions';
+import { resolveTeacherScope } from '@/modules/course/teacher-scope.service';
+import { assertCanAccessAttempt } from '@/modules/quiz-report/quiz-report.service';
 
 export const dynamic = 'force-dynamic';
 
-export default async function ReviewEssayPage({ params }: { params: { attemptId: string } }) {
-  const attempt = await db.orm.public.QuizAttempt.where({ id: params.attemptId }).first();
+export default async function ReviewEssayPage({ params }: { params: Promise<{ attemptId: string }> | { attemptId: string } }) {
+  const session = await getSession();
+  if (!session || !hasAnyPermission(session, ['QUIZZES_GRADE', 'GRADEBOOK_VIEW'])) {
+    redirect('/dashboard');
+  }
+
+  const resolvedParams = await Promise.resolve(params);
+  const scope = await resolveTeacherScope(session);
+  try {
+    await assertCanAccessAttempt(scope, resolvedParams.attemptId);
+  } catch {
+    redirect('/dashboard/gradebook');
+  }
+
+  const attempt = await db.orm.public.QuizAttempt.where({ id: resolvedParams.attemptId }).first();
   if (!attempt) redirect('/dashboard/gradebook');
 
   const student = await db.orm.public.User.where({ id: attempt.studentId }).first();

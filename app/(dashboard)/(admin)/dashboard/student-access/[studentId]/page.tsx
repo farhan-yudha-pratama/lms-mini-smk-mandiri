@@ -1,18 +1,30 @@
 import { getStudent, getStudentAccessData } from '@/app/actions/student-access';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
 import AccessListClient from './AccessListClient';
 import { AccessCategory } from '../types';
+import { getSession } from '@/lib/session';
+import { hasAnyPermission } from '@/lib/permissions';
 
 export const metadata = {
   title: 'Detail Akses Siswa',
 };
 
 export default async function StudentAccessDetailPage({ params }: { params: Promise<{ studentId: string }> }) {
+  const session = await getSession();
+  if (!session || !hasAnyPermission(session, ['STUDENT_ACCESS_MANAGE', 'STUDENT_ACCESS_VIEW'])) {
+    redirect('/dashboard');
+  }
+
   const resolvedParams = await params;
   const { studentId } = resolvedParams;
 
-  const student = await getStudent(studentId);
+  let student = null;
+  try {
+    student = await getStudent(studentId);
+  } catch {
+    redirect('/dashboard/student-access');
+  }
   if (!student) {
     notFound();
   }

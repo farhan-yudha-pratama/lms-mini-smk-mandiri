@@ -2,10 +2,18 @@ import { getCourseById } from '@/app/actions/course';
 import { db } from '@/prisma/db';
 import AssignClient from './AssignClient';
 import Link from 'next/link';
+import { getSession } from '@/lib/session';
+import { hasAnyPermission } from '@/lib/permissions';
+import { redirect } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AssignCoursePage({ params }: { params: Promise<{ id: string }> }) {
+  const session = await getSession();
+  if (!session || !hasAnyPermission(session, ['COURSES_MANAGE', 'COURSES_ASSIGN_TEACHER'])) {
+    redirect('/dashboard');
+  }
+
   const { id } = await params;
   const course = await getCourseById(id);
   
@@ -36,10 +44,26 @@ export default async function AssignCoursePage({ params }: { params: Promise<{ i
     (u) => (u.role === 'GURU' || u.role === 'SUPERADMIN') && u.isActive !== false
   );
 
-  // 2. Fetch currently assigned teachers
-  const courseTeachers = await db.orm.public.CourseTeacher.where({ courseId: course.id }).all();
+  // 2. Fetch currently assigned teachers, teacher classes & classrooms
+  const [courseTeachers, courseTeacherClasses, allClassrooms] = await Promise.all([
+    db.orm.public.CourseTeacher.where({ courseId: course.id }).all(),
+    db.orm.public.CourseTeacherClass.where({ courseId: course.id }).all(),
+    db.orm.public.Classroom.all(),
+  ]);
   const assignedTeacherIds = new Set(courseTeachers.map((ct) => ct.teacherId));
-  
+
+  const teacherClassIdsMap = new Map<string, string[]>();
+  for (const tcc of courseTeacherClasses) {
+    const list = teacherClassIdsMap.get(tcc.teacherId) || [];
+    list.push(tcc.classroomId);
+    teacherClassIdsMap.set(tcc.teacherId, list);
+  }
+
+  const classrooms = allClassrooms
+    .filter((c) => c.isActive !== false)
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map((c) => ({ id: c.id, name: c.name }));
+
   const assignedTeachers = eligibleTeachers
     .filter((t) => assignedTeacherIds.has(t.id))
     .map((t) => ({
@@ -48,6 +72,7 @@ export default async function AssignCoursePage({ params }: { params: Promise<{ i
       email: t.email,
       role: t.role,
       avatar: t.avatar || null,
+      classIds: teacherClassIdsMap.get(t.id) || [],
     }));
 
   const availableTeachers = eligibleTeachers
@@ -58,6 +83,7 @@ export default async function AssignCoursePage({ params }: { params: Promise<{ i
       email: t.email,
       role: t.role,
       avatar: t.avatar || null,
+      classIds: [],
     }));
 
   // 3. Fetch materials & page count per category
@@ -142,6 +168,7 @@ export default async function AssignCoursePage({ params }: { params: Promise<{ i
         }}
         assignedTeachers={assignedTeachers}
         availableTeachers={availableTeachers}
+        classrooms={classrooms}
         assignedCategories={assignedCategories}
         unassignedCategories={unassignedCategories}
         stats={stats}

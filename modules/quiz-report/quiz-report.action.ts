@@ -1,14 +1,18 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { getSession } from '@/lib/session';
-import { 
-  getLeaderboardByPackageAndClass, 
+import { z } from 'zod';
+import { requireAnyPermission, requirePermission } from '@/lib/permissions-server';
+import { resolveTeacherScope } from '@/modules/course/teacher-scope.service';
+import {
+  assertCanAccessAttempt,
+  assertCanAccessStudentPackage,
+  getLeaderboardByPackageAndClass,
   resetQuizAttempt,
   previewBulkResetQuizAttempts,
   bulkResetQuizAttempts,
   BulkResetParams,
-  completeQuizAttempt, 
+  completeQuizAttempt,
   getQuizReports,
   getQuizAttemptDetail,
   gradeQuizAttempt,
@@ -20,6 +24,17 @@ import { logAudit } from '@/lib/audit';
 import { getStudentLabel, getPackageLabel } from '@/lib/audit-context';
 import { msg } from '@/lib/audit-messages';
 
+const GradeAttemptSchema = z.object({
+  attemptId: z.string().min(1),
+  essayGrades: z.array(
+    z.object({
+      questionId: z.string().min(1),
+      pointsEarned: z.coerce.number().min(0),
+      feedback: z.string().optional(),
+    })
+  ),
+});
+
 export async function getQuizReportsAction(params: {
   classId?: string;
   packageId?: string;
@@ -30,20 +45,21 @@ export async function getQuizReportsAction(params: {
   reviewFilter?: 'ALL' | 'NEED_REVIEW' | 'HAS_ESSAY' | 'GRADED' | 'NO_ESSAY';
 }): Promise<{ success: boolean; data?: QuizReportsResponse; message?: string }> {
   try {
-    const session = await getSession();
-    const teacherId = session?.role === 'GURU' ? session.userId : undefined;
-    const data = await getQuizReports({ ...params, teacherId });
+    const session = await requireAnyPermission(['REPORTS_VIEW', 'QUIZZES_GRADE']);
+    const scope = await resolveTeacherScope(session);
+    const data = await getQuizReports({ ...params, scope });
     return { success: true, data };
   } catch (error) {
-    return { 
-      success: false, 
-      message: error instanceof Error ? error.message : 'Gagal mengambil data laporan kuis' 
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Gagal mengambil data laporan kuis'
     };
   }
 }
 
 export async function getLeaderboardAction(packageId: string, classId: string) {
   try {
+    await requireAnyPermission(['REPORTS_VIEW', 'GRADEBOOK_VIEW', 'QUIZZES_VIEW']);
     const data = await getLeaderboardByPackageAndClass(packageId, classId);
     return { success: true, data };
   } catch (error) {
@@ -51,9 +67,12 @@ export async function getLeaderboardAction(packageId: string, classId: string) {
   }
 }
 
-
 export async function completeQuizAttemptAction(attemptId: string) {
   try {
+    const session = await requireAnyPermission(['QUIZZES_GRADE', 'QUIZZES_MANAGE']);
+    const scope = await resolveTeacherScope(session);
+    await assertCanAccessAttempt(scope, attemptId);
+
     const result = await completeQuizAttempt(attemptId);
     const [student, pkg] = await Promise.all([getStudentLabel(result.studentId), getPackageLabel(result.packageId)]);
 
@@ -72,9 +91,17 @@ export async function completeQuizAttemptAction(attemptId: string) {
 
 export async function resetQuizAttemptAction(studentId: string, packageId: string, attemptId?: string) {
   try {
+    const session = await requireAnyPermission(['QUIZZES_GRADE', 'QUIZZES_MANAGE']);
+    const scope = await resolveTeacherScope(session);
+    if (attemptId) {
+      await assertCanAccessAttempt(scope, attemptId);
+    } else {
+      await assertCanAccessStudentPackage(scope, studentId, packageId);
+    }
+
     const result = await resetQuizAttempt(studentId, packageId, attemptId);
     const [student, pkg] = await Promise.all([getStudentLabel(studentId), getPackageLabel(packageId)]);
-    
+
     await logAudit({
       action: 'RESET_QUIZ',
       message: msg.resetQuiz({ student, pkg, previousScore: result.previousScore, previousStatus: result.previousStatus }),
@@ -88,33 +115,25 @@ export async function resetQuizAttemptAction(studentId: string, packageId: strin
   }
 }
 
-export async function previewBulkResetQuizAction(params: Omit<BulkResetParams, 'teacherId'>) {
+export async function previewBulkResetQuizAction(params: Omit<BulkResetParams, 'teacherId' | 'scope'>) {
   try {
-    const session = await getSession();
-    if (!session || (session.role !== 'SUPERADMIN' && session.role !== 'GURU')) {
-      return { success: false, message: 'Unauthorized' };
-    }
-
-    const teacherId = session.role === 'GURU' ? session.userId : undefined;
-    const data = await previewBulkResetQuizAttempts({ ...params, teacherId });
+    const session = await requireAnyPermission(['QUIZZES_GRADE', 'QUIZZES_MANAGE']);
+    const scope = await resolveTeacherScope(session);
+    const data = await previewBulkResetQuizAttempts({ ...params, scope });
     return { success: true, data };
   } catch (error) {
     return { success: false, message: error instanceof Error ? error.message : 'Gagal memuat pratinjau reset massal' };
   }
 }
 
-export async function bulkResetQuizAction(params: Omit<BulkResetParams, 'teacherId'>): Promise<
+export async function bulkResetQuizAction(params: Omit<BulkResetParams, 'teacherId' | 'scope'>): Promise<
   | { success: true; count: number; classLabel: string; packageLabel: string; modeLabel: string }
   | { success: false; message: string }
 > {
   try {
-    const session = await getSession();
-    if (!session || (session.role !== 'SUPERADMIN' && session.role !== 'GURU')) {
-      return { success: false, message: 'Unauthorized' };
-    }
-
-    const teacherId = session.role === 'GURU' ? session.userId : undefined;
-    const result = await bulkResetQuizAttempts({ ...params, teacherId });
+    const session = await requireAnyPermission(['QUIZZES_GRADE', 'QUIZZES_MANAGE']);
+    const scope = await resolveTeacherScope(session);
+    const result = await bulkResetQuizAttempts({ ...params, scope });
 
     await logAudit({
       action: 'RESET_QUIZ',
@@ -137,28 +156,36 @@ export async function bulkResetQuizAction(params: Omit<BulkResetParams, 'teacher
 
 export async function getQuizAttemptDetailAction(attemptId: string) {
   try {
+    const session = await requireAnyPermission(['REPORTS_VIEW', 'QUIZZES_GRADE']);
+    const scope = await resolveTeacherScope(session);
+    await assertCanAccessAttempt(scope, attemptId);
+
     const data = await getQuizAttemptDetail(attemptId);
     return { success: true, data };
   } catch (error) {
-    return { 
-      success: false, 
-      message: error instanceof Error ? error.message : 'Gagal memuat detail jawaban murid' 
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Gagal memuat detail jawaban murid'
     };
   }
 }
 
 export async function gradeQuizAttemptAction(
-  attemptId: string, 
+  attemptId: string,
   essayGrades: { questionId: string; pointsEarned: number; feedback?: string }[]
 ) {
   try {
-    const session = await getSession();
-    const graderId = session?.userId;
-    const result = await gradeQuizAttempt(attemptId, essayGrades, graderId);
-    
+    const session = await requirePermission('QUIZZES_GRADE');
+    const parsed = GradeAttemptSchema.parse({ attemptId, essayGrades });
+    const scope = await resolveTeacherScope(session);
+    await assertCanAccessAttempt(scope, parsed.attemptId);
+
+    const graderId = session.userId;
+    const result = await gradeQuizAttempt(parsed.attemptId, parsed.essayGrades, graderId);
+
     // Fetch packageId
     const { db } = await import('@/prisma/db');
-    const attempt = await db.orm.public.QuizAttempt.where({ id: attemptId }).first();
+    const attempt = await db.orm.public.QuizAttempt.where({ id: parsed.attemptId }).first();
     let packageId = '';
     if (attempt) {
       const variant = await db.orm.public.QuizVariant.where({ id: attempt.quizVariantId }).first();
@@ -166,30 +193,30 @@ export async function gradeQuizAttemptAction(
     }
 
     const [student, pkgLabel] = await Promise.all([
-      getStudentLabel(result.studentId), 
+      getStudentLabel(result.studentId),
       getPackageLabel(packageId)
     ]);
 
     await logAudit({
       action: 'GRADE_ESSAY',
-      message: msg.gradeEssay({ 
-        student, 
-        pkg: pkgLabel, 
-        gradedCount: result.gradedCount, 
-        beforeScore: result.beforeScore, 
-        afterScore: result.score, 
-        passed: result.isPassed 
+      message: msg.gradeEssay({
+        student,
+        pkg: pkgLabel,
+        gradedCount: result.gradedCount,
+        beforeScore: result.beforeScore,
+        afterScore: result.score,
+        passed: result.isPassed
       }),
-      meta: { attemptId, essayGrades, ...result }
+      meta: { attemptId: parsed.attemptId, essayGrades: parsed.essayGrades, ...result }
     });
 
     revalidatePath('/dashboard/reports');
     revalidatePath('/', 'layout');
     return { success: true, data: result };
   } catch (error) {
-    return { 
-      success: false, 
-      message: error instanceof Error ? error.message : 'Gagal menyimpan penilaian essay' 
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Gagal menyimpan penilaian essay'
     };
   }
 }
@@ -205,9 +232,9 @@ export async function getUnfinishedStudentsReportAction(params: {
   limit?: number;
 }): Promise<{ success: boolean; data?: UnfinishedStudentsResponse; message?: string }> {
   try {
-    const session = await getSession();
-    const teacherId = session?.role === 'GURU' ? session.userId : undefined;
-    const data = await getUnfinishedStudentsReport({ ...params, teacherId });
+    const session = await requireAnyPermission(['REPORTS_VIEW', 'REPORTS_UNFINISHED_VIEW']);
+    const scope = await resolveTeacherScope(session);
+    const data = await getUnfinishedStudentsReport({ ...params, scope });
     return { success: true, data };
   } catch (error) {
     return {
@@ -219,10 +246,10 @@ export async function getUnfinishedStudentsReportAction(params: {
 
 export async function getTaskRecapAction(params: { classId?: string; courseId?: string }) {
   try {
-    const session = await getSession();
-    const teacherId = session?.role === 'GURU' ? session.userId : undefined;
+    const session = await requireAnyPermission(['REPORTS_VIEW', 'QUIZZES_GRADE']);
+    const scope = await resolveTeacherScope(session);
     const { getTaskRecapList } = await import('./quiz-report.service');
-    const data = await getTaskRecapList({ ...params, teacherId });
+    const data = await getTaskRecapList({ ...params, scope });
     return { success: true, data };
   } catch (error) {
     return {

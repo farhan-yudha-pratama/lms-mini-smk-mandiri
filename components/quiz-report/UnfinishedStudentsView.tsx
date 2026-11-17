@@ -13,14 +13,17 @@ export default function UnfinishedStudentsView({
   classes,
   courses = [],
   role = 'MURID',
+  canFilterCourse = false,
   initialData
 }: {
   packages: Package[];
   classes: ClassType[];
   courses?: { id: string; name: string }[];
   role?: string;
+  canFilterCourse?: boolean;
   initialData?: UnfinishedStudentsResponse;
 }) {
+  const showCourseFilter = canFilterCourse || role === 'SUPERADMIN';
   const [selectedClassId, setSelectedClassId] = useState<string>('');
   const [selectedPackageId, setSelectedPackageId] = useState<string>('');
   const [selectedCourseId, setSelectedCourseId] = useState<string>('');
@@ -180,9 +183,9 @@ export default function UnfinishedStudentsView({
         </div>
 
         {/* Top Controls Grid */}
-        <div className={`grid grid-cols-1 md:grid-cols-${role === 'SUPERADMIN' ? '4' : '3'} gap-4`}>
-          {/* Filter Course (Mata Pelajaran) - Superadmin Only */}
-          {role === 'SUPERADMIN' && (
+        <div className={`grid grid-cols-1 md:grid-cols-${showCourseFilter ? '4' : '3'} gap-4`}>
+          {/* Filter Course (Mata Pelajaran) */}
+          {showCourseFilter && (
             <div>
               <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1.5">
                 Mata Pelajaran
