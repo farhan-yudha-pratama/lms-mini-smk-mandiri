@@ -7,7 +7,8 @@ import {
   completeQuizAttemptAction,
   getQuizAttemptDetailAction,
   gradeQuizAttemptAction,
-  overrideGroupMemberScoreAction
+  overrideGroupMemberScoreAction,
+  overrideGroupMembersBatchAction
 } from '@/modules/quiz-report/quiz-report.action';
 import { QuizReportItem, QuizReportsResponse, UnfinishedStudentsResponse } from '@/modules/quiz-report/quiz-report.service';
 import UnfinishedStudentsView from './UnfinishedStudentsView';
@@ -16,7 +17,7 @@ import CodeAnswerPreview from '@/components/quiz/CodeAnswerPreview';
 import BulkResetModal from './BulkResetModal';
 import { getSocket } from '@/lib/socket/client';
 
-type Package = { id: string; title: string; pageTitle: string; categoryName: string; };
+type Package = { id: string; title: string; assignmentMode?: string; pageTitle: string; categoryName: string; };
 type ClassType = { id: string; name: string; };
 
 interface ModalState {
@@ -74,6 +75,8 @@ export default function QuizReportView({
   const [selectedClassId, setSelectedClassId] = useState<string>('');
   const [selectedPackageId, setSelectedPackageId] = useState<string>('');
   const [selectedCourseId, setSelectedCourseId] = useState<string>('');
+  const [selectedAssignmentMode, setSelectedAssignmentMode] = useState<'ALL' | 'INDIVIDUAL' | 'GROUP'>('ALL');
+  const [viewMode, setViewMode] = useState<'INDIVIDUAL' | 'GROUP'>('INDIVIDUAL');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [reviewFilter, setReviewFilter] = useState<'ALL' | 'NEED_REVIEW' | 'HAS_ESSAY' | 'GRADED' | 'NO_ESSAY'>('ALL');
   const [page, setPage] = useState<number>(1);
@@ -91,10 +94,19 @@ export default function QuizReportView({
   const [completingId, setCompletingId] = useState<string | null>(null);
   const [bulkResetModalOpen, setBulkResetModalOpen] = useState(false);
 
-  // GROUP MEMBER SCORE OVERRIDE MODAL STATE
+  // GROUP MEMBER SCORE OVERRIDE MODAL STATE (Single & Batch)
   const [overrideTarget, setOverrideTarget] = useState<QuizReportItem | null>(null);
   const [overrideValue, setOverrideValue] = useState<string>('');
   const [savingOverride, setSavingOverride] = useState(false);
+
+  const [groupBatchTarget, setGroupBatchTarget] = useState<{
+    groupId: string;
+    groupName: string;
+    baseScore: number | null;
+    members: Array<{ studentId: string; studentName: string; studentEmail: string; scoreOverride: number | null }>;
+  } | null>(null);
+  const [groupBatchDrafts, setGroupBatchDrafts] = useState<Record<string, string>>({});
+  const [savingGroupBatch, setSavingGroupBatch] = useState(false);
 
   // DETAIL & ESSAY REVIEW MODAL STATE
   const [detailModalOpen, setDetailModalOpen] = useState(false);
@@ -103,6 +115,8 @@ export default function QuizReportView({
   const [essayGrades, setEssayGrades] = useState<Record<string, number>>({});
   const [essayFeedbacks, setEssayFeedbacks] = useState<Record<string, string>>({});
   const [savingGrades, setSavingGrades] = useState(false);
+  const [detailMemberDrafts, setDetailMemberDrafts] = useState<Record<string, string>>({});
+  const [savingDetailMembers, setSavingDetailMembers] = useState(false);
   const [copiedQuestionId, setCopiedQuestionId] = useState<string | null>(null);
 
   // Group packages by category for clean dropdown rendering
@@ -121,6 +135,7 @@ export default function QuizReportView({
     classId?: string;
     packageId?: string;
     courseId?: string;
+    assignmentMode?: 'ALL' | 'INDIVIDUAL' | 'GROUP';
     search?: string;
     page?: number;
     limit?: number;
@@ -129,6 +144,7 @@ export default function QuizReportView({
     const targetClassId = newParams?.classId !== undefined ? newParams.classId : selectedClassId;
     const targetPackageId = newParams?.packageId !== undefined ? newParams.packageId : selectedPackageId;
     const targetCourseId = newParams?.courseId !== undefined ? newParams.courseId : selectedCourseId;
+    const targetMode = newParams?.assignmentMode !== undefined ? newParams.assignmentMode : selectedAssignmentMode;
     const targetSearch = newParams?.search !== undefined ? newParams.search : searchQuery;
     const targetPage = newParams?.page !== undefined ? newParams.page : page;
     const targetLimit = newParams?.limit !== undefined ? newParams.limit : limit;
@@ -139,6 +155,7 @@ export default function QuizReportView({
         classId: targetClassId || undefined,
         packageId: targetPackageId || undefined,
         courseId: targetCourseId || undefined,
+        assignmentMode: targetMode,
         search: targetSearch || undefined,
         page: targetPage,
         limit: targetLimit,
@@ -318,7 +335,21 @@ export default function QuizReportView({
   const handlePackageChange = (newPackageId: string) => {
     setSelectedPackageId(newPackageId);
     setPage(1);
+    const selectedPkg = packages.find(p => p.id === newPackageId);
+    if (selectedPkg?.assignmentMode === 'GROUP' && selectedAssignmentMode === 'INDIVIDUAL') {
+      setSelectedAssignmentMode('ALL');
+      loadReports({ packageId: newPackageId, assignmentMode: 'ALL', page: 1 });
+      return;
+    }
     loadReports({ packageId: newPackageId, page: 1 });
+  };
+
+  const handleAssignmentModeChange = (mode: 'ALL' | 'INDIVIDUAL' | 'GROUP') => {
+    setSelectedAssignmentMode(mode);
+    if (mode === 'GROUP') setViewMode('GROUP');
+    else if (mode === 'INDIVIDUAL') setViewMode('INDIVIDUAL');
+    setPage(1);
+    loadReports({ assignmentMode: mode, page: 1 });
   };
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -350,11 +381,12 @@ export default function QuizReportView({
     setSelectedClassId('');
     setSelectedPackageId('');
     setSelectedCourseId('');
+    setSelectedAssignmentMode('ALL');
     setSearchQuery('');
     setReviewFilter('ALL');
     setPage(1);
     setLimit(50);
-    loadReports({ classId: '', packageId: '', courseId: '', search: '', page: 1, limit: 50, reviewFilter: 'ALL' });
+    loadReports({ classId: '', packageId: '', courseId: '', assignmentMode: 'ALL', search: '', page: 1, limit: 50, reviewFilter: 'ALL' });
   };
 
   // Open Detail / Review Modal
@@ -377,6 +409,15 @@ export default function QuizReportView({
         });
       setEssayGrades(initialGrades);
       setEssayFeedbacks(initialFeedbacks);
+
+      const initialMemberDrafts: Record<string, string> = {};
+      if (res.data.group?.members) {
+        for (const m of res.data.group.members) {
+          initialMemberDrafts[m.studentId] =
+            m.scoreOverride !== null && m.scoreOverride !== undefined ? String(m.scoreOverride) : '';
+        }
+      }
+      setDetailMemberDrafts(initialMemberDrafts);
     } else {
       setModalConfig({
         isOpen: true,
@@ -528,22 +569,26 @@ export default function QuizReportView({
     });
   };
 
-  // Reset Quiz Attempt for a student
+  // Reset Quiz Attempt for a student / group
   const handleReset = (row: QuizReportItem) => {
     setModalConfig({
       isOpen: true,
       type: 'confirm',
-      title: 'Reset Riwayat Kuis?',
+      title: row.isGroupTask ? 'Reset Riwayat Tugas Kelompok?' : 'Reset Riwayat Kuis?',
       isDestructive: true,
       message: (
         <div className="space-y-3">
           <p className="text-sm text-gray-700">
-            Apakah Anda yakin ingin menghapus/mereset riwayat kuis untuk murid berikut?
+            {row.isGroupTask
+              ? `Apakah Anda yakin ingin mereset riwayat tugas kelompok ${row.groupName || ''}?`
+              : 'Apakah Anda yakin ingin menghapus/mereset riwayat kuis untuk murid berikut?'}
           </p>
           <div className="bg-gray-50 border border-gray-200/20 p-3 rounded-lg text-sm space-y-1">
             <div className="flex justify-between">
-              <span className="text-gray-500 font-medium">Nama Murid:</span>
-              <span className="font-bold text-gray-900">{row.studentName}</span>
+              <span className="text-gray-500 font-medium">{row.isGroupTask ? 'Kelompok / Anggota:' : 'Nama Murid:'}</span>
+              <span className="font-bold text-gray-900">
+                {row.isGroupTask && row.groupName ? `${row.groupName} (${row.studentName})` : row.studentName}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500 font-medium">Kelas:</span>
@@ -559,7 +604,9 @@ export default function QuizReportView({
             </div>
           </div>
           <p className="text-xs text-red-600 font-semibold">
-            ⚠️ Perhatian: Seluruh jawaban sebelumnya akan dihapus permanen dan murid dapat mengulang kuis dari awal.
+            {row.isGroupTask
+              ? '⚠️ Perhatian: Mereset tugas kelompok akan menghapus jawaban bersama, seluruh nilai penyesuaian anggota, dan mengizinkan kelompok mengerjakan ulang dari awal.'
+              : '⚠️ Perhatian: Seluruh jawaban sebelumnya akan dihapus permanen dan murid dapat mengulang kuis dari awal.'}
           </p>
         </div>
       ),
@@ -577,7 +624,7 @@ export default function QuizReportView({
             isOpen: true,
             type: 'success',
             title: 'Berhasil Reset',
-            message: `Riwayat kuis ${row.studentName} pada materi "${row.pageTitle}" telah berhasil direset.`,
+            message: `Riwayat kuis ${row.isGroupTask && row.groupName ? row.groupName : row.studentName} pada materi "${row.pageTitle}" telah berhasil direset.`,
             confirmText: 'OK',
             onConfirm: () => {
               setModalConfig(null);
@@ -599,7 +646,115 @@ export default function QuizReportView({
     });
   };
 
-  const hasActiveFilters = Boolean(selectedClassId || selectedPackageId || selectedCourseId || searchQuery || reviewFilter !== 'ALL' || limit !== 50);
+  const handleSaveDetailMemberScores = async () => {
+    if (!attemptDetail?.group) return;
+    setSavingDetailMembers(true);
+    const overrides = attemptDetail.group.members.map((m: any) => {
+      const raw = (detailMemberDrafts[m.studentId] ?? '').trim();
+      return {
+        studentId: m.studentId,
+        scoreOverride: raw === '' ? null : Math.max(0, Math.min(100, Number(raw) || 0)),
+      };
+    });
+    const res = await overrideGroupMembersBatchAction({
+      groupId: attemptDetail.group.id,
+      overrides,
+    });
+    setSavingDetailMembers(false);
+    if (res.success) {
+      await handleOpenDetail(attemptDetail.attempt.id);
+      loadReports();
+    } else {
+      setModalConfig({
+        isOpen: true,
+        type: 'error',
+        title: 'Gagal Menyimpan Nilai Anggota',
+        message: res.message || 'Gagal memperbarui nilai anggota kelompok.',
+        confirmText: 'Tutup',
+        onConfirm: () => setModalConfig(null),
+      });
+    }
+  };
+
+  const openGroupBatchModal = (groupCard: {
+    groupId: string;
+    groupName: string;
+    baseScore: number | null;
+    members: QuizReportItem[];
+  }) => {
+    setGroupBatchTarget({
+      groupId: groupCard.groupId,
+      groupName: groupCard.groupName,
+      baseScore: groupCard.baseScore,
+      members: groupCard.members.map(m => ({
+        studentId: m.studentId,
+        studentName: m.studentName,
+        studentEmail: m.studentEmail,
+        scoreOverride: m.scoreOverride ?? null,
+      })),
+    });
+    const drafts: Record<string, string> = {};
+    for (const m of groupCard.members) {
+      drafts[m.studentId] =
+        m.scoreOverride !== null && m.scoreOverride !== undefined ? String(m.scoreOverride) : '';
+    }
+    setGroupBatchDrafts(drafts);
+  };
+
+  const groupedReportCards = useMemo(() => {
+    const map = new Map<
+      string,
+      {
+        groupId: string;
+        groupName: string;
+        className: string;
+        packageId: string;
+        pageTitle: string;
+        categoryName: string;
+        passingScore: number;
+        attemptId: string | null;
+        status: QuizReportItem['status'];
+        baseScore: number | null;
+        submitterName: string | null;
+        needsReview: boolean;
+        hasEssay: boolean;
+        finishedAt: string | null;
+        startedAt: string | null;
+        members: QuizReportItem[];
+      }
+    >();
+
+    for (const row of data.items) {
+      if (!row.isGroupTask || !row.groupId) continue;
+      let existing = map.get(row.groupId);
+      if (!existing) {
+        existing = {
+          groupId: row.groupId,
+          groupName: row.groupName || 'Kelompok',
+          className: row.className,
+          packageId: row.packageId,
+          pageTitle: row.pageTitle,
+          categoryName: row.categoryName,
+          passingScore: row.passingScore,
+          attemptId: row.attemptId,
+          status: row.status,
+          baseScore: row.groupBaseScore ?? null,
+          submitterName: row.submitterName ?? null,
+          needsReview: row.needsReview,
+          hasEssay: row.hasEssay,
+          finishedAt: row.finishedAt,
+          startedAt: row.startedAt,
+          members: [],
+        };
+        map.set(row.groupId, existing);
+      }
+      existing.members.push(row);
+    }
+
+    return Array.from(map.values());
+  }, [data.items]);
+
+  const hasActiveFilters = Boolean(selectedClassId || selectedPackageId || selectedCourseId || selectedAssignmentMode !== 'ALL' || searchQuery || reviewFilter !== 'ALL' || limit !== 50);
 
   // Pagination bounds calculation
   const startItemIndex = data.pagination.totalItems === 0 ? 0 : (data.pagination.page - 1) * data.pagination.limit + 1;
@@ -879,7 +1034,7 @@ export default function QuizReportView({
                   <optgroup key={catName} label={`Kategori: ${catName}`}>
                     {pkgs.map(p => (
                       <option key={p.id} value={p.id}>
-                        {p.title}
+                        {p.assignmentMode === 'GROUP' ? '[Kelompok] ' : ''}{p.title}
                       </option>
                     ))}
                   </optgroup>
@@ -891,17 +1046,17 @@ export default function QuizReportView({
             </div>
           </div>
 
-          {/* 3. Search Murid / Email */}
+          {/* 3. Search Murid / Email / Kelompok */}
           <div>
             <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
-              3. Cari Murid
+              3. Cari Murid / Kelompok
             </label>
             <div className="relative">
               <input
                 type="text"
                 value={searchQuery}
                 onChange={handleSearchChange}
-                placeholder="Ketik nama murid, email..."
+                placeholder="Cari murid, email, kelompok..."
                 className="w-full px-3 py-2.5 pl-9 bg-gray-50 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none text-sm transition-colors"
               />
               <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-lg pointer-events-none">
@@ -924,8 +1079,9 @@ export default function QuizReportView({
           </div>
         </div>
 
-        {/* 4. Filter Jenis Soal & Status Review Essay */}
-        <div className="pt-2 border-t border-gray-100 flex flex-wrap items-center gap-2">
+        {/* 4. Filter Jenis Soal, Status Review Essay & Mode Tugas */}
+        <div className="pt-2 border-t border-gray-100 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs font-bold text-gray-600 uppercase tracking-wider mr-1">
             Status Essay:
           </span>
@@ -986,6 +1142,31 @@ export default function QuizReportView({
             <span className="material-symbols-outlined text-sm">edit_note</span>
             Ada Soal Essay
           </button>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-xs font-bold text-gray-600 uppercase tracking-wider mr-1">
+              Mode:
+            </span>
+            {([
+              { id: 'ALL', label: 'Semua' },
+              { id: 'INDIVIDUAL', label: 'Individu' },
+              { id: 'GROUP', label: 'Tugas Kelompok' },
+            ] as const).map((m) => (
+              <button
+                key={m.id}
+                type="button"
+                onClick={() => handleAssignmentModeChange(m.id)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors ${
+                  selectedAssignmentMode === m.id
+                    ? 'bg-purple-700 text-white border-purple-700 shadow-sm'
+                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                }`}
+              >
+                {m.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Quick Info & Default Pagination Config */}
@@ -1035,10 +1216,10 @@ export default function QuizReportView({
       <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
         {/* Table Header Action Bar */}
         <div className="px-5 py-4 border-b border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-gray-50">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="material-symbols-outlined text-gray-800">table_chart</span>
             <h3 className="font-semibold text-gray-900 text-base">
-              Daftar Hasil & Nilai Murid
+              {viewMode === 'GROUP' ? 'Daftar Hasil & Penilaian Per Kelompok' : 'Daftar Hasil & Nilai Murid'}
             </h3>
             {isPending && (
               <span className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 ml-2 animate-pulse">
@@ -1049,6 +1230,30 @@ export default function QuizReportView({
           </div>
           
           <div className="flex items-center gap-2 flex-wrap">
+            {/* View Mode Switcher: Per Individu vs Per Kelompok */}
+            <div className="inline-flex rounded-lg border border-gray-300 bg-white p-0.5 shadow-2xs">
+              <button
+                type="button"
+                onClick={() => setViewMode('INDIVIDUAL')}
+                className={`px-2.5 py-1 rounded-md text-xs font-bold inline-flex items-center gap-1 transition-colors ${
+                  viewMode === 'INDIVIDUAL' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                <span className="material-symbols-outlined text-sm">person</span>
+                Per Individu
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('GROUP')}
+                className={`px-2.5 py-1 rounded-md text-xs font-bold inline-flex items-center gap-1 transition-colors ${
+                  viewMode === 'GROUP' ? 'bg-purple-700 text-white' : 'text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                <span className="material-symbols-outlined text-sm">groups</span>
+                Per Kelompok ({groupedReportCards.length})
+              </button>
+            </div>
+
             {(canReset || role === 'SUPERADMIN') && (
               <button 
                 type="button"
@@ -1073,7 +1278,145 @@ export default function QuizReportView({
           </div>
         </div>
 
-        {/* Table Container */}
+        {viewMode === 'GROUP' ? (
+          <div className="p-4 sm:p-5 space-y-4">
+            {groupedReportCards.length === 0 ? (
+              <div className="py-12 text-center text-gray-500 space-y-2 border-2 border-dashed border-gray-200 rounded-xl">
+                <span className="material-symbols-outlined text-4xl text-gray-300">groups_off</span>
+                <p className="font-bold text-gray-700 text-base">Belum ada tugas kelompok pada filter ini</p>
+                <p className="text-xs text-gray-500">
+                  Pilih paket tugas kelompok pada Filter Materi atau ubah filter Mode ke &ldquo;Tugas Kelompok&rdquo;.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-4">
+                {groupedReportCards.map((grp) => {
+                  const hasStarted = Boolean(grp.attemptId);
+                  const firstMember = grp.members[0];
+                  return (
+                    <div
+                      key={grp.groupId}
+                      className={`border rounded-xl p-4 sm:p-5 space-y-3 transition-colors ${
+                        grp.needsReview ? 'bg-amber-50/40 border-amber-300' : 'bg-white border-gray-200'
+                      }`}
+                    >
+                      <div className="flex flex-col md:flex-row md:items-start justify-between gap-3">
+                        <div className="space-y-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-100 text-purple-800 border border-purple-200">
+                              <span className="material-symbols-outlined text-sm">groups</span>
+                              {grp.groupName}
+                            </span>
+                            <span className="px-2 py-0.5 rounded text-xs font-semibold bg-gray-100 text-gray-700 border border-gray-200">
+                              {grp.className}
+                            </span>
+                            {grp.needsReview && (
+                              <span className="px-2 py-0.5 rounded text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300 animate-pulse">
+                                Perlu Review Essay
+                              </span>
+                            )}
+                          </div>
+                          <h4 className="font-bold text-gray-900 text-base">{grp.pageTitle}</h4>
+                          <p className="text-xs text-gray-500">
+                            {grp.categoryName} •{' '}
+                            {grp.submitterName
+                              ? `Dikirim oleh: ${grp.submitterName}`
+                              : 'Belum ada anggota yang mengirim kuis'}
+                            {grp.baseScore !== null && (
+                              <> • Nilai Dasar Kelompok: <strong className="text-gray-900">{grp.baseScore}</strong></>
+                            )}
+                          </p>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-2 shrink-0">
+                          {hasStarted ? (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenDetail(grp.attemptId!)}
+                              className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold border-2 transition-all shadow-sm ${
+                                grp.needsReview
+                                  ? 'bg-amber-100 border-amber-500 text-amber-900 hover:bg-amber-200'
+                                  : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                              }`}
+                            >
+                              <span className="material-symbols-outlined text-sm">
+                                {grp.needsReview ? 'rate_review' : 'visibility'}
+                              </span>
+                              {grp.needsReview ? 'Review Essay' : 'Detail Jawaban'}
+                            </button>
+                          ) : null}
+
+                          {(canGrade || role === 'SUPERADMIN') && (
+                            <button
+                              type="button"
+                              onClick={() => openGroupBatchModal(grp)}
+                              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold border-2 border-purple-400 bg-purple-50 text-purple-800 hover:bg-purple-100 transition-all shadow-sm"
+                            >
+                              <span className="material-symbols-outlined text-sm">tune</span>
+                              Nilai Anggota ({grp.members.length})
+                            </button>
+                          )}
+
+                          {(canReset || role === 'SUPERADMIN') && hasStarted && firstMember && (
+                            <button
+                              type="button"
+                              onClick={() => handleReset(firstMember)}
+                              disabled={resettingId === firstMember.id}
+                              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold border-2 border-red-300 bg-white text-red-600 hover:bg-red-50 transition-all shadow-sm"
+                            >
+                              <span className="material-symbols-outlined text-sm">history</span>
+                              Reset Kelompok
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="pt-2 border-t border-gray-100 flex flex-wrap gap-2">
+                        {grp.members.map((m) => {
+                          const hasCustom = m.scoreOverride !== null && m.scoreOverride !== undefined;
+                          return (
+                            <div
+                              key={m.id}
+                              className={`px-3 py-1.5 rounded-lg border text-xs flex items-center gap-2 ${
+                                hasCustom
+                                  ? 'bg-purple-50 border-purple-300 text-purple-950'
+                                  : 'bg-gray-50 border-gray-200 text-gray-800'
+                              }`}
+                            >
+                              <span className="font-semibold">{m.studentName}</span>
+                              {grp.submitterName === m.studentName && (
+                                <span className="text-[10px] px-1.5 py-0.2 rounded bg-blue-100 text-blue-800 font-bold">
+                                  Pengirim
+                                </span>
+                              )}
+                              <span
+                                className={`px-1.5 py-0.2 rounded font-bold ${
+                                  m.score === null
+                                    ? 'bg-gray-200 text-gray-600'
+                                    : m.isPassed
+                                      ? 'bg-emerald-100 text-emerald-800'
+                                      : 'bg-red-100 text-red-700'
+                                }`}
+                              >
+                                {m.score !== null ? m.score : 'Belum Dinilai'}
+                              </span>
+                              {hasCustom && (
+                                <span className="text-[10px] font-bold text-purple-700">
+                                  {grp.baseScore === null ? 'Manual' : 'Disesuaikan'}
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        ) : (
+        /* Table Container */
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm whitespace-nowrap">
             <thead className="bg-gray-50 border-b border-gray-200 text-gray-600 uppercase text-[11px] font-bold tracking-wider">
@@ -1102,7 +1445,7 @@ export default function QuizReportView({
               ) : (
                 data.items.map((row, index) => {
                   const isGraded = row.status === 'GRADED';
-                  const isDone = row.status === 'COMPLETED' || isGraded;
+                  const hasScore = row.score !== null && row.score !== undefined;
                   const isInProgress = row.status === 'IN_PROGRESS';
                   const hasStarted = Boolean(row.attemptId);
                   const rowNumber = (data.pagination.page - 1) * data.pagination.limit + index + 1;
@@ -1167,20 +1510,20 @@ export default function QuizReportView({
 
                       {/* 5. Status Badge */}
                       <td className="px-4 py-3.5 text-center">
-                        {(row.status === 'COMPLETED' || (row.status === 'GRADED' && row.isPassed)) ? (
+                        {((row.status === 'COMPLETED' || isGraded) && row.isPassed) ? (
                           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-bold bg-green-100 text-green-800 border border-green-300">
                             <span className="material-symbols-outlined text-xs">check_circle</span>
                             Sukses
-                          </span>
-                        ) : isGraded ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300">
-                            <span className="material-symbols-outlined text-xs">verified</span>
-                            Dinilai (Belum Lulus)
                           </span>
                         ) : row.needsReview ? (
                           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300 animate-pulse">
                             <span className="material-symbols-outlined text-xs">pending_actions</span>
                             Perlu Review Essay
+                          </span>
+                        ) : (isGraded || (row.status === 'COMPLETED' && hasScore && !row.isPassed)) ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                            <span className="material-symbols-outlined text-xs">verified</span>
+                            Dinilai (Belum Lulus)
                           </span>
                         ) : isInProgress ? (
                           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-bold bg-yellow-100 text-yellow-800 border border-yellow-300">
@@ -1196,7 +1539,7 @@ export default function QuizReportView({
 
                       {/* 6. Nilai Akhir */}
                       <td className="px-4 py-3.5 text-center">
-                        {isDone && row.score !== null ? (
+                        {hasScore ? (
                           <div>
                             <span className={`text-base font-bold ${row.isPassed ? 'text-green-600' : 'text-red-600'}`}>
                               {row.score}
@@ -1206,7 +1549,7 @@ export default function QuizReportView({
                             </span>
                             {row.isGroupTask && row.scoreOverride !== null && row.scoreOverride !== undefined && (
                               <span className="text-[10px] text-purple-700 font-semibold block">
-                                Disesuaikan (Kel: {row.groupBaseScore ?? '-'})
+                                {row.groupBaseScore === null ? 'Nilai Manual' : `Disesuaikan (Kel: ${row.groupBaseScore})`}
                               </span>
                             )}
                           </div>
@@ -1263,7 +1606,7 @@ export default function QuizReportView({
                           )}
 
                           {/* SELESAIKAN BUTTON (Muncul jika status GRADED dan Lulus KKM) */}
-                          {(canGrade || role === 'SUPERADMIN') && row.status === 'GRADED' && row.isPassed && (
+                          {(canGrade || role === 'SUPERADMIN') && row.status === 'GRADED' && row.isPassed && row.attemptId && (
                             <button
                               type="button"
                               onClick={() => handleCompleteQuiz(row)}
@@ -1278,8 +1621,8 @@ export default function QuizReportView({
                             </button>
                           )}
 
-                          {/* OVERRIDE NILAI ANGGOTA KELOMPOK */}
-                          {(canGrade || role === 'SUPERADMIN') && row.isGroupTask && row.groupId && hasStarted && (
+                          {/* OVERRIDE NILAI ANGGOTA KELOMPOK (Aktif dengan atau tanpa kiriman kuis) */}
+                          {(canGrade || role === 'SUPERADMIN') && row.isGroupTask && row.groupId && (
                             <button
                               type="button"
                               onClick={() => {
@@ -1293,7 +1636,7 @@ export default function QuizReportView({
                                 );
                               }}
                               className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded text-xs font-bold border-2 border-purple-300 bg-purple-50 text-purple-800 hover:bg-purple-100 transition-all shadow-sm"
-                              title="Sesuaikan nilai individu untuk anggota kelompok ini"
+                              title="Edit nilai individu anggota kelompok ini (bisa tanpa mengirimkan kuis)"
                             >
                               <span className="material-symbols-outlined text-[15px]">tune</span>
                               Nilai Anggota
@@ -1328,6 +1671,7 @@ export default function QuizReportView({
             </tbody>
           </table>
         </div>
+        )}
 
         {/* PAGINATION CONTROLS */}
         <div className="px-5 py-4 border-t border-gray-200 bg-white flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -1401,12 +1745,20 @@ export default function QuizReportView({
                   <span className="material-symbols-outlined text-2xl font-bold">assignment</span>
                 </div>
                 <div>
-                  <h3 className="text-lg md:text-xl font-semibold text-gray-900 text-gray-900 leading-snug">
-                    Lembar Jawaban & Review Kuis
+                  <h3 className="text-lg md:text-xl font-semibold text-gray-900 leading-snug flex items-center gap-2 flex-wrap">
+                    <span>Lembar Jawaban & Review Kuis</span>
+                    {attemptDetail?.group && (
+                      <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-purple-100 text-purple-800 border border-purple-200">
+                        {attemptDetail.group.name}
+                      </span>
+                    )}
                   </h3>
                   {attemptDetail && (
                     <div className="text-xs text-gray-600 flex items-center gap-2 flex-wrap font-medium">
-                      <span>Murid: <strong>{attemptDetail.student.name}</strong> ({attemptDetail.student.className})</span>
+                      <span>
+                        {attemptDetail.group ? 'Pengirim:' : 'Murid:'}{' '}
+                        <strong>{attemptDetail.student.name}</strong> ({attemptDetail.student.className})
+                      </span>
                       <span>•</span>
                       <span>Materi: <strong>{attemptDetail.package.pageTitle}</strong></span>
                     </div>
@@ -1484,6 +1836,71 @@ export default function QuizReportView({
                       </div>
                     </div>
                   </div>
+
+                  {/* GROUP MEMBERS & INDIVIDUAL SCORE ADJUSTMENT PANEL */}
+                  {attemptDetail.group && (
+                    <div className="bg-purple-50/70 border border-purple-200 rounded-xl p-4 space-y-3">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div>
+                          <h4 className="text-sm font-bold text-purple-950 flex items-center gap-1.5">
+                            <span className="material-symbols-outlined text-base text-purple-700">groups</span>
+                            Anggota {attemptDetail.group.name} ({attemptDetail.group.members.length} Siswa)
+                          </h4>
+                          <p className="text-[11px] text-purple-800 mt-0.5">
+                            Nilai dasar berlaku untuk seluruh anggota. Kosongkan input untuk mengikuti skor kelompok ({attemptDetail.group.baseScore ?? '-'}), atau isi nilai khusus (mis. 0 jika tidak ikut mengerjakan).
+                          </p>
+                        </div>
+                        {(canGrade || role === 'SUPERADMIN') && (
+                          <button
+                            type="button"
+                            disabled={savingDetailMembers}
+                            onClick={handleSaveDetailMemberScores}
+                            className="px-3.5 py-2 bg-purple-700 hover:bg-purple-800 text-white rounded-lg text-xs font-bold shadow-xs disabled:opacity-50 shrink-0"
+                          >
+                            {savingDetailMembers ? 'Menyimpan...' : 'Simpan Nilai Anggota'}
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        {attemptDetail.group.members.map((m: any) => (
+                          <div
+                            key={m.studentId}
+                            className="bg-white border border-purple-200 rounded-lg p-2.5 flex items-center justify-between gap-2"
+                          >
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-xs font-bold text-gray-900 truncate">{m.studentName}</span>
+                                {m.isSubmitter && (
+                                  <span className="text-[10px] px-1.5 py-0.2 rounded bg-blue-100 text-blue-800 font-bold shrink-0">
+                                    Pengirim
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-[11px] text-gray-500">
+                                Efektif: <strong className="text-gray-800">{m.effectiveScore ?? '-'}</strong>
+                                {m.scoreOverride !== null && m.scoreOverride !== undefined && ' (Khusus)'}
+                              </div>
+                            </div>
+                            {(canGrade || role === 'SUPERADMIN') && (
+                              <input
+                                type="number"
+                                min={0}
+                                max={100}
+                                step="0.1"
+                                placeholder={`Kel: ${attemptDetail.group.baseScore ?? '-'}`}
+                                value={detailMemberDrafts[m.studentId] ?? ''}
+                                onChange={(e) =>
+                                  setDetailMemberDrafts(prev => ({ ...prev, [m.studentId]: e.target.value }))
+                                }
+                                className="w-24 px-2 py-1 border border-gray-300 rounded text-xs font-bold text-right"
+                              />
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {/* List of Questions with Student Answers */}
                   <div className="space-y-4">
@@ -1799,7 +2216,15 @@ export default function QuizReportView({
             </div>
 
             <div className="text-xs bg-purple-50 border border-purple-200 text-purple-900 rounded-lg p-3">
-              Skor Dasar Kelompok: <strong>{overrideTarget.groupBaseScore ?? '-'}</strong>. Isi nilai baru (0–100) jika anggota ini memiliki kontribusi berbeda, atau klik Ikuti Nilai Kelompok.
+              {overrideTarget.groupBaseScore === null || overrideTarget.groupBaseScore === undefined ? (
+                <>
+                  Kelompok belum mengirimkan tugas/kuis. Nilai yang diisi akan ditetapkan langsung sebagai nilai individu siswa di Laporan, Buku Nilai &amp; Rapor.
+                </>
+              ) : (
+                <>
+                  Skor Dasar Kelompok: <strong>{overrideTarget.groupBaseScore}</strong>. Isi nilai baru (0–100) jika anggota ini memiliki kontribusi berbeda, atau klik Ikuti Nilai Kelompok.
+                </>
+              )}
             </div>
 
             <div>
@@ -1831,7 +2256,7 @@ export default function QuizReportView({
                   }}
                   className="px-3 py-2 text-xs font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg"
                 >
-                  Ikuti Nilai Kelompok
+                  {overrideTarget.groupBaseScore === null ? 'Hapus Nilai Manual' : 'Ikuti Nilai Kelompok'}
                 </button>
               )}
               <div className="flex items-center gap-2 ml-auto">
@@ -1861,6 +2286,115 @@ export default function QuizReportView({
                   {savingOverride ? 'Menyimpan...' : 'Simpan Nilai'}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL BATCH NILAI ANGGOTA KELOMPOK (MODE PER KELOMPOK) */}
+      {groupBatchTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-white border border-gray-200 rounded-xl shadow-xl w-full max-w-lg p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+              <div>
+                <h3 className="text-base font-bold text-gray-900">
+                  Nilai Anggota: {groupBatchTarget.groupName}
+                </h3>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  {groupBatchTarget.baseScore !== null
+                    ? `Nilai Dasar Kelompok: ${groupBatchTarget.baseScore}. Kosongkan input untuk mengikuti nilai kelompok.`
+                    : 'Kelompok belum mengirimkan kuis. Isi nilai individu secara langsung (otomatis masuk Rapor & Buku Nilai).'}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setGroupBatchTarget(null)}
+                className="text-gray-400 hover:text-gray-600 p-1"
+              >
+                <span className="material-symbols-outlined text-base">close</span>
+              </button>
+            </div>
+
+            <div className="divide-y divide-gray-100 border border-gray-200 rounded-xl overflow-hidden">
+              {groupBatchTarget.members.map((m) => (
+                <div key={m.studentId} className="p-3 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="text-sm font-bold text-gray-900 truncate">{m.studentName}</div>
+                    <div className="text-xs text-gray-500 truncate">{m.studentEmail}</div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <input
+                      type="number"
+                      min={0}
+                      max={100}
+                      step="0.1"
+                      placeholder={
+                        groupBatchTarget.baseScore !== null ? `Kel: ${groupBatchTarget.baseScore}` : 'Belum dinilai'
+                      }
+                      value={groupBatchDrafts[m.studentId] ?? ''}
+                      onChange={(e) =>
+                        setGroupBatchDrafts(prev => ({ ...prev, [m.studentId]: e.target.value }))
+                      }
+                      className="w-28 px-2.5 py-1.5 border border-gray-300 rounded-lg text-sm font-bold text-right"
+                    />
+                    {groupBatchDrafts[m.studentId] !== '' && (
+                      <button
+                        type="button"
+                        onClick={() => setGroupBatchDrafts(prev => ({ ...prev, [m.studentId]: '' }))}
+                        className="text-xs font-semibold text-gray-500 hover:text-red-600"
+                      >
+                        Reset
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                disabled={savingGroupBatch}
+                onClick={() => setGroupBatchTarget(null)}
+                className="px-4 py-2 text-xs font-bold text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                disabled={savingGroupBatch}
+                onClick={async () => {
+                  setSavingGroupBatch(true);
+                  const overrides = groupBatchTarget.members.map(m => {
+                    const raw = (groupBatchDrafts[m.studentId] ?? '').trim();
+                    return {
+                      studentId: m.studentId,
+                      scoreOverride: raw === '' ? null : Math.max(0, Math.min(100, Number(raw) || 0)),
+                    };
+                  });
+                  const res = await overrideGroupMembersBatchAction({
+                    groupId: groupBatchTarget.groupId,
+                    overrides,
+                  });
+                  setSavingGroupBatch(false);
+                  if (res.success) {
+                    setGroupBatchTarget(null);
+                    loadReports();
+                  } else {
+                    setModalConfig({
+                      isOpen: true,
+                      type: 'error',
+                      title: 'Gagal Menyimpan Nilai',
+                      message: res.message || 'Gagal menyimpan nilai anggota kelompok.',
+                      confirmText: 'Tutup',
+                      onConfirm: () => setModalConfig(null),
+                    });
+                  }
+                }}
+                className="px-4 py-2 text-xs font-bold text-white bg-purple-600 hover:bg-purple-700 rounded-lg disabled:opacity-50"
+              >
+                {savingGroupBatch ? 'Menyimpan...' : 'Simpan Nilai Anggota'}
+              </button>
             </div>
           </div>
         </div>

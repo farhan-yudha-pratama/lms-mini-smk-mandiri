@@ -185,6 +185,9 @@ export async function startGroupQuiz(groupId: string, studentId: string) {
   if (!group || !member) {
     throw new Error('Anda tidak terdaftar sebagai anggota kelompok ini.');
   }
+  if (member.scoreOverride !== null && member.scoreOverride !== undefined) {
+    throw new Error('Nilai Anda pada tugas kelompok ini sudah ditetapkan langsung oleh Guru.');
+  }
 
   const pkg = await db.orm.public.QuizPackage.where({ id: group.quizPackageId }).first();
   if (!pkg || !pkg.isActive || (pkg as any).assignmentMode !== 'GROUP') {

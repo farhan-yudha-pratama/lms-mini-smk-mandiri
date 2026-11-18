@@ -591,10 +591,22 @@ export async function deleteClassGroup(groupId: string, scope: TeacherScope) {
   }
 
   const members = await db.orm.public.ClassGroupMember.where({ groupId: group.id }).all();
+  const manualRecords = await db.orm.public.QuizCompletionRecord.where({
+    sourceId: `manual-group:${group.id}`,
+  }).all();
+  for (const rec of manualRecords) {
+    await db.orm.public.QuizCompletionRecord.where({ id: rec.id }).delete();
+  }
   for (const m of members) {
     await db.orm.public.ClassGroupMember.where({ id: m.id }).delete();
   }
   await db.orm.public.ClassGroup.where({ id: group.id }).delete();
+  if (manualRecords.length > 0) {
+    const { updateStudentScoreSummary } = await import('@/modules/quiz-completion/quiz-completion.service');
+    for (const sid of new Set(manualRecords.map(r => r.studentId))) {
+      await updateStudentScoreSummary(sid);
+    }
+  }
 
   await emitGroupTasksUpdated(
     group.quizPackageId,

@@ -50,10 +50,10 @@ export async function createQuizPackageAction(formData: FormData) {
     if (!isCourseAllowed(scope, validatedData.courseId)) {
       return { success: false, message: 'Anda tidak ditugaskan sebagai pengampu mata pelajaran ini.' };
     }
-    await createQuizPackage(validatedData);
+    const created = await createQuizPackage(validatedData);
     
-  revalidatePath(`/dashboard/quizzes`);
-    return { success: true };
+    revalidatePath(`/dashboard/quizzes`);
+    return { success: true, id: created.id };
   } catch (error) {
     if (error instanceof z.ZodError) {
       return { success: false, errors: error.issues };

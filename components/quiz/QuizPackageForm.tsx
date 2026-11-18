@@ -71,7 +71,8 @@ export default function QuizPackageForm({
         setSuccessMessage('Pengaturan kuis berhasil disimpan.');
         router.refresh();
       } else {
-        router.push('/dashboard/quizzes');
+        const createdId = (res as { id?: string }).id;
+        router.push(createdId ? `/dashboard/quizzes/${createdId}/edit?tab=variants` : '/dashboard/quizzes');
       }
     } else {
       if (res.errors) {

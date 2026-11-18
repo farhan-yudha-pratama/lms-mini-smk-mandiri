@@ -228,6 +228,15 @@ export async function recordGroupQuizCompletion(attemptId: string) {
     const student = userMap.get(m.studentId);
     if (!student) continue;
 
+    // Bersihkan record nilai manual sementara (jika ada) agar tidak duplikat di /rapor
+    const manualRecs = await db.orm.public.QuizCompletionRecord.where({
+      sourceId: `manual-group:${group.id}`,
+      studentId: m.studentId,
+    }).all();
+    for (const mr of manualRecs) {
+      await db.orm.public.QuizCompletionRecord.where({ id: mr.id }).delete();
+    }
+
     const effectiveScore = m.scoreOverride !== null && m.scoreOverride !== undefined ? m.scoreOverride : baseScore;
     const isPassed = effectiveScore >= passingScore;
 
@@ -287,6 +296,137 @@ export async function recordGroupQuizCompletion(attemptId: string) {
   }
 
   return createdRecords;
+}
+
+/**
+ * Menyinkronkan nilai manual guru untuk 1 anggota kelompok yang belum memiliki QuizAttempt
+ * (atau membersihkan record manual jika scoreOverride dikosongkan ke null).
+ */
+export async function syncManualGroupMemberCompletion(groupId: string, studentId: string) {
+  const existingAttempt = await db.orm.public.QuizAttempt.where({ groupId }).first();
+  if (existingAttempt && (existingAttempt.status === 'COMPLETED' || existingAttempt.status === 'GRADED')) {
+    return await recordGroupQuizCompletion(existingAttempt.id);
+  }
+
+  const manualSourceId = `manual-group:${groupId}`;
+  const existingManual = await db.orm.public.QuizCompletionRecord.where({
+    sourceId: manualSourceId,
+    studentId,
+  }).first();
+
+  const [group, member] = await Promise.all([
+    db.orm.public.ClassGroup.where({ id: groupId }).first(),
+    db.orm.public.ClassGroupMember.where({ groupId, studentId }).first(),
+  ]);
+
+  if (!group || !member || member.scoreOverride === null || member.scoreOverride === undefined) {
+    if (existingManual) {
+      await db.orm.public.QuizCompletionRecord.where({ id: existingManual.id }).delete();
+      await updateStudentScoreSummary(studentId);
+    }
+    return null;
+  }
+
+  const [pkg, members, student, allUsers, allClassrooms] = await Promise.all([
+    db.orm.public.QuizPackage.where({ id: group.quizPackageId }).first(),
+    db.orm.public.ClassGroupMember.where({ groupId }).all(),
+    db.orm.public.User.where({ id: studentId }).first(),
+    db.orm.public.User.all(),
+    db.orm.public.Classroom.all(),
+  ]);
+  if (!pkg || !student) return null;
+
+  const [variant, questions] = group.quizVariantId
+    ? await Promise.all([
+        db.orm.public.QuizVariant.where({ id: group.quizVariantId }).first(),
+        db.orm.public.Question.where({ quizVariantId: group.quizVariantId }).all(),
+      ])
+    : [null, []];
+
+  let pageTitle: string | null = null;
+  let pageSlug: string | null = null;
+  let categoryName: string | null = null;
+  if (pkg.pageId) {
+    const page = await db.orm.public.Page.where({ id: pkg.pageId }).first();
+    if (page) {
+      pageTitle = page.title;
+      pageSlug = page.slug;
+      const category = await db.orm.public.MaterialCategory.where({ id: page.categoryId }).first();
+      if (category) categoryName = category.name;
+    }
+  }
+
+  const userMap = new Map(allUsers.map(u => [u.id, u]));
+  const classroomMap = new Map(allClassrooms.map(c => [c.id, c.name]));
+  const groupMembersSummary = JSON.stringify(
+    members.map(m => ({
+      studentId: m.studentId,
+      name: userMap.get(m.studentId)?.name || 'Siswa',
+      isSubmitter: false,
+    }))
+  );
+
+  const passingScore = pkg.passingScore || 70;
+  const score = member.scoreOverride;
+  const isPassed = score >= passingScore;
+  const nowIso = new Date().toISOString();
+  const essayCount = questions.filter(
+    q =>
+      q.questionType === 'ESSAY' ||
+      (q.questionType === 'CODE_CHALLENGE' &&
+        q.codeLanguage?.toLowerCase() !== 'sql' &&
+        !(q.codeLanguage?.toLowerCase() === 'php' && Boolean(q.testCases)))
+  ).length;
+
+  let record;
+  if (existingManual) {
+    await db.orm.public.QuizCompletionRecord.where({ id: existingManual.id }).update({
+      score,
+      passingScore,
+      isPassed,
+      groupName: group.name,
+      groupVariantName: variant?.name || null,
+      groupMembersSummary,
+      groupBaseScore: null,
+      completedAt: nowIso,
+    });
+    record = existingManual;
+  } else {
+    record = await db.orm.public.QuizCompletionRecord.create({
+      id: randomUUID(),
+      studentId: student.id,
+      studentName: student.name,
+      studentEmail: student.email,
+      classroomId: student.classId || group.classroomId || null,
+      classroomName:
+        (student.classId && classroomMap.get(student.classId)) ||
+        classroomMap.get(group.classroomId) ||
+        null,
+      sourceType: 'GROUP_TASK',
+      sourceId: manualSourceId,
+      sourceTitle: pkg.title,
+      categoryName,
+      pageTitle,
+      pageSlug,
+      score,
+      passingScore,
+      isPassed,
+      totalQuestions: questions.length,
+      correctAnswers: 0,
+      essayCount,
+      timeTakenSeconds: null,
+      groupId: group.id,
+      groupName: group.name,
+      groupVariantName: variant?.name || null,
+      groupMembersSummary,
+      groupBaseScore: null,
+      completedAt: nowIso,
+      createdAt: nowIso,
+    });
+  }
+
+  await updateStudentScoreSummary(student.id);
+  return record;
 }
 
 /**
