@@ -422,13 +422,11 @@ export async function getStudentTasks(studentId: string): Promise<StudentTaskIte
       if (pkg.pageId && !unlockedPageIds.has(pkg.pageId)) continue;
 
       const rawAttempt = groupAttemptMap.get(group.id) || null;
+      const hasManualOverride = gm.scoreOverride !== null && gm.scoreOverride !== undefined;
       let status: 'IN_PROGRESS' | 'READY' | 'LOCKED' | 'COMPLETED' | 'GRADED' = 'READY';
       if (pkg.openAt && now < new Date(pkg.openAt)) status = 'LOCKED';
       if (pkg.closeAt && now > new Date(pkg.closeAt)) {
-        if (!rawAttempt || rawAttempt.status === 'IN_PROGRESS') continue;
-      }
-      if (rawAttempt) {
-        status = rawAttempt.status as any;
+        if ((!rawAttempt || rawAttempt.status === 'IN_PROGRESS') && !hasManualOverride) continue;
       }
 
       const members = allGroupMembers
@@ -443,8 +441,19 @@ export async function getStudentTasks(studentId: string): Promise<StudentTaskIte
       const variant = group.quizVariantId ? variantMap.get(group.quizVariantId) : null;
       const actorName = rawAttempt ? (userMap.get(rawAttempt.studentId)?.name || 'Anggota') : null;
       const baseScore = rawAttempt?.score ?? null;
-      const effectiveScore = gm.scoreOverride !== null && gm.scoreOverride !== undefined ? gm.scoreOverride : baseScore;
-      const effectiveAttempt = rawAttempt ? { ...rawAttempt, score: effectiveScore } : null;
+      const effectiveScore = hasManualOverride ? gm.scoreOverride! : baseScore;
+      if (rawAttempt && rawAttempt.status !== 'IN_PROGRESS') {
+        status = rawAttempt.status as any;
+      } else if (hasManualOverride) {
+        status = effectiveScore! >= (pkg.passingScore || 70) ? 'COMPLETED' : 'GRADED';
+      } else if (rawAttempt) {
+        status = rawAttempt.status as any;
+      }
+      const effectiveAttempt = rawAttempt
+        ? { ...rawAttempt, score: effectiveScore }
+        : hasManualOverride
+          ? { id: `manual-group:${group.id}:${studentId}`, status, score: effectiveScore }
+          : null;
 
       const page = pkg.pageId ? pageMap.get(pkg.pageId) || null : null;
 

@@ -18,6 +18,7 @@ import {
   gradeQuizAttempt,
   getUnfinishedStudentsReport,
   overrideGroupMemberScore,
+  overrideGroupMembersBatch,
   QuizReportsResponse,
   UnfinishedStudentsResponse
 } from './quiz-report.service';
@@ -40,6 +41,7 @@ export async function getQuizReportsAction(params: {
   classId?: string;
   packageId?: string;
   courseId?: string;
+  assignmentMode?: 'ALL' | 'INDIVIDUAL' | 'GROUP';
   search?: string;
   page?: number;
   limit?: number;
@@ -270,6 +272,9 @@ export async function overrideGroupMemberScoreAction(
     const scope = await resolveTeacherScope(session);
     const data = await overrideGroupMemberScore(groupId, studentId, scoreOverride, scope);
     revalidatePath('/dashboard/reports');
+    revalidatePath('/dashboard/gradebook');
+    revalidatePath('/dashboard/quizzes');
+    revalidatePath('/student/tugas');
     revalidatePath('/rapor');
     return { success: true, data };
   } catch (error) {
@@ -278,6 +283,41 @@ export async function overrideGroupMemberScoreAction(
       message: error instanceof Error && error.message === 'FORBIDDEN'
         ? 'Anda tidak memiliki izin mengubah nilai anggota kelompok ini'
         : error instanceof Error ? error.message : 'Gagal menyesuaikan nilai anggota kelompok',
+    };
+  }
+}
+
+const BatchOverrideGroupScoresSchema = z.object({
+  groupId: z.string().min(1),
+  overrides: z.array(
+    z.object({
+      studentId: z.string().min(1),
+      scoreOverride: z.number().min(0).max(100).nullable(),
+    })
+  ),
+});
+
+export async function overrideGroupMembersBatchAction(input: {
+  groupId: string;
+  overrides: Array<{ studentId: string; scoreOverride: number | null }>;
+}) {
+  try {
+    const session = await requireAnyPermission(['QUIZZES_GRADE', 'QUIZZES_MANAGE']);
+    const parsed = BatchOverrideGroupScoresSchema.parse(input);
+    const scope = await resolveTeacherScope(session);
+    const data = await overrideGroupMembersBatch(parsed.groupId, parsed.overrides, scope);
+    revalidatePath('/dashboard/reports');
+    revalidatePath('/dashboard/gradebook');
+    revalidatePath('/dashboard/quizzes');
+    revalidatePath('/student/tugas');
+    revalidatePath('/rapor');
+    return { success: true, data };
+  } catch (error) {
+    return {
+      success: false,
+      message: error instanceof Error && error.message === 'FORBIDDEN'
+        ? 'Anda tidak memiliki izin mengubah nilai anggota kelompok ini'
+        : error instanceof Error ? error.message : 'Gagal menyimpan nilai anggota kelompok',
     };
   }
 }

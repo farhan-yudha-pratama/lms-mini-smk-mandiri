@@ -53,11 +53,19 @@ export async function getGradebookMatrix(classId: string, courseId: string): Pro
 
   const targetVariantIds = new Set(variantMap.keys());
 
-  // 4. Get attempts for these students and variants
-  const allAttempts = await db.orm.public.QuizAttempt.all();
-  const relevantAttempts = allAttempts.filter(a => 
-    studentIds.has(a.studentId) && targetVariantIds.has(a.quizVariantId)
-  );
+  // 4. Get attempts & class groups for these students and variants
+  const [allAttempts, classGroups, allGroupMembers] = await Promise.all([
+    db.orm.public.QuizAttempt.all(),
+    db.orm.public.ClassGroup.where({ classroomId: classId, courseId }).all(),
+    db.orm.public.ClassGroupMember.all(),
+  ]);
+  const relevantGroupIds = new Set(classGroups.map(g => g.id));
+  const relevantAttempts = allAttempts.filter(a => {
+    if (!targetVariantIds.has(a.quizVariantId)) return false;
+    const aGroupId = (a as { groupId?: string | null }).groupId;
+    if (aGroupId && relevantGroupIds.has(aGroupId)) return true;
+    return studentIds.has(a.studentId);
+  });
 
   // 5. Get questions to determine if they need review
   const allQuestions = await db.orm.public.Question.all();
@@ -97,23 +105,71 @@ export async function getGradebookMatrix(classId: string, courseId: string): Pro
     }
   }
 
+  const groupMembersByGroup = new Map<string, typeof allGroupMembers>();
+  for (const gm of allGroupMembers) {
+    if (!relevantGroupIds.has(gm.groupId)) continue;
+    const list = groupMembersByGroup.get(gm.groupId) || [];
+    list.push(gm);
+    groupMembersByGroup.set(gm.groupId, list);
+  }
+  const pkgPassingMap = new Map(quizzes.map(q => [q.id, q.passingScore]));
+  const attemptedGroupIds = new Set<string>();
+
   for (const attempt of relevantAttempts) {
     const pkgId = variantMap.get(attempt.quizVariantId);
-    if (!pkgId || !matrix[attempt.studentId]) continue;
+    if (!pkgId) continue;
 
     const hasEssay = variantEssayMap.get(attempt.quizVariantId) || false;
     const attemptAnswers = attemptAnswerMap.get(attempt.id) || [];
     const hasUngradedEssay = attemptAnswers.some(ans => essayQuestionIds.has(ans.questionId) && ans.isCorrect === null);
-
-    // Kuis butuh review jika ada essay dan jawaban essay belum dinilai
     const needsReview = hasEssay && attempt.status !== 'GRADED' && hasUngradedEssay;
 
+    const aGroupId = (attempt as { groupId?: string | null }).groupId;
+    if (aGroupId && relevantGroupIds.has(aGroupId)) {
+      attemptedGroupIds.add(aGroupId);
+      const members = groupMembersByGroup.get(aGroupId) || [];
+      const passingScore = pkgPassingMap.get(pkgId) ?? 70;
+      for (const m of members) {
+        if (!matrix[m.studentId]) continue;
+        const hasOverride = m.scoreOverride !== null && m.scoreOverride !== undefined;
+        const effectiveScore = hasOverride ? m.scoreOverride! : attempt.score;
+        const effectiveStatus = hasOverride && effectiveScore !== null
+          ? (effectiveScore >= passingScore ? 'COMPLETED' : 'GRADED')
+          : attempt.status;
+        matrix[m.studentId][pkgId] = {
+          score: effectiveScore,
+          status: effectiveStatus,
+          attemptId: attempt.id,
+          needsReview,
+        };
+      }
+      continue;
+    }
+
+    if (!matrix[attempt.studentId]) continue;
     matrix[attempt.studentId][pkgId] = {
       score: attempt.score,
       status: attempt.status,
       attemptId: attempt.id,
       needsReview
     };
+  }
+
+  // Sertakan nilai manual anggota kelompok meskipun kelompok belum mengirim QuizAttempt
+  for (const g of classGroups) {
+    if (attemptedGroupIds.has(g.id) || !packageIds.has(g.quizPackageId)) continue;
+    const members = groupMembersByGroup.get(g.id) || [];
+    const passingScore = pkgPassingMap.get(g.quizPackageId) ?? 70;
+    for (const m of members) {
+      if (!matrix[m.studentId]) continue;
+      if (m.scoreOverride === null || m.scoreOverride === undefined) continue;
+      matrix[m.studentId][g.quizPackageId] = {
+        score: m.scoreOverride,
+        status: m.scoreOverride >= passingScore ? 'COMPLETED' : 'GRADED',
+        attemptId: `manual-group:${g.id}`,
+        needsReview: false,
+      };
+    }
   }
 
   // Fallback: Untuk kuis/varian yang sudah dihapus secara permanen (decoupled),

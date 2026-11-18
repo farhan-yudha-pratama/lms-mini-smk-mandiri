@@ -152,6 +152,10 @@ export default function RaporClient({
                     item.sourceType === 'GROUP_TASK'
                       ? parseGroupMembers(item.groupMembersSummary)
                       : [];
+                  const isManualWithoutSubmit =
+                    item.sourceType === 'GROUP_TASK' &&
+                    (item.groupBaseScore === null || item.groupBaseScore === undefined) &&
+                    item.sourceId.startsWith('manual-group:');
                   const hasAdjustedScore =
                     item.sourceType === 'GROUP_TASK' &&
                     item.groupBaseScore !== null &&
@@ -181,6 +185,11 @@ export default function RaporClient({
                         {hasAdjustedScore && (
                           <span className="bg-[#FDE047] text-black text-[9px] font-black px-1.5 py-0.5 mt-1.5 uppercase border border-black text-center">
                             Kel: {item.groupBaseScore} • Disesuaikan
+                          </span>
+                        )}
+                        {isManualWithoutSubmit && (
+                          <span className="bg-[#FDE047] text-black text-[9px] font-black px-1.5 py-0.5 mt-1.5 uppercase border border-black text-center">
+                            Nilai Manual Guru
                           </span>
                         )}
                       </div>

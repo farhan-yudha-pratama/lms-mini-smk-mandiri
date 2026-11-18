@@ -475,6 +475,11 @@ export default function TaskRecapView({
                                       <td className="px-5 py-3">
                                         <div className="font-bold text-gray-900">{s.studentName}</div>
                                         <div className="text-[10px] text-gray-500">{s.studentEmail}</div>
+                                        {s.isGroupTask && s.groupName && (
+                                          <span className="mt-0.5 inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-200">
+                                            {s.groupName}
+                                          </span>
+                                        )}
                                       </td>
                                       <td className="px-5 py-3 text-center">
                                         {s.needsReview ? (

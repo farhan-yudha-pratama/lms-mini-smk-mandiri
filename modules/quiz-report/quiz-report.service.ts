@@ -124,6 +124,7 @@ export async function getQuizReports(params: {
   classId?: string;
   packageId?: string;
   courseId?: string;
+  assignmentMode?: 'ALL' | 'INDIVIDUAL' | 'GROUP';
   search?: string;
   page?: number;
   limit?: number;
@@ -131,7 +132,7 @@ export async function getQuizReports(params: {
   teacherId?: string;
   scope?: TeacherScope;
 }): Promise<QuizReportsResponse> {
-  const { classId, packageId, courseId, search, page = 1, limit = 50, reviewFilter = 'ALL', teacherId, scope } = params;
+  const { classId, packageId, courseId, assignmentMode = 'ALL', search, page = 1, limit = 50, reviewFilter = 'ALL', teacherId, scope } = params;
 
   // 1. Fetch reference collections including questions and class groups
   const [classrooms, categories, pages, quizPackages, quizVariants, allStudents, allQuestions, courses, allStudentCourses, allAnswers, allClassGroups, allGroupMembers] = await Promise.all([
@@ -371,8 +372,14 @@ export async function getQuizReports(params: {
         for (const member of members) {
           const student = studentMap.get(member.studentId);
           if (!student) continue;
-          const effectiveScore = member.scoreOverride ?? baseScore;
+          const hasManualOverride = member.scoreOverride !== null && member.scoreOverride !== undefined;
+          const effectiveScore = hasManualOverride ? member.scoreOverride! : baseScore;
           const isPassed = effectiveScore !== null && effectiveScore >= passingScore;
+          const effectiveStatus = attempt
+            ? attempt.status
+            : hasManualOverride
+              ? (isPassed ? 'COMPLETED' : 'GRADED')
+              : 'NOT_STARTED';
 
           reportItems.push({
             id: `${group.id}:${student.id}`,
@@ -389,7 +396,7 @@ export async function getQuizReports(params: {
             courseName,
             passingScore,
             score: effectiveScore,
-            status: (attempt?.status || 'NOT_STARTED') as any,
+            status: effectiveStatus as QuizReportItem['status'],
             startedAt: attempt?.startedAt || null,
             finishedAt: attempt?.finishedAt || null,
             assignedVariantId: variantId,
@@ -473,6 +480,7 @@ export async function getQuizReports(params: {
     // CASE 2: General view (All classes and/or all packages, or only one filter active)
     // Map all relevant attempts into report items (expand group attempts to each member)
     reportItems = [];
+    const seenGroupIds = new Set<string>();
     for (const attempt of relevantAttempts) {
       const variant = variantMap.get(attempt.quizVariantId);
       const pkg = variant ? packageMap.get(variant.quizPackageId) : null;
@@ -501,6 +509,7 @@ export async function getQuizReports(params: {
       if (aGroupId) {
         const group = classGroupMap.get(aGroupId);
         if (!group || (scope && !isGroupVisibleToScope(group, scope))) continue;
+        seenGroupIds.add(group.id);
         const members = groupMembersByGroup.get(group.id) || [];
         const submitterName = studentMap.get(attempt.studentId)?.name || 'Siswa';
         const baseScore = attempt.score ?? null;
@@ -509,7 +518,8 @@ export async function getQuizReports(params: {
           const student = studentMap.get(member.studentId);
           if (!student) continue;
           const className = (student.classId && classMap.get(student.classId)) || 'Tanpa Kelas';
-          const effectiveScore = member.scoreOverride ?? baseScore;
+          const hasManualOverride = member.scoreOverride !== null && member.scoreOverride !== undefined;
+          const effectiveScore = hasManualOverride ? member.scoreOverride! : baseScore;
           const isPassed = effectiveScore !== null && effectiveScore >= passingScore;
 
           reportItems.push({
@@ -578,6 +588,79 @@ export async function getQuizReports(params: {
         totalQuestions,
       });
     }
+
+    // Sertakan kelompok yang belum mengirim kuis (jika filter GROUP / packageId aktif atau ada nilai manual)
+    for (const group of allClassGroups) {
+      if (seenGroupIds.has(group.id)) continue;
+      const pkg = packageMap.get(group.quizPackageId);
+      if (!pkg || (pkg as any).assignmentMode !== 'GROUP') continue;
+      if (packageId && pkg.id !== packageId) continue;
+      if (classId && group.classroomId !== classId) continue;
+      if (scope && !scope.isUnrestricted) {
+        if (!isGroupVisibleToScope(group, scope) || !isClassAllowedForCourse(scope, group.courseId, group.classroomId)) continue;
+      }
+      const resolvedCourses = resolvePackageCourseIds(pkg, pageMap, categoryMap);
+      if (courseId && !resolvedCourses.candidateCourseIds.includes(courseId)) continue;
+      if (scope && !scope.isUnrestricted && !isPackageAllowedForScope(scope, pkg, pageMap, categoryMap)) continue;
+
+      const members = groupMembersByGroup.get(group.id) || [];
+      const hasAnyManualOverride = members.some(m => m.scoreOverride !== null && m.scoreOverride !== undefined);
+      if (!hasAnyManualOverride && assignmentMode !== 'GROUP' && !packageId) continue;
+
+      const pageObj = pkg.pageId ? pageMap.get(pkg.pageId) : null;
+      const cat = pageObj ? categoryMap.get(pageObj.categoryId) : null;
+      const catName = cat ? cat.name : (!pkg.pageId ? 'Tugas Mandiri' : 'Umum');
+      const courseName = courseMap.get(group.courseId) || 'Tanpa Mata Pelajaran';
+      const passingScore = pkg.passingScore || 70;
+      const variantInfo = group.quizVariantId ? variantQuestionMap.get(group.quizVariantId) : null;
+      const className = classMap.get(group.classroomId) || 'Tanpa Kelas';
+
+      for (const member of members) {
+        const student = studentMap.get(member.studentId);
+        if (!student) continue;
+        const hasManualOverride = member.scoreOverride !== null && member.scoreOverride !== undefined;
+        const effectiveScore = hasManualOverride ? member.scoreOverride! : null;
+        const isPassed = effectiveScore !== null && effectiveScore >= passingScore;
+
+        reportItems.push({
+          id: `${group.id}:${student.id}`,
+          attemptId: null,
+          studentId: student.id,
+          studentName: student.name,
+          studentEmail: student.email,
+          classId: student.classId || group.classroomId,
+          className,
+          packageId: pkg.id,
+          packageTitle: pkg.title,
+          pageTitle: pageObj?.title || pkg.title,
+          categoryName: catName,
+          courseName,
+          passingScore,
+          score: effectiveScore,
+          status: hasManualOverride ? (isPassed ? 'COMPLETED' : 'GRADED') : 'NOT_STARTED',
+          startedAt: null,
+          finishedAt: null,
+          assignedVariantId: group.quizVariantId || null,
+          isPassed,
+          hasEssay: (variantInfo?.essayCount || 0) > 0,
+          needsReview: false,
+          essayCount: variantInfo?.essayCount || 0,
+          totalQuestions: variantInfo?.total || 0,
+          isGroupTask: true,
+          groupId: group.id,
+          groupName: group.name,
+          groupBaseScore: null,
+          scoreOverride: member.scoreOverride ?? null,
+          submitterName: null,
+        });
+      }
+    }
+  }
+
+  if (assignmentMode === 'GROUP') {
+    reportItems = reportItems.filter(item => Boolean(item.isGroupTask));
+  } else if (assignmentMode === 'INDIVIDUAL') {
+    reportItems = reportItems.filter(item => !item.isGroupTask);
   }
 
   // 3. Search query filter
@@ -587,7 +670,8 @@ export async function getQuizReports(params: {
       item.studentName.toLowerCase().includes(q) ||
       item.studentEmail.toLowerCase().includes(q) ||
       item.className.toLowerCase().includes(q) ||
-      item.pageTitle.toLowerCase().includes(q)
+      item.pageTitle.toLowerCase().includes(q) ||
+      (item.groupName && item.groupName.toLowerCase().includes(q))
     );
   }
 
@@ -645,13 +729,13 @@ export async function getQuizReports(params: {
     return a.studentName.localeCompare(b.studentName);
   });
 
-  // 6. Statistics calculation across all matching items
+  // 6. Statistics calculation across all matching items (deduplicate pending review per attempt)
   const totalRecords = reportItems.length;
   const completedItems = reportItems.filter(r => r.status === 'COMPLETED' || r.status === 'GRADED');
   const inProgressCount = reportItems.filter(r => r.status === 'IN_PROGRESS').length;
   const notStartedCount = reportItems.filter(r => r.status === 'NOT_STARTED').length;
   const passedCount = completedItems.filter(r => r.isPassed).length;
-  const pendingReviewCount = reportItems.filter(r => r.needsReview).length;
+  const pendingReviewCount = new Set(reportItems.filter(r => r.needsReview).map(r => r.attemptId || r.id)).size;
   const essayQuizCount = reportItems.filter(r => r.hasEssay).length;
 
   const totalScore = completedItems.reduce((acc, curr) => acc + (curr.score || 0), 0);
@@ -914,8 +998,9 @@ async function executeSingleReset(targetAttempt: any, studentId: string, package
 
   // Bersihkan arsip permanen, override anggota kelompok, dan reset status akses materi
   const affectedStudentIds = [studentId];
-  if ((targetAttempt as any).groupId) {
-    const groupMembers = await db.orm.public.ClassGroupMember.where({ groupId: (targetAttempt as any).groupId }).all();
+  const resetGroupId = (targetAttempt as { groupId?: string | null }).groupId;
+  if (resetGroupId) {
+    const groupMembers = await db.orm.public.ClassGroupMember.where({ groupId: resetGroupId }).all();
     for (const gm of groupMembers) {
       if (gm.scoreOverride !== null && gm.scoreOverride !== undefined) {
         await db.orm.public.ClassGroupMember.where({ id: gm.id }).update({ scoreOverride: null });
@@ -923,6 +1008,12 @@ async function executeSingleReset(targetAttempt: any, studentId: string, package
       if (!affectedStudentIds.includes(gm.studentId)) {
         affectedStudentIds.push(gm.studentId);
       }
+    }
+    const manualRecords = await db.orm.public.QuizCompletionRecord.where({
+      sourceId: `manual-group:${resetGroupId}`,
+    }).all();
+    for (const r of manualRecords) {
+      await db.orm.public.QuizCompletionRecord.where({ id: r.id }).delete();
     }
   }
 
@@ -1285,6 +1376,59 @@ export async function getQuizAttemptDetail(attemptId: string) {
   const hasUngradedEssay = essayQuestions.some(q => !q.studentAnswer || q.studentAnswer.isCorrect === null);
   const needsReview = hasEssay && attempt.status !== 'IN_PROGRESS' && attempt.status !== 'GRADED' && hasUngradedEssay;
 
+  let groupDetail: {
+    id: string;
+    name: string;
+    baseScore: number | null;
+    submitterId: string;
+    submitterName: string;
+    members: Array<{
+      studentId: string;
+      studentName: string;
+      studentEmail: string;
+      scoreOverride: number | null;
+      effectiveScore: number | null;
+      isSubmitter: boolean;
+    }>;
+  } | null = null;
+
+  const attemptGroupId = (attempt as { groupId?: string | null }).groupId;
+  if (attemptGroupId) {
+    const [groupRow, groupMembers] = await Promise.all([
+      db.orm.public.ClassGroup.where({ id: attemptGroupId }).first(),
+      db.orm.public.ClassGroupMember.where({ groupId: attemptGroupId }).all(),
+    ]);
+    if (groupRow) {
+      const memberUsers = await Promise.all(
+        groupMembers.map(m => db.orm.public.User.where({ id: m.studentId }).first())
+      );
+      const memberUserMap = new Map(
+        memberUsers.filter((u): u is NonNullable<typeof u> => Boolean(u)).map(u => [u.id, u])
+      );
+      groupDetail = {
+        id: groupRow.id,
+        name: groupRow.name,
+        baseScore: attempt.score ?? null,
+        submitterId: attempt.studentId,
+        submitterName: student?.name || 'Siswa',
+        members: groupMembers
+          .map(m => {
+            const u = memberUserMap.get(m.studentId);
+            const hasOverride = m.scoreOverride !== null && m.scoreOverride !== undefined;
+            return {
+              studentId: m.studentId,
+              studentName: u?.name || 'Siswa',
+              studentEmail: u?.email || '-',
+              scoreOverride: m.scoreOverride ?? null,
+              effectiveScore: hasOverride ? m.scoreOverride! : (attempt.score ?? null),
+              isSubmitter: m.studentId === attempt.studentId,
+            };
+          })
+          .sort((a, b) => a.studentName.localeCompare(b.studentName)),
+      };
+    }
+  }
+
   return {
     attempt: {
       id: attempt.id,
@@ -1299,6 +1443,7 @@ export async function getQuizAttemptDetail(attemptId: string) {
       email: student?.email || '-',
       className,
     },
+    group: groupDetail,
     package: {
       id: pkg?.id || variant.quizPackageId,
       title: pkg?.title || 'Kuis',
@@ -1398,14 +1543,31 @@ export async function gradeQuizAttempt(
     finishedAt: attempt.finishedAt || new Date().toISOString()
   });
 
-  // Catat arsip permanen kelulusan jika lulus KKM
-  if (passed) {
-    try {
-      const { recordQuizCompletion } = await import('@/modules/quiz-completion/quiz-completion.service');
+  // Sinkronkan arsip kelulusan (termasuk bila nilai kelompok direvisi atau bila revisi essay turun < KKM)
+  try {
+    const {
+      recordQuizCompletion,
+      recordGroupQuizCompletion,
+      updateStudentScoreSummary,
+    } = await import('@/modules/quiz-completion/quiz-completion.service');
+    if ((attempt as { groupId?: string | null }).groupId) {
+      await recordGroupQuizCompletion(attemptId);
+    } else if (passed) {
       await recordQuizCompletion(attemptId);
-    } catch (err) {
-      console.error('Gagal mencatat arsip kuis otomatis:', err);
+    } else {
+      const oldRecords = await db.orm.public.QuizCompletionRecord.where({
+        sourceId: attemptId,
+        studentId: attempt.studentId,
+      }).all();
+      for (const r of oldRecords) {
+        await db.orm.public.QuizCompletionRecord.where({ id: r.id }).delete();
+      }
+      if (oldRecords.length > 0) {
+        await updateStudentScoreSummary(attempt.studentId);
+      }
     }
+  } catch (err) {
+    console.error('Gagal menyinkronkan arsip kuis otomatis:', err);
   }
 
   // Previous score
@@ -1595,7 +1757,9 @@ export async function getUnfinishedStudentsReport(params: {
     allVariants,
     allAttempts,
     allStudentCourses,
-    allCourseTeachers
+    allCourseTeachers,
+    allClassGroups,
+    allGroupMembers,
   ] = await Promise.all([
     db.orm.public.User.where({ role: 'MURID' }).all(),
     db.orm.public.Classroom.all(),
@@ -1608,6 +1772,8 @@ export async function getUnfinishedStudentsReport(params: {
     db.orm.public.QuizAttempt.all(),
     db.orm.public.CourseStudent.all(),
     db.orm.public.CourseTeacher.all(),
+    db.orm.public.ClassGroup.all(),
+    db.orm.public.ClassGroupMember.all(),
   ]);
 
   // Lookup maps
@@ -1665,10 +1831,30 @@ export async function getUnfinishedStudentsReport(params: {
   }
 
   const attemptsByStudent = new Map<string, typeof allAttempts>();
+  const groupAttemptByGroupId = new Map<string, typeof allAttempts[0]>();
   for (const att of allAttempts) {
+    const aGroupId = (att as { groupId?: string | null }).groupId;
+    if (aGroupId) {
+      groupAttemptByGroupId.set(aGroupId, att);
+    }
     const list = attemptsByStudent.get(att.studentId) || [];
     list.push(att);
     attemptsByStudent.set(att.studentId, list);
+  }
+
+  const groupMap = new Map(allClassGroups.map(g => [g.id, g]));
+  const groupMembersByStudentPkg = new Map<string, typeof allGroupMembers[0]>();
+  for (const gm of allGroupMembers) {
+    const grp = groupMap.get(gm.groupId);
+    if (!grp) continue;
+    if (scope && !isGroupVisibleToScope(grp, scope)) continue;
+    const key = `${gm.studentId}:${grp.quizPackageId}`;
+    const prev = groupMembersByStudentPkg.get(key);
+    const curHasAttempt = groupAttemptByGroupId.has(gm.groupId);
+    const curHasOverride = gm.scoreOverride !== null && gm.scoreOverride !== undefined;
+    if (!prev || curHasAttempt || curHasOverride) {
+      groupMembersByStudentPkg.set(key, gm);
+    }
   }
 
   const packageVariantsMap = new Map<string, string[]>();
@@ -1760,9 +1946,21 @@ export async function getUnfinishedStudentsReport(params: {
     let completedQuizCount = 0;
 
     for (const pkg of studentPackages) {
-      const vIds = packageVariantsMap.get(pkg.id) || [];
-      const attempt = studentAttempts.find(a => vIds.includes(a.quizVariantId));
-      const isDone = attempt && (attempt.status === 'COMPLETED' || attempt.status === 'GRADED');
+      let isDone = false;
+      if ((pkg as { assignmentMode?: string }).assignmentMode === 'GROUP') {
+        const gm = groupMembersByStudentPkg.get(`${student.id}:${pkg.id}`);
+        if (gm) {
+          const hasOverride = gm.scoreOverride !== null && gm.scoreOverride !== undefined;
+          const groupAtt = groupAttemptByGroupId.get(gm.groupId);
+          isDone =
+            hasOverride ||
+            Boolean(groupAtt && (groupAtt.status === 'COMPLETED' || groupAtt.status === 'GRADED'));
+        }
+      } else {
+        const vIds = packageVariantsMap.get(pkg.id) || [];
+        const attempt = studentAttempts.find(a => vIds.includes(a.quizVariantId));
+        isDone = Boolean(attempt && (attempt.status === 'COMPLETED' || attempt.status === 'GRADED'));
+      }
 
       if (isDone) {
         completedQuizCount++;
@@ -1917,7 +2115,21 @@ export async function getTaskRecapList(params: {
   const { classId, courseId, teacherId, scope } = params;
 
   // Fetch all data we need in parallel
-  const [allPackages, allPages, allCategories, courses, allAttempts, allStudents, allStudentCourses, allVariants, allQuestions, allAnswers] = await Promise.all([
+  const [
+    allPackages,
+    allPages,
+    allCategories,
+    courses,
+    allAttempts,
+    allStudents,
+    allStudentCourses,
+    allVariants,
+    allQuestions,
+    allAnswers,
+    allClassGroups,
+    allGroupMembers,
+    allClassrooms,
+  ] = await Promise.all([
     db.orm.public.QuizPackage.all(),
     db.orm.public.Page.all(),
     db.orm.public.MaterialCategory.all(),
@@ -1928,12 +2140,16 @@ export async function getTaskRecapList(params: {
     db.orm.public.QuizVariant.all(),
     db.orm.public.Question.all(),
     db.orm.public.StudentAnswer.all(),
+    db.orm.public.ClassGroup.all(),
+    db.orm.public.ClassGroupMember.all(),
+    db.orm.public.Classroom.all(),
   ]);
 
   const packageMap = new Map(allPackages.map(p => [p.id, p]));
   const pageMap = new Map(allPages.map(p => [p.id, p]));
   const catMap = new Map(allCategories.map(c => [c.id, c]));
   const courseMap = new Map(courses.map(c => [c.id, c.name]));
+  const studentNameMap = new Map(allStudents.map(s => [s.id, s.name]));
 
   const isManualReview = (q: any) =>
     q.questionType === 'ESSAY' ||
@@ -1957,8 +2173,6 @@ export async function getTaskRecapList(params: {
     attemptAnswerMap.set(ans.quizAttemptId, list);
   }
 
-  // Build classMap from all classrooms
-  const allClassrooms = await db.orm.public.Classroom.all();
   const classMap = new Map(allClassrooms.map(c => [c.id, c.name]));
   const variantsByPackage = new Map<string, string[]>(); // packageId -> variantIds
   for (const v of allVariants) {
@@ -1967,16 +2181,48 @@ export async function getTaskRecapList(params: {
     variantsByPackage.set(v.quizPackageId, list);
   }
 
-  // Build attempt lookup: studentId+packageId -> attempt
+  // Build attempt lookup: studentId+packageId -> attempt, plus groupId -> attempt
+  const variantById = new Map(allVariants.map(v => [v.id, v]));
   const attemptLookup = new Map<string, typeof allAttempts[0]>();
+  const groupAttemptByGroupId = new Map<string, typeof allAttempts[0]>();
   for (const a of allAttempts) {
-    const variant = allVariants.find(v => v.id === a.quizVariantId);
+    const aGroupId = (a as { groupId?: string | null }).groupId;
+    if (aGroupId) {
+      const existingGroupAtt = groupAttemptByGroupId.get(aGroupId);
+      if (!existingGroupAtt || a.status === 'COMPLETED' || a.status === 'GRADED') {
+        groupAttemptByGroupId.set(aGroupId, a);
+      }
+      continue;
+    }
+    const variant = variantById.get(a.quizVariantId);
     if (!variant) continue;
     const key = `${a.studentId}:${variant.quizPackageId}`;
     // Keep latest attempt (prefer COMPLETED/GRADED over IN_PROGRESS)
     const existing = attemptLookup.get(key);
     if (!existing || a.status === 'COMPLETED' || a.status === 'GRADED') {
       attemptLookup.set(key, a);
+    }
+  }
+
+  const groupMap = new Map(allClassGroups.map(g => [g.id, g]));
+  const groupInfoByStudentPkg = new Map<
+    string,
+    {
+      group: typeof allClassGroups[0];
+      member: typeof allGroupMembers[0];
+      attempt: typeof allAttempts[0] | null;
+    }
+  >();
+  for (const gm of allGroupMembers) {
+    const grp = groupMap.get(gm.groupId);
+    if (!grp) continue;
+    if (scope && !isGroupVisibleToScope(grp, scope)) continue;
+    const att = groupAttemptByGroupId.get(grp.id) || null;
+    const key = `${gm.studentId}:${grp.quizPackageId}`;
+    const prev = groupInfoByStudentPkg.get(key);
+    const curHasOverride = gm.scoreOverride !== null && gm.scoreOverride !== undefined;
+    if (!prev || att || curHasOverride) {
+      groupInfoByStudentPkg.set(key, { group: grp, member: gm, attempt: att });
     }
   }
 
@@ -2017,6 +2263,7 @@ export async function getTaskRecapList(params: {
     const cId = primaryCourseId;
     const courseName = cId ? (courseMap.get(cId) || 'Tanpa Mata Pelajaran') : 'Tanpa Mata Pelajaran';
     const passingScore = pkg.passingScore || 70;
+    const isGroupPackage = (pkg as { assignmentMode?: string }).assignmentMode === 'GROUP';
 
     // Filter students by course enrollment & teacher's per-course class assignment
     const enrolledStudentIds = cId
@@ -2029,18 +2276,31 @@ export async function getTaskRecapList(params: {
         if (!classAllowed) return false;
       }
       if (enrolledStudentIds && !enrolledStudentIds.has(s.id)) {
-        return Boolean(attemptLookup.get(`${s.id}:${pkg.id}`));
+        return isGroupPackage
+          ? groupInfoByStudentPkg.has(`${s.id}:${pkg.id}`)
+          : Boolean(attemptLookup.get(`${s.id}:${pkg.id}`));
       }
       return true;
     });
 
-    // Build student attempt list — cross-reference ALL pkgStudents with attempts
+    // Build student attempt list — cross-reference ALL pkgStudents with attempts (and ClassGroup for GROUP tasks)
     const studentAttempts: QuizReportItem[] = pkgStudents.map(student => {
       const key = `${student.id}:${pkg.id}`;
-      const attempt = attemptLookup.get(key);
-      const score = attempt?.score ?? null;
+      const groupInfo = isGroupPackage ? groupInfoByStudentPkg.get(key) || null : null;
+      const attempt = isGroupPackage ? (groupInfo?.attempt || null) : (attemptLookup.get(key) || null);
+      const hasOverride = Boolean(
+        groupInfo && groupInfo.member.scoreOverride !== null && groupInfo.member.scoreOverride !== undefined
+      );
+      const baseScore = attempt?.score ?? null;
+      const score = hasOverride ? groupInfo!.member.scoreOverride! : baseScore;
       const isPassed = score !== null && score >= passingScore;
-      const variantInfo = attempt?.quizVariantId ? variantQuestionMap.get(attempt.quizVariantId) : null;
+      const status = attempt
+        ? attempt.status
+        : hasOverride
+          ? (isPassed ? 'COMPLETED' : 'GRADED')
+          : 'NOT_STARTED';
+      const effectiveVariantId = attempt?.quizVariantId || groupInfo?.group.quizVariantId || null;
+      const variantInfo = effectiveVariantId ? variantQuestionMap.get(effectiveVariantId) : null;
       const essayCount = variantInfo?.essayCount || 0;
       const hasEssay = essayCount > 0;
       const totalQuestions = variantInfo?.total || 0;
@@ -2054,7 +2314,7 @@ export async function getTaskRecapList(params: {
       }
 
       return {
-        id: attempt?.id || `unstarted-${student.id}-${pkg.id}`,
+        id: groupInfo ? `${groupInfo.group.id}:${student.id}` : (attempt?.id || `unstarted-${student.id}-${pkg.id}`),
         attemptId: attempt?.id || null,
         studentId: student.id,
         studentName: student.name,
@@ -2068,20 +2328,28 @@ export async function getTaskRecapList(params: {
         courseName,
         passingScore,
         score,
-        status: (attempt?.status || 'NOT_STARTED') as any,
+        status: status as QuizReportItem['status'],
         startedAt: attempt?.startedAt || null,
         finishedAt: attempt?.finishedAt || null,
-        assignedVariantId: attempt?.quizVariantId || null,
+        assignedVariantId: effectiveVariantId,
         isPassed,
         hasEssay,
         needsReview,
         essayCount,
         totalQuestions,
+        isGroupTask: isGroupPackage,
+        groupId: groupInfo?.group.id || null,
+        groupName: groupInfo?.group.name || null,
+        groupBaseScore: baseScore,
+        scoreOverride: groupInfo?.member.scoreOverride ?? null,
+        submitterName: isGroupPackage && attempt ? (studentNameMap.get(attempt.studentId) || 'Siswa') : null,
       };
     });
 
     const completedAttempts = studentAttempts.filter(a => a.status === 'COMPLETED' || a.status === 'GRADED');
-    const needReviewCount = studentAttempts.filter(a => a.needsReview).length;
+    const needReviewCount = isGroupPackage
+      ? new Set(studentAttempts.filter(a => a.needsReview).map(a => a.attemptId || a.id)).size
+      : studentAttempts.filter(a => a.needsReview).length;
     const sumScore = completedAttempts.reduce((acc, a) => acc + (a.score || 0), 0);
     const avg = completedAttempts.length > 0 ? Math.round((sumScore / completedAttempts.length) * 10) / 10 : 0;
 
@@ -2107,8 +2375,71 @@ export async function getTaskRecapList(params: {
   return { items };
 }
 
+function sanitizeOverrideScore(scoreOverride: number | null | undefined): number | null {
+  if (scoreOverride === null || scoreOverride === undefined) return null;
+  return Math.max(0, Math.min(100, Math.round(Number(scoreOverride) * 100) / 100));
+}
+
+async function syncAndEmitGroupMemberGrades(
+  group: { id: string; quizPackageId: string; classroomId: string },
+  studentIds: string[],
+  scoreByStudentId: Map<string, number | null>
+) {
+  if (studentIds.length === 0) return;
+
+  const [attempt, pkg] = await Promise.all([
+    db.orm.public.QuizAttempt.where({ groupId: group.id }).first(),
+    db.orm.public.QuizPackage.where({ id: group.quizPackageId }).first(),
+  ]);
+  const page = pkg?.pageId ? await db.orm.public.Page.where({ id: pkg.pageId }).first() : null;
+  const passingScore = pkg?.passingScore || 70;
+
+  try {
+    const {
+      recordGroupQuizCompletion,
+      syncManualGroupMemberCompletion,
+    } = await import('@/modules/quiz-completion/quiz-completion.service');
+    if (attempt && (attempt.status === 'COMPLETED' || attempt.status === 'GRADED')) {
+      await recordGroupQuizCompletion(attempt.id);
+    } else {
+      for (const sid of studentIds) {
+        await syncManualGroupMemberCompletion(group.id, sid);
+      }
+    }
+  } catch (err) {
+    console.error('[syncAndEmitGroupMemberGrades] Failed syncing QuizCompletionRecord:', err);
+  }
+
+  try {
+    const { emitQuizGraded, emitQuizAssigned } = await import('@/lib/socket/emitter');
+    const nowIso = new Date().toISOString();
+    for (const sid of studentIds) {
+      const overrideVal = scoreByStudentId.get(sid) ?? null;
+      const effective = overrideVal ?? attempt?.score ?? null;
+      if (effective !== null) {
+        emitQuizGraded({
+          studentId: sid,
+          attemptId: attempt?.id || `manual-group:${group.id}:${sid}`,
+          packageId: group.quizPackageId,
+          pageSlug: page?.slug || null,
+          score: effective,
+          isPassed: effective >= passingScore,
+          gradedAt: nowIso,
+        });
+      }
+    }
+    emitQuizAssigned({
+      packageId: group.quizPackageId,
+      pageSlug: page?.slug || null,
+      studentIds,
+      classId: group.classroomId,
+      assignedAt: nowIso,
+    });
+  } catch {}
+}
+
 /**
- * Penyesuaian (override) nilai individu anggota kelompok oleh Guru di Laporan.
+ * Penyesuaian (override) nilai individu anggota kelompok oleh Guru (dengan maupun tanpa QuizAttempt).
  */
 export async function overrideGroupMemberScore(
   groupId: string,
@@ -2128,40 +2459,57 @@ export async function overrideGroupMemberScore(
   const member = await db.orm.public.ClassGroupMember.where({ groupId, studentId }).first();
   if (!member) throw new Error('Siswa bukan anggota kelompok ini');
 
-  const sanitizedScore =
-    scoreOverride === null || scoreOverride === undefined
-      ? null
-      : Math.max(0, Math.min(100, Math.round(Number(scoreOverride) * 100) / 100));
-
+  const sanitizedScore = sanitizeOverrideScore(scoreOverride);
   await db.orm.public.ClassGroupMember.where({ id: member.id }).update({
     scoreOverride: sanitizedScore,
   });
 
-  const attempt = await db.orm.public.QuizAttempt.where({ groupId }).first();
-  if (attempt && (attempt.status === 'COMPLETED' || attempt.status === 'GRADED')) {
-    try {
-      const { recordGroupQuizCompletion } = await import('@/modules/quiz-completion/quiz-completion.service');
-      await recordGroupQuizCompletion(attempt.id);
-    } catch (err) {
-      console.error('[overrideGroupMemberScore] Failed syncing QuizCompletionRecord:', err);
-    }
-
-    try {
-      const pkg = await db.orm.public.QuizPackage.where({ id: group.quizPackageId }).first();
-      const page = pkg?.pageId ? await db.orm.public.Page.where({ id: pkg.pageId }).first() : null;
-      const effective = sanitizedScore ?? attempt.score ?? 0;
-      const { emitQuizGraded } = await import('@/lib/socket/emitter');
-      emitQuizGraded({
-        studentId,
-        attemptId: attempt.id,
-        packageId: group.quizPackageId,
-        pageSlug: page?.slug || null,
-        score: effective,
-        isPassed: effective >= (pkg?.passingScore || 70),
-        gradedAt: new Date().toISOString(),
-      });
-    } catch {}
-  }
+  await syncAndEmitGroupMemberGrades(
+    group,
+    [studentId],
+    new Map([[studentId, sanitizedScore]])
+  );
 
   return { groupId, studentId, scoreOverride: sanitizedScore };
+}
+
+/**
+ * Penyesuaian nilai banyak anggota dalam satu kelompok sekaligus (dari mode Kelompok / Detail Modal).
+ */
+export async function overrideGroupMembersBatch(
+  groupId: string,
+  overrides: Array<{ studentId: string; scoreOverride: number | null }>,
+  scope: TeacherScope
+) {
+  const group = await db.orm.public.ClassGroup.where({ id: groupId }).first();
+  if (!group) throw new Error('Kelompok tidak ditemukan');
+
+  if (!scope.isUnrestricted) {
+    if (!canEditGroupForScope(group, scope) || !isClassAllowedForCourse(scope, group.courseId, group.classroomId)) {
+      throw new Error('FORBIDDEN');
+    }
+  }
+
+  const members = await db.orm.public.ClassGroupMember.where({ groupId }).all();
+  const memberByStudent = new Map(members.map(m => [m.studentId, m]));
+
+  const updatedStudentIds: string[] = [];
+  const scoreMap = new Map<string, number | null>();
+
+  for (const entry of overrides) {
+    const member = memberByStudent.get(entry.studentId);
+    if (!member) continue;
+    const sanitizedScore = sanitizeOverrideScore(entry.scoreOverride);
+    if ((member.scoreOverride ?? null) !== sanitizedScore) {
+      await db.orm.public.ClassGroupMember.where({ id: member.id }).update({
+        scoreOverride: sanitizedScore,
+      });
+    }
+    updatedStudentIds.push(entry.studentId);
+    scoreMap.set(entry.studentId, sanitizedScore);
+  }
+
+  await syncAndEmitGroupMemberGrades(group, updatedStudentIds, scoreMap);
+
+  return { groupId, updatedCount: updatedStudentIds.length };
 }

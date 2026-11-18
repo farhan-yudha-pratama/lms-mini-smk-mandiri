@@ -42,6 +42,7 @@ export default async function QuizzesPage() {
       ...pkg,
       courseId: resolvedCourseId,
       courseName: course?.name || 'Mata Pelajaran Umum',
+      assignmentMode: (pkg as { assignmentMode?: 'INDIVIDUAL' | 'GROUP' }).assignmentMode || 'INDIVIDUAL',
       pageTitle: page?.title || null,
       pageOrderIndex: page !== null && page !== undefined ? page.orderIndex : null,
       categoryId: category?.id || null,

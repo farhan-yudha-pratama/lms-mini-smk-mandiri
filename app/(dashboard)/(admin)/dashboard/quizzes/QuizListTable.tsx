@@ -10,6 +10,7 @@ export type MappedPackage = {
   courseId: string | null;
   pageId: string | null;
   title: string;
+  assignmentMode?: 'INDIVIDUAL' | 'GROUP';
   passingScore: number;
   timeLimit: number | null;
   isActive: boolean;
@@ -28,6 +29,7 @@ export type MappedPackage = {
 export default function QuizListTable({ packages }: { packages: MappedPackage[] }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCourse, setSelectedCourse] = useState<string>('ALL');
+  const [selectedMode, setSelectedMode] = useState<'ALL' | 'INDIVIDUAL' | 'GROUP'>('ALL');
 
   const [modalState, setModalState] = useState<{
     isOpen: boolean;
@@ -89,9 +91,12 @@ export default function QuizListTable({ packages }: { packages: MappedPackage[] 
       const matchesCourse =
         selectedCourse === 'ALL' || pkg.courseName === selectedCourse;
 
-      return matchesSearch && matchesCourse;
+      const pkgMode = pkg.assignmentMode || 'INDIVIDUAL';
+      const matchesMode = selectedMode === 'ALL' || pkgMode === selectedMode;
+
+      return matchesSearch && matchesCourse && matchesMode;
     });
-  }, [packages, searchQuery, selectedCourse]);
+  }, [packages, searchQuery, selectedCourse, selectedMode]);
 
   const groupedPackages = useMemo(() => {
     // Urutkan filteredPackages:
@@ -171,6 +176,15 @@ export default function QuizListTable({ packages }: { packages: MappedPackage[] 
 
         <div className="flex gap-2 items-center flex-wrap">
           <select
+            value={selectedMode}
+            onChange={(e) => setSelectedMode(e.target.value as 'ALL' | 'INDIVIDUAL' | 'GROUP')}
+            className="px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+          >
+            <option value="ALL">Semua Mode</option>
+            <option value="GROUP">Tugas Kelompok</option>
+            <option value="INDIVIDUAL">Individu</option>
+          </select>
+          <select
             value={selectedCourse}
             onChange={(e) => setSelectedCourse(e.target.value)}
             className="px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
@@ -243,6 +257,18 @@ export default function QuizListTable({ packages }: { packages: MappedPackage[] 
                                 ) : (
                                   <span className="text-xs px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded border border-indigo-200 font-medium whitespace-nowrap">
                                     Kuis Materi
+                                  </span>
+                                )}
+
+                                {(pkg.assignmentMode || 'INDIVIDUAL') === 'GROUP' ? (
+                                  <span className="text-xs px-2 py-0.5 bg-fuchsia-50 text-fuchsia-700 rounded border border-fuchsia-200 font-semibold whitespace-nowrap inline-flex items-center gap-1">
+                                    <span className="material-symbols-outlined text-[13px]">groups</span>
+                                    Tugas Kelompok
+                                  </span>
+                                ) : (
+                                  <span className="text-xs px-2 py-0.5 bg-gray-50 text-gray-600 rounded border border-gray-200 font-medium whitespace-nowrap inline-flex items-center gap-1">
+                                    <span className="material-symbols-outlined text-[13px]">person</span>
+                                    Individu
                                   </span>
                                 )}
                                 
@@ -326,7 +352,16 @@ export default function QuizListTable({ packages }: { packages: MappedPackage[] 
                           </td>
 
                           <td className="px-4 py-4 text-right">
-                            <div className="flex justify-end gap-2">
+                            <div className="flex justify-end gap-1.5">
+                              {(pkg.assignmentMode || 'INDIVIDUAL') === 'GROUP' && (
+                                <Link
+                                  href={`/dashboard/quizzes/${pkg.id}/edit?tab=assignments`}
+                                  className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors inline-flex items-center"
+                                  title="Kelola Kelompok & Nilai Anggota"
+                                >
+                                  <span className="material-symbols-outlined text-xl">groups</span>
+                                </Link>
+                              )}
                               <Link
                                 href={`/dashboard/quizzes/${pkg.id}/edit`}
                                 className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors inline-flex items-center"
