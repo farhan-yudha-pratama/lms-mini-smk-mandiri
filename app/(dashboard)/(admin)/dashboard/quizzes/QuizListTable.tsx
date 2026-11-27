@@ -10,7 +10,7 @@ export type MappedPackage = {
   courseId: string | null;
   pageId: string | null;
   title: string;
-  assignmentMode?: 'INDIVIDUAL' | 'GROUP';
+  assignmentMode?: 'INDIVIDUAL' | 'GROUP' | 'DISCUSSION';
   passingScore: number;
   timeLimit: number | null;
   isActive: boolean;
@@ -24,12 +24,14 @@ export type MappedPackage = {
   categoryName: string | null;
   categoryOrderIndex?: number | null;
   variantsCount: number;
+  discussionClassesCount?: number;
+  discussionGradedCount?: number;
 };
 
 export default function QuizListTable({ packages }: { packages: MappedPackage[] }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCourse, setSelectedCourse] = useState<string>('ALL');
-  const [selectedMode, setSelectedMode] = useState<'ALL' | 'INDIVIDUAL' | 'GROUP'>('ALL');
+  const [selectedMode, setSelectedMode] = useState<'ALL' | 'INDIVIDUAL' | 'GROUP' | 'DISCUSSION'>('ALL');
 
   const [modalState, setModalState] = useState<{
     isOpen: boolean;
@@ -177,12 +179,13 @@ export default function QuizListTable({ packages }: { packages: MappedPackage[] 
         <div className="flex gap-2 items-center flex-wrap">
           <select
             value={selectedMode}
-            onChange={(e) => setSelectedMode(e.target.value as 'ALL' | 'INDIVIDUAL' | 'GROUP')}
+            onChange={(e) => setSelectedMode(e.target.value as 'ALL' | 'INDIVIDUAL' | 'GROUP' | 'DISCUSSION')}
             className="px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
           >
             <option value="ALL">Semua Mode</option>
-            <option value="GROUP">Tugas Kelompok</option>
             <option value="INDIVIDUAL">Individu</option>
+            <option value="GROUP">Tugas Kelompok</option>
+            <option value="DISCUSSION">Diskusi Kelas</option>
           </select>
           <select
             value={selectedCourse}
@@ -239,7 +242,8 @@ export default function QuizListTable({ packages }: { packages: MappedPackage[] 
 
                     {/* Baris Data Kuis */}
                     {group.packages.map((pkg) => {
-                      const isStandalone = !pkg.pageId;
+                      const isDiscussion = (pkg.assignmentMode || 'INDIVIDUAL') === 'DISCUSSION';
+                      const isStandalone = !pkg.pageId && !isDiscussion;
 
                       return (
                         <tr
@@ -250,7 +254,12 @@ export default function QuizListTable({ packages }: { packages: MappedPackage[] 
                             <div className="flex flex-col gap-1">
                               <span className="font-semibold text-gray-900">{pkg.title}</span>
                               <div className="flex gap-2 flex-wrap items-center">
-                                {isStandalone ? (
+                                {isDiscussion ? (
+                                  <span className="text-xs px-2 py-0.5 bg-teal-50 text-teal-700 rounded border border-teal-200 font-semibold whitespace-nowrap inline-flex items-center gap-1">
+                                    <span className="material-symbols-outlined text-[13px]">forum</span>
+                                    Diskusi Kelas
+                                  </span>
+                                ) : isStandalone ? (
                                   <span className="text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded border border-purple-200 font-medium whitespace-nowrap">
                                     Tugas Mandiri
                                   </span>
@@ -260,7 +269,7 @@ export default function QuizListTable({ packages }: { packages: MappedPackage[] 
                                   </span>
                                 )}
 
-                                {(pkg.assignmentMode || 'INDIVIDUAL') === 'GROUP' ? (
+                                {!isDiscussion && ((pkg.assignmentMode || 'INDIVIDUAL') === 'GROUP' ? (
                                   <span className="text-xs px-2 py-0.5 bg-fuchsia-50 text-fuchsia-700 rounded border border-fuchsia-200 font-semibold whitespace-nowrap inline-flex items-center gap-1">
                                     <span className="material-symbols-outlined text-[13px]">groups</span>
                                     Tugas Kelompok
@@ -270,9 +279,9 @@ export default function QuizListTable({ packages }: { packages: MappedPackage[] 
                                     <span className="material-symbols-outlined text-[13px]">person</span>
                                     Individu
                                   </span>
-                                )}
+                                ))}
                                 
-                                {pkg.timeLimit && pkg.timeLimit > 0 ? (
+                                {!isDiscussion && (pkg.timeLimit && pkg.timeLimit > 0 ? (
                                   <span className="text-xs px-2 py-0.5 bg-amber-50 text-amber-800 rounded border border-amber-200 font-medium whitespace-nowrap flex items-center gap-1">
                                     <span className="material-symbols-outlined text-[13px]">timer</span>
                                     {pkg.timeLimit} Menit
@@ -282,9 +291,15 @@ export default function QuizListTable({ packages }: { packages: MappedPackage[] 
                                     <span className="material-symbols-outlined text-[13px]">all_inclusive</span>
                                     Tanpa Batas
                                   </span>
+                                ))}
+
+                                {isDiscussion && (
+                                  <span className="text-xs px-2 py-0.5 bg-gray-50 text-gray-600 rounded border border-gray-200 font-medium whitespace-nowrap">
+                                    KKM {pkg.passingScore}
+                                  </span>
                                 )}
 
-                                {pkg.isHidden && (
+                                {!isDiscussion && pkg.isHidden && (
                                   <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-700 rounded border border-gray-300 font-medium whitespace-nowrap">
                                     Draft (Sembunyi)
                                   </span>
@@ -294,7 +309,12 @@ export default function QuizListTable({ packages }: { packages: MappedPackage[] 
                           </td>
 
                           <td className="px-4 py-4">
-                            {isStandalone ? (
+                            {isDiscussion ? (
+                              <div className="flex items-center gap-1.5 text-teal-700 text-xs font-medium">
+                                <span className="material-symbols-outlined text-[15px]">fact_check</span>
+                                <span>Penilaian langsung per kelas (Tanpa soal)</span>
+                              </div>
+                            ) : isStandalone ? (
                               <div className="flex items-center gap-1.5 text-gray-400 italic text-xs">
                                 <span className="material-symbols-outlined text-[15px]">link_off</span>
                                 <span>Tidak terikat materi (Tugas Mandiri)</span>
@@ -346,13 +366,28 @@ export default function QuizListTable({ packages }: { packages: MappedPackage[] 
                           </td>
 
                           <td className="px-4 py-4 text-center">
-                            <span className="text-sm font-semibold text-gray-700">
-                              {pkg.variantsCount}
-                            </span>
+                            {isDiscussion ? (
+                              <span className="text-xs font-semibold text-teal-700 bg-teal-50 px-2 py-1 rounded-md border border-teal-200">
+                                {pkg.discussionClassesCount ?? 0} Kls • {pkg.discussionGradedCount ?? 0} Nilai
+                              </span>
+                            ) : (
+                              <span className="text-sm font-semibold text-gray-700">
+                                {pkg.variantsCount}
+                              </span>
+                            )}
                           </td>
 
                           <td className="px-4 py-4 text-right">
                             <div className="flex justify-end gap-1.5">
+                              {isDiscussion && (
+                                <Link
+                                  href={`/dashboard/quizzes/${pkg.id}/edit?tab=grading`}
+                                  className="p-2 text-teal-600 hover:bg-teal-50 rounded-lg transition-colors inline-flex items-center"
+                                  title="Assign Kelas & Nilai Diskusi"
+                                >
+                                  <span className="material-symbols-outlined text-xl">fact_check</span>
+                                </Link>
+                              )}
                               {(pkg.assignmentMode || 'INDIVIDUAL') === 'GROUP' && (
                                 <Link
                                   href={`/dashboard/quizzes/${pkg.id}/edit?tab=assignments`}
@@ -365,7 +400,7 @@ export default function QuizListTable({ packages }: { packages: MappedPackage[] 
                               <Link
                                 href={`/dashboard/quizzes/${pkg.id}/edit`}
                                 className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors inline-flex items-center"
-                                title="Edit & Kelola Varian"
+                                title={isDiscussion ? 'Kelola Diskusi' : 'Edit & Kelola Varian'}
                               >
                                 <span className="material-symbols-outlined text-xl">settings</span>
                               </Link>

@@ -480,6 +480,11 @@ export default function TaskRecapView({
                                             {s.groupName}
                                           </span>
                                         )}
+                                        {s.isDiscussion && (
+                                          <span className="mt-0.5 inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[10px] font-bold bg-teal-100 text-teal-800 border border-teal-200">
+                                            Diskusi Kelas
+                                          </span>
+                                        )}
                                       </td>
                                       <td className="px-5 py-3 text-center">
                                         {s.needsReview ? (
@@ -522,7 +527,15 @@ export default function TaskRecapView({
                                         )}
                                       </td>
                                       <td className="px-5 py-3 text-right">
-                                        {Boolean(s.attemptId) ? (
+                                        {s.isDiscussion ? (
+                                          <a
+                                            href={`/dashboard/quizzes/${pkg.packageId}/edit?tab=grading`}
+                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border border-teal-300 bg-teal-50 hover:bg-teal-100 text-teal-800 transition-colors shadow-sm"
+                                          >
+                                            <span className="material-symbols-outlined text-[16px]">fact_check</span>
+                                            Nilai Diskusi
+                                          </a>
+                                        ) : Boolean(s.attemptId) ? (
                                           <button
                                             onClick={() => onOpenDetail(s.attemptId!)}
                                             className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors shadow-sm active:translate-y-px ${

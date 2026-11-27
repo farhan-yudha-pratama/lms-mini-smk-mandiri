@@ -25,6 +25,10 @@ export default function QuizPackageForm({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [assignmentMode, setAssignmentMode] = useState<'INDIVIDUAL' | 'GROUP' | 'DISCUSSION'>(
+    (initialData?.assignmentMode as 'INDIVIDUAL' | 'GROUP' | 'DISCUSSION') || 'INDIVIDUAL'
+  );
+  const isDiscussion = assignmentMode === 'DISCUSSION';
   
   // Format dates for input type datetime-local
   const formatForInput = (dateString: string) => {
@@ -72,7 +76,9 @@ export default function QuizPackageForm({
         router.refresh();
       } else {
         const createdId = (res as { id?: string }).id;
-        router.push(createdId ? `/dashboard/quizzes/${createdId}/edit?tab=variants` : '/dashboard/quizzes');
+        const createdMode = (res as { assignmentMode?: string }).assignmentMode || assignmentMode;
+        const targetTab = createdMode === 'DISCUSSION' ? 'grading' : 'variants';
+        router.push(createdId ? `/dashboard/quizzes/${createdId}/edit?tab=${targetTab}` : '/dashboard/quizzes');
       }
     } else {
       if (res.errors) {
@@ -120,7 +126,7 @@ export default function QuizPackageForm({
             <h3 className="font-bold text-gray-900 text-sm sm:text-base">Identitas & Keterikatan Materi</h3>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+          <div className={`grid grid-cols-1 ${isDiscussion ? '' : 'sm:grid-cols-2'} gap-3 sm:gap-4`}>
             {/* Mata Pelajaran */}
             <div className="space-y-1 sm:space-y-1.5">
               <label className="block text-xs sm:text-sm font-semibold text-gray-700">
@@ -142,6 +148,7 @@ export default function QuizPackageForm({
             </div>
 
             {/* Halaman Materi */}
+            {!isDiscussion && (
             <div className="space-y-1 sm:space-y-1.5">
               <label className="block text-xs sm:text-sm font-semibold text-gray-700">
                 Halaman Materi Pembelajaran (Opsional)
@@ -178,19 +185,20 @@ export default function QuizPackageForm({
                 </>
               )}
             </div>
+            )}
           </div>
 
           {/* Judul Kuis */}
           <div className="space-y-1 sm:space-y-1.5">
             <label className="block text-xs sm:text-sm font-semibold text-gray-700">
-              Judul Kuis / Tugas <span className="text-red-500">*</span>
+              {isDiscussion ? 'Judul / Topik Diskusi' : 'Judul Kuis / Tugas'} <span className="text-red-500">*</span>
             </label>
             <input 
               type="text" 
               name="title" 
               defaultValue={initialData?.title || ''}
               required
-              placeholder="Contoh: Evaluasi Bab 2 - CSS Flexbox & Grid Layout"
+              placeholder={isDiscussion ? 'Contoh: Diskusi Kelas - Arsitektur Jaringan LAN' : 'Contoh: Evaluasi Bab 2 - CSS Flexbox & Grid Layout'}
               className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-base sm:text-sm shadow-2xs"
             />
           </div>
@@ -198,29 +206,30 @@ export default function QuizPackageForm({
           {/* Deskripsi */}
           <div className="space-y-1 sm:space-y-1.5">
             <label className="block text-xs sm:text-sm font-semibold text-gray-700">
-              Deskripsi & Petunjuk Pengerjaan (Opsional)
+              {isDiscussion ? 'Catatan / Rubrik Diskusi (Opsional)' : 'Deskripsi & Petunjuk Pengerjaan (Opsional)'}
             </label>
             <textarea 
               name="description" 
               defaultValue={initialData?.description || ''}
               rows={3}
-              placeholder="Tuliskan petunjuk pengerjaan atau materi yang diujikan..."
+              placeholder={isDiscussion ? 'Tuliskan topik bahasan atau kriteria keaktifan diskusi...' : 'Tuliskan petunjuk pengerjaan atau materi yang diujikan...'}
               className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-base sm:text-sm shadow-2xs leading-relaxed"
             />
           </div>
 
-          {/* Mode Penugasan: Individu vs Kelompok */}
+          {/* Mode Penugasan: Individu vs Kelompok vs Diskusi */}
           <div className="space-y-2 pt-1">
             <label className="block text-xs sm:text-sm font-semibold text-gray-700">
               Mode Pengerjaan Tugas / Kuis
             </label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <label className="flex items-start gap-2.5 p-3.5 border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50/50">
                 <input
                   type="radio"
                   name="assignmentMode"
                   value="INDIVIDUAL"
-                  defaultChecked={(initialData?.assignmentMode || 'INDIVIDUAL') === 'INDIVIDUAL'}
+                  checked={assignmentMode === 'INDIVIDUAL'}
+                  onChange={() => setAssignmentMode('INDIVIDUAL')}
                   className="mt-0.5 text-blue-600 focus:ring-blue-500"
                 />
                 <div className="space-y-0.5">
@@ -238,7 +247,8 @@ export default function QuizPackageForm({
                   type="radio"
                   name="assignmentMode"
                   value="GROUP"
-                  defaultChecked={initialData?.assignmentMode === 'GROUP'}
+                  checked={assignmentMode === 'GROUP'}
+                  onChange={() => setAssignmentMode('GROUP')}
                   className="mt-0.5 text-purple-600 focus:ring-purple-500"
                 />
                 <div className="space-y-0.5">
@@ -251,7 +261,34 @@ export default function QuizPackageForm({
                   </span>
                 </div>
               </label>
+              <label className="flex items-start gap-2.5 p-3.5 border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors has-[:checked]:border-teal-500 has-[:checked]:bg-teal-50/50">
+                <input
+                  type="radio"
+                  name="assignmentMode"
+                  value="DISCUSSION"
+                  checked={assignmentMode === 'DISCUSSION'}
+                  onChange={() => setAssignmentMode('DISCUSSION')}
+                  className="mt-0.5 text-teal-600 focus:ring-teal-500"
+                />
+                <div className="space-y-0.5">
+                  <span className="text-xs sm:text-sm font-bold text-gray-900 flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-base text-teal-600">forum</span>
+                    Diskusi Kelas
+                  </span>
+                  <span className="text-[11px] text-gray-500 block">
+                    Penilaian langsung per kelas tanpa soal, timer, atau tampilan di siswa.
+                  </span>
+                </div>
+              </label>
             </div>
+            {isDiscussion && (
+              <div className="p-3 bg-teal-50/70 border border-teal-200 rounded-xl text-xs text-teal-900 flex items-start gap-2">
+                <span className="material-symbols-outlined text-base text-teal-600 shrink-0 mt-0.5">info</span>
+                <span>
+                  Mode <strong>Diskusi Kelas</strong> tidak memerlukan bank soal, batas waktu, jadwal ujian, maupun tampilan pengerjaan di sisi siswa. Setelah dibuat, Anda dapat langsung meng-assign kelas dan memberi nilai siswa.
+                </span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -259,10 +296,12 @@ export default function QuizPackageForm({
         <div className="space-y-3 sm:space-y-4">
           <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
             <span className="material-symbols-outlined text-amber-600 text-lg sm:text-xl">tune</span>
-            <h3 className="font-bold text-gray-900 text-sm sm:text-base">Kriteria Penilaian & Durasi Pengerjaan</h3>
+            <h3 className="font-bold text-gray-900 text-sm sm:text-base">
+              {isDiscussion ? 'Kriteria Ketuntasan (KKM)' : 'Kriteria Penilaian & Durasi Pengerjaan'}
+            </h3>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+          <div className={`grid grid-cols-1 ${isDiscussion ? '' : 'sm:grid-cols-2'} gap-3 sm:gap-4`}>
             {/* Passing Score / KKM */}
             <div className="space-y-1 sm:space-y-1.5">
               <label className="block text-xs sm:text-sm font-semibold text-gray-700">
@@ -282,10 +321,13 @@ export default function QuizPackageForm({
                   / 100
                 </span>
               </div>
-              <p className="text-[11px] sm:text-xs text-gray-400">Skor minimal agar murid dinyatakan lulus materi.</p>
+              <p className="text-[11px] sm:text-xs text-gray-400">
+                {isDiscussion ? 'Skor minimal agar siswa dinyatakan tuntas diskusi.' : 'Skor minimal agar murid dinyatakan lulus materi.'}
+              </p>
             </div>
 
             {/* Limit Waktu */}
+            {!isDiscussion && (
             <div className="space-y-1 sm:space-y-1.5">
               <label className="block text-xs sm:text-sm font-semibold text-gray-700">
                 Batas Waktu Pengerjaan (Menit)
@@ -305,10 +347,12 @@ export default function QuizPackageForm({
               </div>
               <p className="text-[11px] sm:text-xs text-gray-400">Timer otomatis berjalan saat murid menekan tombol Mulai Kuis.</p>
             </div>
+            )}
           </div>
         </div>
 
         {/* BAGIAN 3: JADWAL PELAKSANAAN UJIAN (OPSIONAL) */}
+        {!isDiscussion && (
         <div className="space-y-3 sm:space-y-4">
           <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
             <span className="material-symbols-outlined text-indigo-600 text-lg sm:text-xl">event_available</span>
@@ -351,16 +395,20 @@ export default function QuizPackageForm({
             </div>
           </div>
         </div>
+        )}
 
         {/* BAGIAN 4: KETENTUAN PENGERJAAN & VISIBILITAS */}
         <div className="space-y-3 sm:space-y-4">
           <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
             <span className="material-symbols-outlined text-emerald-600 text-lg sm:text-xl">shield</span>
-            <h3 className="font-bold text-gray-900 text-sm sm:text-base">Ketentuan Pengerjaan & Visibilitas Siswa</h3>
+            <h3 className="font-bold text-gray-900 text-sm sm:text-base">
+              {isDiscussion ? 'Status Penilaian' : 'Ketentuan Pengerjaan & Visibilitas Siswa'}
+            </h3>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 sm:gap-3.5">
+          <div className={`grid grid-cols-1 ${isDiscussion ? '' : 'md:grid-cols-3'} gap-2.5 sm:gap-3.5`}>
             {/* Shuffle Questions */}
+            {!isDiscussion && (
             <label className="flex items-start gap-2.5 sm:gap-3 p-3 sm:p-3.5 bg-gray-50/70 hover:bg-gray-100/70 border border-gray-200 rounded-xl cursor-pointer transition-colors select-none">
               <input 
                 type="checkbox" 
@@ -376,6 +424,7 @@ export default function QuizPackageForm({
                 </span>
               </div>
             </label>
+            )}
 
             {/* Is Active */}
             <label className="flex items-start gap-2.5 sm:gap-3 p-3 sm:p-3.5 bg-gray-50/70 hover:bg-gray-100/70 border border-gray-200 rounded-xl cursor-pointer transition-colors select-none">
@@ -387,14 +436,19 @@ export default function QuizPackageForm({
                 className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 mt-0.5 shrink-0"
               />
               <div className="space-y-0.5">
-                <span className="font-semibold text-gray-900 text-xs sm:text-sm block">Kuis Berstatus Aktif</span>
+                <span className="font-semibold text-gray-900 text-xs sm:text-sm block">
+                  {isDiscussion ? 'Diskusi Berstatus Aktif' : 'Kuis Berstatus Aktif'}
+                </span>
                 <span className="text-[11px] sm:text-xs text-gray-500 block leading-relaxed">
-                  Murid yang ditugaskan dapat membuka dan mengerjakan kuis ini.
+                  {isDiscussion
+                    ? 'Sesi diskusi aktif dan masuk dalam rekapitulasi Gradebook & Laporan kelas.'
+                    : 'Murid yang ditugaskan dapat membuka dan mengerjakan kuis ini.'}
                 </span>
               </div>
             </label>
             
             {/* Is Hidden */}
+            {!isDiscussion && (
             <label className="flex items-start gap-2.5 sm:gap-3 p-3 sm:p-3.5 bg-gray-50/70 hover:bg-gray-100/70 border border-gray-200 rounded-xl cursor-pointer transition-colors select-none">
               <input 
                 type="checkbox" 
@@ -410,6 +464,7 @@ export default function QuizPackageForm({
                 </span>
               </div>
             </label>
+            )}
           </div>
         </div>
       </div>

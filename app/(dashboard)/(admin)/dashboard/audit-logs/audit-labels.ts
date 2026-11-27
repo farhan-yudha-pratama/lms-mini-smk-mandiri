@@ -32,6 +32,20 @@ export const auditLabels: Record<string, { label: string; color: string }> = {
 
   // Purple
   GRADE_ESSAY: { label: 'Nilai Essay', color: 'bg-purple-100 text-purple-800 border-purple-200' },
+
+  // Email Change
+  REQUEST_EMAIL_CHANGE: { label: 'Minta OTP Email', color: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
+  CHANGE_EMAIL: { label: 'Ubah Email', color: 'bg-green-100 text-green-800 border-green-200' },
+
+  // Password Reset
+  REQUEST_PASSWORD_RESET: { label: 'Minta Reset Sandi', color: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
+  RESET_PASSWORD_SELF: { label: 'Reset Sandi Mandiri', color: 'bg-green-100 text-green-800 border-green-200' },
+
+  // Diskusi Kelas
+  ASSIGN_DISCUSSION_CLASS: { label: 'Assign Kelas Diskusi', color: 'bg-emerald-100 text-emerald-800 border-emerald-200' },
+  UNASSIGN_DISCUSSION_CLASS: { label: 'Cabut Kelas Diskusi', color: 'bg-red-100 text-red-800 border-red-200' },
+  GRADE_DISCUSSION: { label: 'Nilai Diskusi', color: 'bg-teal-100 text-teal-800 border-teal-200' },
+  UPDATE_GRADEBOOK_CONFIG: { label: 'Atur Kuis Gradebook', color: 'bg-indigo-100 text-indigo-800 border-indigo-200' },
   
   // Default
   DEFAULT: { label: 'Aksi Sistem', color: 'bg-gray-100 text-gray-800 border-gray-200' }

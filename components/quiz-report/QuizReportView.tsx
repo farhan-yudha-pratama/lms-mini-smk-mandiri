@@ -75,7 +75,7 @@ export default function QuizReportView({
   const [selectedClassId, setSelectedClassId] = useState<string>('');
   const [selectedPackageId, setSelectedPackageId] = useState<string>('');
   const [selectedCourseId, setSelectedCourseId] = useState<string>('');
-  const [selectedAssignmentMode, setSelectedAssignmentMode] = useState<'ALL' | 'INDIVIDUAL' | 'GROUP'>('ALL');
+  const [selectedAssignmentMode, setSelectedAssignmentMode] = useState<'ALL' | 'INDIVIDUAL' | 'GROUP' | 'DISCUSSION'>('ALL');
   const [viewMode, setViewMode] = useState<'INDIVIDUAL' | 'GROUP'>('INDIVIDUAL');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [reviewFilter, setReviewFilter] = useState<'ALL' | 'NEED_REVIEW' | 'HAS_ESSAY' | 'GRADED' | 'NO_ESSAY'>('ALL');
@@ -135,7 +135,7 @@ export default function QuizReportView({
     classId?: string;
     packageId?: string;
     courseId?: string;
-    assignmentMode?: 'ALL' | 'INDIVIDUAL' | 'GROUP';
+    assignmentMode?: 'ALL' | 'INDIVIDUAL' | 'GROUP' | 'DISCUSSION';
     search?: string;
     page?: number;
     limit?: number;
@@ -336,7 +336,10 @@ export default function QuizReportView({
     setSelectedPackageId(newPackageId);
     setPage(1);
     const selectedPkg = packages.find(p => p.id === newPackageId);
-    if (selectedPkg?.assignmentMode === 'GROUP' && selectedAssignmentMode === 'INDIVIDUAL') {
+    if (
+      (selectedPkg?.assignmentMode === 'GROUP' && selectedAssignmentMode === 'INDIVIDUAL') ||
+      (selectedPkg?.assignmentMode === 'DISCUSSION' && selectedAssignmentMode !== 'ALL' && selectedAssignmentMode !== 'DISCUSSION')
+    ) {
       setSelectedAssignmentMode('ALL');
       loadReports({ packageId: newPackageId, assignmentMode: 'ALL', page: 1 });
       return;
@@ -344,10 +347,10 @@ export default function QuizReportView({
     loadReports({ packageId: newPackageId, page: 1 });
   };
 
-  const handleAssignmentModeChange = (mode: 'ALL' | 'INDIVIDUAL' | 'GROUP') => {
+  const handleAssignmentModeChange = (mode: 'ALL' | 'INDIVIDUAL' | 'GROUP' | 'DISCUSSION') => {
     setSelectedAssignmentMode(mode);
     if (mode === 'GROUP') setViewMode('GROUP');
-    else if (mode === 'INDIVIDUAL') setViewMode('INDIVIDUAL');
+    else setViewMode('INDIVIDUAL');
     setPage(1);
     loadReports({ assignmentMode: mode, page: 1 });
   };
@@ -1034,7 +1037,7 @@ export default function QuizReportView({
                   <optgroup key={catName} label={`Kategori: ${catName}`}>
                     {pkgs.map(p => (
                       <option key={p.id} value={p.id}>
-                        {p.assignmentMode === 'GROUP' ? '[Kelompok] ' : ''}{p.title}
+                        {p.assignmentMode === 'GROUP' ? '[Kelompok] ' : p.assignmentMode === 'DISCUSSION' ? '[Diskusi] ' : ''}{p.title}
                       </option>
                     ))}
                   </optgroup>
@@ -1152,6 +1155,7 @@ export default function QuizReportView({
               { id: 'ALL', label: 'Semua' },
               { id: 'INDIVIDUAL', label: 'Individu' },
               { id: 'GROUP', label: 'Tugas Kelompok' },
+              { id: 'DISCUSSION', label: 'Diskusi' },
             ] as const).map((m) => (
               <button
                 key={m.id}
@@ -1499,6 +1503,12 @@ export default function QuizReportView({
                           <span className="text-[11px] text-gray-500">
                             {row.categoryName}
                           </span>
+                          {row.isDiscussion && (
+                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[10px] font-bold bg-teal-100 text-teal-800 border border-teal-300">
+                              <span className="material-symbols-outlined text-[11px]">forum</span>
+                              Diskusi
+                            </span>
+                          )}
                           {row.hasEssay && (
                             <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-300">
                               <span className="material-symbols-outlined text-[11px]">edit_note</span>
@@ -1578,6 +1588,17 @@ export default function QuizReportView({
                       {/* 8. Aksi (Detail / Review & Reset) */}
                       <td className="px-4 py-3.5 text-right">
                         <div className="inline-flex items-center gap-2">
+                          {row.isDiscussion ? (
+                            <a
+                              href={`/dashboard/quizzes/${row.packageId}/edit?tab=grading`}
+                              className="inline-flex items-center gap-1 px-3 py-1.5 rounded text-xs font-bold border-2 border-teal-300 bg-teal-50 text-teal-800 hover:bg-teal-100 transition-all shadow-sm"
+                              title="Buka halaman penilaian diskusi kelas"
+                            >
+                              <span className="material-symbols-outlined text-[15px]">fact_check</span>
+                              Nilai Diskusi
+                            </a>
+                          ) : (
+                          <>
                           {/* DETAIL / REVIEW BUTTON */}
                           {hasStarted ? (
                             <button
@@ -1661,6 +1682,8 @@ export default function QuizReportView({
                             </span>
                             {resettingId === row.id ? 'Reset...' : 'Reset'}
                           </button>
+                          )}
+                          </>
                           )}
                         </div>
                       </td>

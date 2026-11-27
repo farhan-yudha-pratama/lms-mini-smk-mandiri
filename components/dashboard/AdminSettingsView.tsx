@@ -2,6 +2,8 @@
 
 import React, { useState, useTransition } from 'react';
 import { changePasswordAction } from '@/app/actions/settings';
+import type { PendingEmailChangeInfo } from '@/modules/auth/email-change.service';
+import EmailChangeCard from '@/components/dashboard/EmailChangeCard';
 
 interface AdminSettingsViewProps {
   user: {
@@ -9,10 +11,13 @@ interface AdminSettingsViewProps {
     name: string;
     email: string;
     role: string;
+    emailChangeCount: number;
+    emailChangedAt: string | null;
   };
+  pendingEmailChange: PendingEmailChangeInfo | null;
 }
 
-export default function AdminSettingsView({ user }: AdminSettingsViewProps) {
+export default function AdminSettingsView({ user, pendingEmailChange }: AdminSettingsViewProps) {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -93,6 +98,15 @@ export default function AdminSettingsView({ user }: AdminSettingsViewProps) {
           </div>
         </div>
       </div>
+
+      {/* Verifikasi & Ganti Email */}
+      <EmailChangeCard
+        currentEmail={user.email}
+        role={user.role}
+        emailChangeCount={user.emailChangeCount}
+        emailChangedAt={user.emailChangedAt}
+        initialPending={pendingEmailChange}
+      />
 
       {/* Form Ubah Password */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-6">

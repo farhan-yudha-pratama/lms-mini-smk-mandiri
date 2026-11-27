@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import Link from 'next/link';
 import * as XLSX from 'xlsx';
 import { 
   getQuizArchivesAction, 
@@ -64,6 +65,7 @@ export default function QuizArchivesClient({
   const [selectedCourseId, setSelectedCourseId] = useState<string>('');
   const [selectedCategoryName, setSelectedCategoryName] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [includeExcluded, setIncludeExcluded] = useState<boolean>(false);
   const [page, setPage] = useState<number>(1);
   const [limit, setLimit] = useState<number>(50);
 
@@ -83,6 +85,7 @@ export default function QuizArchivesClient({
     courseId?: string;
     categoryName?: string;
     search?: string;
+    includeExcluded?: boolean;
     page?: number;
     limit?: number;
   }) => {
@@ -92,6 +95,7 @@ export default function QuizArchivesClient({
         courseId: newParams?.courseId !== undefined ? newParams.courseId : selectedCourseId,
         categoryName: newParams?.categoryName !== undefined ? newParams.categoryName : selectedCategoryName,
         search: newParams?.search !== undefined ? newParams.search : searchQuery,
+        includeExcluded: newParams?.includeExcluded !== undefined ? newParams.includeExcluded : includeExcluded,
         page: newParams?.page !== undefined ? newParams.page : page,
         limit: newParams?.limit !== undefined ? newParams.limit : limit
       });
@@ -131,8 +135,15 @@ export default function QuizArchivesClient({
     setSelectedCourseId('');
     setSelectedCategoryName('');
     setSearchQuery('');
+    setIncludeExcluded(false);
     setPage(1);
-    loadData({ classId: '', courseId: '', categoryName: '', search: '', page: 1 });
+    loadData({ classId: '', courseId: '', categoryName: '', search: '', includeExcluded: false, page: 1 });
+  };
+
+  const handleToggleIncludeExcluded = (checked: boolean) => {
+    setIncludeExcluded(checked);
+    setPage(1);
+    loadData({ includeExcluded: checked, page: 1 });
   };
 
   const handlePageChange = (newPage: number) => {
@@ -445,6 +456,50 @@ export default function QuizArchivesClient({
             </form>
           </div>
         </div>
+
+        {/* Status Pilihan Gradebook + Toggle Audit (Opsi X) */}
+        <div className="pt-3 border-t border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            {data.activeGradebookFilter ? (
+              <>
+                <span
+                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full font-bold border ${
+                    data.activeGradebookFilter.mode === 'CUSTOM'
+                      ? 'bg-blue-50 text-blue-700 border-blue-200'
+                      : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[14px]">tune</span>
+                  {data.activeGradebookFilter.mode === 'CUSTOM'
+                    ? `Filter Gradebook: ${data.activeGradebookFilter.includedCount} dari ${data.activeGradebookFilter.totalCount} kuis terpilih`
+                    : `Filter Gradebook: Semua Kuis (${data.activeGradebookFilter.totalCount})`}
+                </span>
+                <Link
+                  href={`/dashboard/gradebook?classId=${selectedClassId}&courseId=${selectedCourseId}`}
+                  className="font-bold text-blue-600 hover:text-blue-800 inline-flex items-center gap-0.5"
+                >
+                  Atur di Gradebook
+                  <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
+                </Link>
+              </>
+            ) : (
+              <span className="text-gray-500 flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-[15px] text-gray-400">info</span>
+                Menampilkan arsip sesuai kuis yang dipilih per kelas di Gradebook.
+              </span>
+            )}
+          </div>
+
+          <label className="inline-flex items-center gap-2 text-xs font-medium text-gray-700 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={includeExcluded}
+              onChange={(e) => handleToggleIncludeExcluded(e.target.checked)}
+              className="w-3.5 h-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            <span>Tampilkan juga kuis di luar pilihan Gradebook</span>
+          </label>
+        </div>
       </div>
 
       {/* 3. TABLE OF ARCHIVES */}
@@ -504,10 +559,15 @@ export default function QuizArchivesClient({
                         <div className="font-medium text-gray-900">{item.sourceTitle}</div>
                         <div className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
                           <span className="material-symbols-outlined text-[13px] text-gray-400">
-                            {item.sourceType === 'MATERIAL_QUIZ' ? 'menu_book' : 'assignment'}
+                            {item.sourceType === 'MATERIAL_QUIZ'
+                              ? 'menu_book'
+                              : item.sourceType === 'DISCUSSION'
+                                ? 'forum'
+                                : 'assignment'}
                           </span>
-                          {item.categoryName ? `${item.categoryName} · ` : ''}
-                          {item.pageTitle || 'Tugas Mandiri'}
+                          {item.sourceType === 'DISCUSSION'
+                            ? 'Diskusi Kelas'
+                            : `${item.categoryName ? `${item.categoryName} · ` : ''}${item.pageTitle || 'Tugas Mandiri'}`}
                         </div>
                       </td>
                       <td className="px-4 py-3 text-center">
@@ -517,13 +577,19 @@ export default function QuizArchivesClient({
                         <span className="text-[10px] text-gray-400 block">KKM: {item.passingScore}</span>
                       </td>
                       <td className="px-4 py-3 text-center">
-                        <span className="text-xs font-bold text-gray-800">
-                          {item.correctAnswers} / {item.totalQuestions}
-                        </span>
-                        {item.essayCount > 0 && (
-                          <span className="text-[10px] text-purple-700 block font-semibold">
-                            +{item.essayCount} Essay
-                          </span>
+                        {item.sourceType === 'DISCUSSION' ? (
+                          <span className="text-xs font-medium text-gray-400">-</span>
+                        ) : (
+                          <>
+                            <span className="text-xs font-bold text-gray-800">
+                              {item.correctAnswers} / {item.totalQuestions}
+                            </span>
+                            {item.essayCount > 0 && (
+                              <span className="text-[10px] text-purple-700 block font-semibold">
+                                +{item.essayCount} Essay
+                              </span>
+                            )}
+                          </>
                         )}
                       </td>
                       <td className="px-4 py-3 text-center">
@@ -665,11 +731,11 @@ export default function QuizArchivesClient({
               <div className="p-3 bg-blue-50/70 border border-blue-200 rounded-lg text-xs text-blue-900 leading-relaxed">
                 {exportType === 'DETAIL' ? (
                   <>
-                    <strong>Format Detail (Multi-Sheet):</strong> File Excel memuat daftar seluruh kuis beserta nilainya untuk setiap murid di sheet masing-masing, diawali dengan 1 sheet ringkasan kelas.
+                    <strong>Format Detail (Multi-Sheet):</strong> File Excel memuat daftar kuis terpilih Gradebook untuk setiap murid di sheet masing-masing, diawali dengan 1 sheet ringkasan kelas.
                   </>
                 ) : (
                   <>
-                    <strong>Format Rekapitulasi (1 Sheet):</strong> Berisi 1 lembar rekapitulasi penilaian satu kelas: total kuis selesai, lulus, total poin, dan rata-rata nilai per murid.
+                    <strong>Format Rekapitulasi (1 Sheet):</strong> Berisi 1 lembar rekapitulasi penilaian satu kelas sesuai pilihan kuis Gradebook kelas tersebut.
                   </>
                 )}
               </div>

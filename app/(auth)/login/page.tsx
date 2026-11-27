@@ -1,26 +1,28 @@
 'use client';
 
-import { useActionState, useEffect, useState } from 'react';
+import { useActionState, useEffect, useSyncExternalStore } from 'react';
 import { useRouter } from 'next/navigation';
 import { loginAction, ActionResponse } from './actions';
 import Link from 'next/link';
 
+const REASON_MESSAGES: Record<string, string> = {
+  deactivated: 'Akun Anda telah dinonaktifkan oleh Administrator. Hubungi guru atau pihak sekolah jika ini adalah kekeliruan.',
+  revoked: 'Sesi login Anda telah dicabut (revoked) oleh Administrator. Silakan login kembali.',
+  deleted: 'Akun Anda telah dihapus dari sistem oleh Administrator.',
+  password_reset: 'Kata sandi Anda berhasil diperbarui. Silakan masuk menggunakan kata sandi baru.',
+};
+
+const subscribeNoop = () => () => {};
+
 export default function LoginPage() {
   const router = useRouter();
   const [state, formAction, isPending] = useActionState<ActionResponse | null, FormData>(loginAction, null);
-  const [reasonMessage, setReasonMessage] = useState<string | null>(null);
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const reason = params.get('reason');
-    if (reason === 'deactivated') {
-      setReasonMessage('Akun Anda telah dinonaktifkan oleh Administrator. Hubungi guru atau pihak sekolah jika ini adalah kekeliruan.');
-    } else if (reason === 'revoked') {
-      setReasonMessage('Sesi login Anda telah dicabut (revoked) oleh Administrator. Silakan login kembali.');
-    } else if (reason === 'deleted') {
-      setReasonMessage('Akun Anda telah dihapus dari sistem oleh Administrator.');
-    }
-  }, []);
+  const reason = useSyncExternalStore(
+    subscribeNoop,
+    () => new URLSearchParams(window.location.search).get('reason'),
+    () => null
+  );
+  const reasonMessage = reason ? REASON_MESSAGES[reason] ?? null : null;
 
   useEffect(() => {
     if (state?.success && state.data?.role) {
@@ -83,9 +85,17 @@ export default function LoginPage() {
           </div>
 
           <div className="space-y-2">
-            <label className="block font-black uppercase tracking-tight text-black text-sm">
-              Password
-            </label>
+            <div className="flex items-center justify-between gap-2">
+              <label className="block font-black uppercase tracking-tight text-black text-sm">
+                Password
+              </label>
+              <Link
+                href="/forgot-password"
+                className="text-xs font-black uppercase tracking-tight text-[#12544F] underline decoration-2 underline-offset-4 hover:text-[#2A835F]"
+              >
+                Lupa Password?
+              </Link>
+            </div>
             <input
               type="password"
               name="password"

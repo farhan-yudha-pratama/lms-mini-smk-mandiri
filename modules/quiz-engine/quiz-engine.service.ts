@@ -10,7 +10,7 @@ export async function getQuizStatus(pageSlug: string, studentId: string) {
 
   // Check if page has quiz package
   const pkg = await db.orm.public.QuizPackage.where({ pageId: page.id }).first();
-  if (!pkg || !pkg.isActive) return { status: 'NO_QUIZ' };
+  if (!pkg || !pkg.isActive || (pkg as { assignmentMode?: string }).assignmentMode === 'DISCUSSION') return { status: 'NO_QUIZ' };
 
   // Check if assigned to student
   const assignment = await db.orm.public.QuizAssignment.where({ 
@@ -117,7 +117,9 @@ export async function startQuiz(assignmentId: string, studentId: string) {
   if (!assignment || assignment.studentId !== studentId) throw new Error('Penugasan tidak valid');
 
   const pkg = await db.orm.public.QuizPackage.where({ id: assignment.quizPackageId }).first();
-  if (!pkg || !pkg.isActive) throw new Error('Kuis tidak aktif atau tidak ditemukan');
+  if (!pkg || !pkg.isActive || (pkg as { assignmentMode?: string }).assignmentMode === 'DISCUSSION') {
+    throw new Error('Kuis tidak aktif atau tidak ditemukan');
+  }
 
   const isEnrolled = await isStudentEnrolledInPackage(studentId, pkg);
   if (!isEnrolled) {

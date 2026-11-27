@@ -1,0 +1,938 @@
+[
+  {
+    "id": "dropCheckConstraint.quizCompletionRecord.quizCompletionRecord_sourceType_check_88db0880",
+    "label": "Drop check constraint \"quizCompletionRecord_sourceType_check_88db0880\" on \"quizCompletionRecord\"",
+    "operationClass": "destructive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "checkConstraint",
+        "name": "quizCompletionRecord_sourceType_check_88db0880",
+        "table": "quizCompletionRecord"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"quizCompletionRecord_sourceType_check_88db0880\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "quizCompletionRecord_sourceType_check_88db0880",
+          "public",
+          "\"public\".\"quizCompletionRecord\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "drop check constraint \"quizCompletionRecord_sourceType_check_88db0880\"",
+        "sql": "ALTER TABLE \"public\".\"quizCompletionRecord\" DROP CONSTRAINT \"quizCompletionRecord_sourceType_check_88db0880\""
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"quizCompletionRecord_sourceType_check_88db0880\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "quizCompletionRecord_sourceType_check_88db0880",
+          "public",
+          "\"public\".\"quizCompletionRecord\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "dropCheckConstraint.quizPackage.quizPackage_assignmentMode_check_da475877",
+    "label": "Drop check constraint \"quizPackage_assignmentMode_check_da475877\" on \"quizPackage\"",
+    "operationClass": "destructive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "checkConstraint",
+        "name": "quizPackage_assignmentMode_check_da475877",
+        "table": "quizPackage"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"quizPackage_assignmentMode_check_da475877\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "quizPackage_assignmentMode_check_da475877",
+          "public",
+          "\"public\".\"quizPackage\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "drop check constraint \"quizPackage_assignmentMode_check_da475877\"",
+        "sql": "ALTER TABLE \"public\".\"quizPackage\" DROP CONSTRAINT \"quizPackage_assignmentMode_check_da475877\""
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"quizPackage_assignmentMode_check_da475877\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "quizPackage_assignmentMode_check_da475877",
+          "public",
+          "\"public\".\"quizPackage\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.discussionClassAssignment",
+    "label": "Create table \"discussionClassAssignment\"",
+    "summary": "Creates table \"discussionClassAssignment\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "discussionClassAssignment"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"discussionClassAssignment\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"discussionClassAssignment\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"discussionClassAssignment\"",
+        "sql": "CREATE TABLE \"public\".\"discussionClassAssignment\" (\n  \"assignedAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"assignedById\" text,\n  \"classroomId\" text NOT NULL,\n  \"id\" text NOT NULL,\n  \"quizPackageId\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"discussionClassAssignment\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"discussionClassAssignment\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.discussionGrade",
+    "label": "Create table \"discussionGrade\"",
+    "summary": "Creates table \"discussionGrade\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "discussionGrade"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"discussionGrade\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"discussionGrade\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"discussionGrade\"",
+        "sql": "CREATE TABLE \"public\".\"discussionGrade\" (\n  \"classroomId\" text NOT NULL,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"gradedAt\" timestamptz,\n  \"gradedById\" text,\n  \"id\" text NOT NULL,\n  \"note\" text,\n  \"quizPackageId\" text NOT NULL,\n  \"score\" float8,\n  \"studentId\" text NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"discussionGrade\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"discussionGrade\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.discussionClassAssignment.discussionClassAssignment_quizPackageId_classroomId_key",
+    "label": "Add unique constraint on \"discussionClassAssignment\" (quizPackageId, classroomId)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "discussionClassAssignment_quizPackageId_classroomId_key",
+        "table": "discussionClassAssignment"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"discussionClassAssignment_quizPackageId_classroomId_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "discussionClassAssignment_quizPackageId_classroomId_key",
+          "public",
+          "\"public\".\"discussionClassAssignment\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"discussionClassAssignment_quizPackageId_classroomId_key\"",
+        "sql": "ALTER TABLE \"public\".\"discussionClassAssignment\" ADD CONSTRAINT \"discussionClassAssignment_quizPackageId_classroomId_key\" UNIQUE (\"quizPackageId\", \"classroomId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"discussionClassAssignment_quizPackageId_classroomId_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "discussionClassAssignment_quizPackageId_classroomId_key",
+          "public",
+          "\"public\".\"discussionClassAssignment\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.discussionGrade.discussionGrade_quizPackageId_studentId_key",
+    "label": "Add unique constraint on \"discussionGrade\" (quizPackageId, studentId)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "discussionGrade_quizPackageId_studentId_key",
+        "table": "discussionGrade"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"discussionGrade_quizPackageId_studentId_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "discussionGrade_quizPackageId_studentId_key",
+          "public",
+          "\"public\".\"discussionGrade\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"discussionGrade_quizPackageId_studentId_key\"",
+        "sql": "ALTER TABLE \"public\".\"discussionGrade\" ADD CONSTRAINT \"discussionGrade_quizPackageId_studentId_key\" UNIQUE (\"quizPackageId\", \"studentId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"discussionGrade_quizPackageId_studentId_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "discussionGrade_quizPackageId_studentId_key",
+          "public",
+          "\"public\".\"discussionGrade\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "checkConstraint.quizCompletionRecord.quizCompletionRecord_sourceType_check_1cb1d6c9",
+    "label": "Add check constraint \"quizCompletionRecord_sourceType_check_1cb1d6c9\" on \"quizCompletionRecord\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "checkConstraint",
+        "name": "quizCompletionRecord_sourceType_check_1cb1d6c9",
+        "table": "quizCompletionRecord"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"quizCompletionRecord_sourceType_check_1cb1d6c9\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "quizCompletionRecord_sourceType_check_1cb1d6c9",
+          "public",
+          "\"public\".\"quizCompletionRecord\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add check constraint \"quizCompletionRecord_sourceType_check_1cb1d6c9\"",
+        "sql": "ALTER TABLE \"public\".\"quizCompletionRecord\" ADD CONSTRAINT \"quizCompletionRecord_sourceType_check_1cb1d6c9\" CHECK (\"sourceType\" IN ('MATERIAL_QUIZ', 'ASSIGNMENT', 'GROUP_TASK', 'DISCUSSION'))"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"quizCompletionRecord_sourceType_check_1cb1d6c9\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "quizCompletionRecord_sourceType_check_1cb1d6c9",
+          "public",
+          "\"public\".\"quizCompletionRecord\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "checkConstraint.quizPackage.quizPackage_assignmentMode_check_db3fbc66",
+    "label": "Add check constraint \"quizPackage_assignmentMode_check_db3fbc66\" on \"quizPackage\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "checkConstraint",
+        "name": "quizPackage_assignmentMode_check_db3fbc66",
+        "table": "quizPackage"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"quizPackage_assignmentMode_check_db3fbc66\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "quizPackage_assignmentMode_check_db3fbc66",
+          "public",
+          "\"public\".\"quizPackage\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add check constraint \"quizPackage_assignmentMode_check_db3fbc66\"",
+        "sql": "ALTER TABLE \"public\".\"quizPackage\" ADD CONSTRAINT \"quizPackage_assignmentMode_check_db3fbc66\" CHECK (\"assignmentMode\" IN ('INDIVIDUAL', 'GROUP', 'DISCUSSION'))"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"quizPackage_assignmentMode_check_db3fbc66\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "quizPackage_assignmentMode_check_db3fbc66",
+          "public",
+          "\"public\".\"quizPackage\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.discussionClassAssignment.discussionClassAssignment_assignedById_idx_f5db02c3",
+    "label": "Create index \"discussionClassAssignment_assignedById_idx_f5db02c3\" on \"discussionClassAssignment\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "discussionClassAssignment_assignedById_idx_f5db02c3",
+        "table": "discussionClassAssignment"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"discussionClassAssignment_assignedById_idx_f5db02c3\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"discussionClassAssignment_assignedById_idx_f5db02c3\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"discussionClassAssignment_assignedById_idx_f5db02c3\"",
+        "sql": "CREATE INDEX \"discussionClassAssignment_assignedById_idx_f5db02c3\" ON \"public\".\"discussionClassAssignment\" (\"assignedById\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"discussionClassAssignment_assignedById_idx_f5db02c3\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"discussionClassAssignment_assignedById_idx_f5db02c3\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.discussionClassAssignment.discussionClassAssignment_classroomId_idx_e4a392d3",
+    "label": "Create index \"discussionClassAssignment_classroomId_idx_e4a392d3\" on \"discussionClassAssignment\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "discussionClassAssignment_classroomId_idx_e4a392d3",
+        "table": "discussionClassAssignment"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"discussionClassAssignment_classroomId_idx_e4a392d3\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"discussionClassAssignment_classroomId_idx_e4a392d3\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"discussionClassAssignment_classroomId_idx_e4a392d3\"",
+        "sql": "CREATE INDEX \"discussionClassAssignment_classroomId_idx_e4a392d3\" ON \"public\".\"discussionClassAssignment\" (\"classroomId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"discussionClassAssignment_classroomId_idx_e4a392d3\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"discussionClassAssignment_classroomId_idx_e4a392d3\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.discussionClassAssignment.discussionClassAssignment_quizPackageId_idx_5e8f85e9",
+    "label": "Create index \"discussionClassAssignment_quizPackageId_idx_5e8f85e9\" on \"discussionClassAssignment\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "discussionClassAssignment_quizPackageId_idx_5e8f85e9",
+        "table": "discussionClassAssignment"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"discussionClassAssignment_quizPackageId_idx_5e8f85e9\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"discussionClassAssignment_quizPackageId_idx_5e8f85e9\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"discussionClassAssignment_quizPackageId_idx_5e8f85e9\"",
+        "sql": "CREATE INDEX \"discussionClassAssignment_quizPackageId_idx_5e8f85e9\" ON \"public\".\"discussionClassAssignment\" (\"quizPackageId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"discussionClassAssignment_quizPackageId_idx_5e8f85e9\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"discussionClassAssignment_quizPackageId_idx_5e8f85e9\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.discussionGrade.discussionGrade_classroomId_idx_e4a392d3",
+    "label": "Create index \"discussionGrade_classroomId_idx_e4a392d3\" on \"discussionGrade\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "discussionGrade_classroomId_idx_e4a392d3",
+        "table": "discussionGrade"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"discussionGrade_classroomId_idx_e4a392d3\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"discussionGrade_classroomId_idx_e4a392d3\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"discussionGrade_classroomId_idx_e4a392d3\"",
+        "sql": "CREATE INDEX \"discussionGrade_classroomId_idx_e4a392d3\" ON \"public\".\"discussionGrade\" (\"classroomId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"discussionGrade_classroomId_idx_e4a392d3\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"discussionGrade_classroomId_idx_e4a392d3\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.discussionGrade.discussionGrade_gradedById_idx_1cf331f5",
+    "label": "Create index \"discussionGrade_gradedById_idx_1cf331f5\" on \"discussionGrade\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "discussionGrade_gradedById_idx_1cf331f5",
+        "table": "discussionGrade"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"discussionGrade_gradedById_idx_1cf331f5\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"discussionGrade_gradedById_idx_1cf331f5\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"discussionGrade_gradedById_idx_1cf331f5\"",
+        "sql": "CREATE INDEX \"discussionGrade_gradedById_idx_1cf331f5\" ON \"public\".\"discussionGrade\" (\"gradedById\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"discussionGrade_gradedById_idx_1cf331f5\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"discussionGrade_gradedById_idx_1cf331f5\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.discussionGrade.discussionGrade_quizPackageId_classroomId_idx_cf9e9601",
+    "label": "Create index \"discussionGrade_quizPackageId_classroomId_idx_cf9e9601\" on \"discussionGrade\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "discussionGrade_quizPackageId_classroomId_idx_cf9e9601",
+        "table": "discussionGrade"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"discussionGrade_quizPackageId_classroomId_idx_cf9e9601\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"discussionGrade_quizPackageId_classroomId_idx_cf9e9601\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"discussionGrade_quizPackageId_classroomId_idx_cf9e9601\"",
+        "sql": "CREATE INDEX \"discussionGrade_quizPackageId_classroomId_idx_cf9e9601\" ON \"public\".\"discussionGrade\" (\"quizPackageId\", \"classroomId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"discussionGrade_quizPackageId_classroomId_idx_cf9e9601\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"discussionGrade_quizPackageId_classroomId_idx_cf9e9601\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.discussionGrade.discussionGrade_quizPackageId_idx_5e8f85e9",
+    "label": "Create index \"discussionGrade_quizPackageId_idx_5e8f85e9\" on \"discussionGrade\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "discussionGrade_quizPackageId_idx_5e8f85e9",
+        "table": "discussionGrade"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"discussionGrade_quizPackageId_idx_5e8f85e9\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"discussionGrade_quizPackageId_idx_5e8f85e9\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"discussionGrade_quizPackageId_idx_5e8f85e9\"",
+        "sql": "CREATE INDEX \"discussionGrade_quizPackageId_idx_5e8f85e9\" ON \"public\".\"discussionGrade\" (\"quizPackageId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"discussionGrade_quizPackageId_idx_5e8f85e9\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"discussionGrade_quizPackageId_idx_5e8f85e9\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.discussionGrade.discussionGrade_studentId_idx_bf255322",
+    "label": "Create index \"discussionGrade_studentId_idx_bf255322\" on \"discussionGrade\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "discussionGrade_studentId_idx_bf255322",
+        "table": "discussionGrade"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"discussionGrade_studentId_idx_bf255322\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"discussionGrade_studentId_idx_bf255322\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"discussionGrade_studentId_idx_bf255322\"",
+        "sql": "CREATE INDEX \"discussionGrade_studentId_idx_bf255322\" ON \"public\".\"discussionGrade\" (\"studentId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"discussionGrade_studentId_idx_bf255322\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"discussionGrade_studentId_idx_bf255322\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.discussionClassAssignment.discussionClassAssignment_quizPackageId_fkey",
+    "label": "Add foreign key \"discussionClassAssignment_quizPackageId_fkey\" on \"discussionClassAssignment\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "discussionClassAssignment_quizPackageId_fkey",
+        "table": "discussionClassAssignment"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"discussionClassAssignment_quizPackageId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "discussionClassAssignment_quizPackageId_fkey",
+          "public",
+          "\"public\".\"discussionClassAssignment\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"discussionClassAssignment_quizPackageId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"discussionClassAssignment\"\nADD CONSTRAINT \"discussionClassAssignment_quizPackageId_fkey\"\nFOREIGN KEY (\"quizPackageId\")\nREFERENCES \"public\".\"quizPackage\" (\"id\")\nON DELETE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"discussionClassAssignment_quizPackageId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "discussionClassAssignment_quizPackageId_fkey",
+          "public",
+          "\"public\".\"discussionClassAssignment\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.discussionClassAssignment.discussionClassAssignment_classroomId_fkey",
+    "label": "Add foreign key \"discussionClassAssignment_classroomId_fkey\" on \"discussionClassAssignment\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "discussionClassAssignment_classroomId_fkey",
+        "table": "discussionClassAssignment"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"discussionClassAssignment_classroomId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "discussionClassAssignment_classroomId_fkey",
+          "public",
+          "\"public\".\"discussionClassAssignment\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"discussionClassAssignment_classroomId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"discussionClassAssignment\"\nADD CONSTRAINT \"discussionClassAssignment_classroomId_fkey\"\nFOREIGN KEY (\"classroomId\")\nREFERENCES \"public\".\"classroom\" (\"id\")\nON DELETE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"discussionClassAssignment_classroomId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "discussionClassAssignment_classroomId_fkey",
+          "public",
+          "\"public\".\"discussionClassAssignment\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.discussionClassAssignment.discussionClassAssignment_assignedById_fkey",
+    "label": "Add foreign key \"discussionClassAssignment_assignedById_fkey\" on \"discussionClassAssignment\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "discussionClassAssignment_assignedById_fkey",
+        "table": "discussionClassAssignment"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"discussionClassAssignment_assignedById_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "discussionClassAssignment_assignedById_fkey",
+          "public",
+          "\"public\".\"discussionClassAssignment\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"discussionClassAssignment_assignedById_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"discussionClassAssignment\"\nADD CONSTRAINT \"discussionClassAssignment_assignedById_fkey\"\nFOREIGN KEY (\"assignedById\")\nREFERENCES \"public\".\"user\" (\"id\")\nON DELETE SET NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"discussionClassAssignment_assignedById_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "discussionClassAssignment_assignedById_fkey",
+          "public",
+          "\"public\".\"discussionClassAssignment\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.discussionGrade.discussionGrade_quizPackageId_fkey",
+    "label": "Add foreign key \"discussionGrade_quizPackageId_fkey\" on \"discussionGrade\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "discussionGrade_quizPackageId_fkey",
+        "table": "discussionGrade"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"discussionGrade_quizPackageId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "discussionGrade_quizPackageId_fkey",
+          "public",
+          "\"public\".\"discussionGrade\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"discussionGrade_quizPackageId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"discussionGrade\"\nADD CONSTRAINT \"discussionGrade_quizPackageId_fkey\"\nFOREIGN KEY (\"quizPackageId\")\nREFERENCES \"public\".\"quizPackage\" (\"id\")\nON DELETE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"discussionGrade_quizPackageId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "discussionGrade_quizPackageId_fkey",
+          "public",
+          "\"public\".\"discussionGrade\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.discussionGrade.discussionGrade_classroomId_fkey",
+    "label": "Add foreign key \"discussionGrade_classroomId_fkey\" on \"discussionGrade\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "discussionGrade_classroomId_fkey",
+        "table": "discussionGrade"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"discussionGrade_classroomId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "discussionGrade_classroomId_fkey",
+          "public",
+          "\"public\".\"discussionGrade\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"discussionGrade_classroomId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"discussionGrade\"\nADD CONSTRAINT \"discussionGrade_classroomId_fkey\"\nFOREIGN KEY (\"classroomId\")\nREFERENCES \"public\".\"classroom\" (\"id\")\nON DELETE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"discussionGrade_classroomId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "discussionGrade_classroomId_fkey",
+          "public",
+          "\"public\".\"discussionGrade\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.discussionGrade.discussionGrade_studentId_fkey",
+    "label": "Add foreign key \"discussionGrade_studentId_fkey\" on \"discussionGrade\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "discussionGrade_studentId_fkey",
+        "table": "discussionGrade"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"discussionGrade_studentId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "discussionGrade_studentId_fkey",
+          "public",
+          "\"public\".\"discussionGrade\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"discussionGrade_studentId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"discussionGrade\"\nADD CONSTRAINT \"discussionGrade_studentId_fkey\"\nFOREIGN KEY (\"studentId\")\nREFERENCES \"public\".\"user\" (\"id\")\nON DELETE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"discussionGrade_studentId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "discussionGrade_studentId_fkey",
+          "public",
+          "\"public\".\"discussionGrade\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.discussionGrade.discussionGrade_gradedById_fkey",
+    "label": "Add foreign key \"discussionGrade_gradedById_fkey\" on \"discussionGrade\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "discussionGrade_gradedById_fkey",
+        "table": "discussionGrade"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"discussionGrade_gradedById_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "discussionGrade_gradedById_fkey",
+          "public",
+          "\"public\".\"discussionGrade\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"discussionGrade_gradedById_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"discussionGrade\"\nADD CONSTRAINT \"discussionGrade_gradedById_fkey\"\nFOREIGN KEY (\"gradedById\")\nREFERENCES \"public\".\"user\" (\"id\")\nON DELETE SET NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"discussionGrade_gradedById_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "discussionGrade_gradedById_fkey",
+          "public",
+          "\"public\".\"discussionGrade\""
+        ]
+      }
+    ]
+  }
+]

@@ -60,6 +60,7 @@ export type PermissionCode =
   | 'QUIZZES_MANAGE'
   // 6. Penilaian & Buku Nilai
   | 'GRADEBOOK_VIEW'
+  | 'GRADEBOOK_CONFIG'
   | 'GRADEBOOK_EXPORT'
   | 'QUIZZES_GRADE'
   // 7. Monitoring Siswa & Proyek
@@ -443,6 +444,12 @@ export const PERMISSION_CATALOG: PermissionDefinition[] = [
     description: 'Melihat rekapitulasi nilai siswa berbasis matriks spreadsheet dengan status ketuntasan KKM.',
   },
   {
+    code: 'GRADEBOOK_CONFIG',
+    name: 'Atur Kuis Dihitung di Gradebook',
+    category: 'Penilaian & Buku Nilai',
+    description: 'Memilih daftar kuis dan tugas per kelas-mapel yang masuk perhitungan Gradebook, Arsip, dan Rapor.',
+  },
+  {
     code: 'GRADEBOOK_EXPORT',
     name: 'Ekspor Buku Nilai Excel',
     category: 'Penilaian & Buku Nilai',
@@ -598,6 +605,7 @@ export const PERMISSION_PACKAGES: PermissionPackage[] = [
       'QUESTIONS_UPDATE',
       'QUIZZES_GRADE',
       'GRADEBOOK_VIEW',
+      'GRADEBOOK_CONFIG',
       'STUDENT_ACCESS_MANAGE',
       'STUDENT_ACCESS_VIEW',
       'STUDENT_PROJECTS_VIEW',
@@ -631,6 +639,7 @@ export const PERMISSION_PACKAGES: PermissionPackage[] = [
       'QUIZZES_VIEW',
       'QUIZZES_GRADE',
       'GRADEBOOK_VIEW',
+      'GRADEBOOK_CONFIG',
       'STUDENT_ACCESS_MANAGE',
       'STUDENT_PROJECTS_VIEW',
       'SUMMARIES_MANAGE',

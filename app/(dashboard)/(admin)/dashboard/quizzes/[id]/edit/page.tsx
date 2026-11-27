@@ -11,6 +11,7 @@ import {
   resolvePackageCourseIds,
   resolveTeacherScope,
 } from '@/modules/course/teacher-scope.service';
+import { getDiscussionOverview } from '@/modules/quiz-discussion/quiz-discussion.service';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,10 +49,12 @@ export default async function EditQuizPage({
   const { primaryCourseId } = resolvePackageCourseIds(pkg, rawPageMap, rawCatMap);
   const teacherId = scope.isUnrestricted ? undefined : scope.userId;
 
-  const [allPages, classes, courses] = await Promise.all([
+  const isDiscussion = (pkg as { assignmentMode?: string }).assignmentMode === 'DISCUSSION';
+  const [allPages, classes, courses, initialDiscussionOverview] = await Promise.all([
     getQuizzesWithPageStatus(teacherId),
     getScopedClasses(scope, primaryCourseId || undefined),
     getScopedCourses(scope),
+    isDiscussion ? getDiscussionOverview(pkg.id, scope) : Promise.resolve(null),
   ]);
   const availablePages = allPages.filter(p => !p.hasQuizPackage || p.id === pkg.pageId);
 
@@ -69,6 +72,7 @@ export default async function EditQuizPage({
       courses={courses}
       classes={classes}
       initialTab={initialTab}
+      initialDiscussionOverview={initialDiscussionOverview}
     />
   );
 }

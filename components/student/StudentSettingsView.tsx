@@ -2,6 +2,8 @@
 
 import React, { useState, useTransition } from 'react';
 import { changePasswordAction } from '@/app/actions/settings';
+import type { PendingEmailChangeInfo } from '@/modules/auth/email-change.service';
+import StudentEmailChangeCard from '@/components/student/StudentEmailChangeCard';
 
 interface StudentSettingsViewProps {
   user: {
@@ -10,10 +12,13 @@ interface StudentSettingsViewProps {
     email: string;
     role: string;
     className: string;
+    emailChangeCount: number;
+    emailChangedAt: string | null;
   };
+  pendingEmailChange: PendingEmailChangeInfo | null;
 }
 
-export default function StudentSettingsView({ user }: StudentSettingsViewProps) {
+export default function StudentSettingsView({ user, pendingEmailChange }: StudentSettingsViewProps) {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -95,6 +100,14 @@ export default function StudentSettingsView({ user }: StudentSettingsViewProps) 
           </div>
         </div>
       </div>
+
+      {/* Ganti Email & Verifikasi OTP */}
+      <StudentEmailChangeCard
+        currentEmail={user.email}
+        emailChangeCount={user.emailChangeCount}
+        emailChangedAt={user.emailChangedAt}
+        initialPending={pendingEmailChange}
+      />
 
       {/* Form Ubah Password Card */}
       <div className="bg-white border-4 border-black p-6 md:p-8 shadow-[8px_8px_0px_0px_#000] space-y-6">

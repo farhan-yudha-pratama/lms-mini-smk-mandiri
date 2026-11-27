@@ -21,7 +21,9 @@ export default async function RaporPage() {
     if (classroom) className = classroom.name;
   }
 
-  const records = await db.orm.public.QuizCompletionRecord.where({ studentId: userId }).all();
+  const rawRecords = await db.orm.public.QuizCompletionRecord.where({ studentId: userId }).all();
+  const { filterStudentRaporRecordsByGradebook } = await import('@/modules/quiz-completion/quiz-completion.service');
+  const records = await filterStudentRaporRecordsByGradebook(rawRecords, user.classId);
   records.sort((a, b) => new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime());
 
   return (

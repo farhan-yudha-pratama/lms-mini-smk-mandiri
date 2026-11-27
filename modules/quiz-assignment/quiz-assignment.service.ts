@@ -346,7 +346,7 @@ export async function getStudentTasks(studentId: string): Promise<StudentTaskIte
 
   const tasks: StudentTaskItem[] = assignments.map(a => {
     const pkg = pkgMap.get(a.quizPackageId);
-    if (!pkg || !pkg.isActive || pkg.isHidden || (pkg as any).assignmentMode === 'GROUP') return null;
+    if (!pkg || !pkg.isActive || pkg.isHidden || (pkg as any).assignmentMode === 'GROUP' || (pkg as any).assignmentMode === 'DISCUSSION') return null;
 
     // Strict Course Scope: hanya tampilkan tugas jika siswa terdaftar di mapel pemilik kuis
     const { candidateCourseIds } = resolvePackageCourseIds(pkg, pageMap, categoryMap);

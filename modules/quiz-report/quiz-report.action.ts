@@ -41,7 +41,7 @@ export async function getQuizReportsAction(params: {
   classId?: string;
   packageId?: string;
   courseId?: string;
-  assignmentMode?: 'ALL' | 'INDIVIDUAL' | 'GROUP';
+  assignmentMode?: 'ALL' | 'INDIVIDUAL' | 'GROUP' | 'DISCUSSION';
   search?: string;
   page?: number;
   limit?: number;
