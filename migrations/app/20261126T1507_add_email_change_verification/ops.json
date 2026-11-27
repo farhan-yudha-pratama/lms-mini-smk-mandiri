@@ -1,0 +1,245 @@
+[
+  {
+    "id": "table.emailChangeVerification",
+    "label": "Create table \"emailChangeVerification\"",
+    "summary": "Creates table \"emailChangeVerification\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "emailChangeVerification"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"emailChangeVerification\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"emailChangeVerification\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"emailChangeVerification\"",
+        "sql": "CREATE TABLE \"public\".\"emailChangeVerification\" (\n  \"attempts\" int4 DEFAULT 0 NOT NULL,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"expiresAt\" timestamptz NOT NULL,\n  \"id\" text NOT NULL,\n  \"newEmail\" text NOT NULL,\n  \"otpHash\" text NOT NULL,\n  \"otpSalt\" text NOT NULL,\n  \"usedAt\" timestamptz,\n  \"userId\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"emailChangeVerification\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"emailChangeVerification\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.user.emailChangeCount",
+    "label": "Add column \"emailChangeCount\" to \"user\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "emailChangeCount",
+        "table": "user"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"emailChangeCount\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "user",
+          "emailChangeCount"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"emailChangeCount\"",
+        "sql": "ALTER TABLE \"public\".\"user\" ADD COLUMN \"emailChangeCount\" int4 DEFAULT 0 NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"emailChangeCount\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "user",
+          "emailChangeCount"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.user.emailChangedAt",
+    "label": "Add column \"emailChangedAt\" to \"user\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "emailChangedAt",
+        "table": "user"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"emailChangedAt\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "user",
+          "emailChangedAt"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"emailChangedAt\"",
+        "sql": "ALTER TABLE \"public\".\"user\" ADD COLUMN \"emailChangedAt\" timestamptz"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"emailChangedAt\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "user",
+          "emailChangedAt"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.emailChangeVerification.emailChangeVerification_newEmail_idx_3482e746",
+    "label": "Create index \"emailChangeVerification_newEmail_idx_3482e746\" on \"emailChangeVerification\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "emailChangeVerification_newEmail_idx_3482e746",
+        "table": "emailChangeVerification"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"emailChangeVerification_newEmail_idx_3482e746\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"emailChangeVerification_newEmail_idx_3482e746\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"emailChangeVerification_newEmail_idx_3482e746\"",
+        "sql": "CREATE INDEX \"emailChangeVerification_newEmail_idx_3482e746\" ON \"public\".\"emailChangeVerification\" (\"newEmail\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"emailChangeVerification_newEmail_idx_3482e746\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"emailChangeVerification_newEmail_idx_3482e746\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.emailChangeVerification.emailChangeVerification_userId_idx_a489d58a",
+    "label": "Create index \"emailChangeVerification_userId_idx_a489d58a\" on \"emailChangeVerification\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "emailChangeVerification_userId_idx_a489d58a",
+        "table": "emailChangeVerification"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"emailChangeVerification_userId_idx_a489d58a\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"emailChangeVerification_userId_idx_a489d58a\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"emailChangeVerification_userId_idx_a489d58a\"",
+        "sql": "CREATE INDEX \"emailChangeVerification_userId_idx_a489d58a\" ON \"public\".\"emailChangeVerification\" (\"userId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"emailChangeVerification_userId_idx_a489d58a\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"emailChangeVerification_userId_idx_a489d58a\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.emailChangeVerification.emailChangeVerification_userId_fkey",
+    "label": "Add foreign key \"emailChangeVerification_userId_fkey\" on \"emailChangeVerification\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "emailChangeVerification_userId_fkey",
+        "table": "emailChangeVerification"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"emailChangeVerification_userId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "emailChangeVerification_userId_fkey",
+          "public",
+          "\"public\".\"emailChangeVerification\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"emailChangeVerification_userId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"emailChangeVerification\"\nADD CONSTRAINT \"emailChangeVerification_userId_fkey\"\nFOREIGN KEY (\"userId\")\nREFERENCES \"public\".\"user\" (\"id\")\nON DELETE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"emailChangeVerification_userId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "emailChangeVerification_userId_fkey",
+          "public",
+          "\"public\".\"emailChangeVerification\""
+        ]
+      }
+    ]
+  }
+]

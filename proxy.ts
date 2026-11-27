@@ -4,7 +4,12 @@ import { cookies } from 'next/headers';
 
 export async function proxy(req: NextRequest) {
   const path = req.nextUrl.pathname;
-  const isPublicRoute = path === '/login' || path === '/register' || path === '/unauthorized';
+  const isPublicRoute =
+    path === '/login' ||
+    path === '/register' ||
+    path === '/unauthorized' ||
+    path === '/forgot-password' ||
+    path === '/reset-password';
   const isProtectedRoute = !isPublicRoute;
 
   const cookieStore = await cookies();

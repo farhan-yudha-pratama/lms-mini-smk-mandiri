@@ -5,7 +5,9 @@ import Link from 'next/link';
 import VariantList from '@/components/quiz/VariantList';
 import QuizAssignmentView from '@/components/quiz/QuizAssignmentView';
 import GroupAssignmentView from '@/components/quiz/GroupAssignmentView';
+import DiscussionGradingView from '@/components/quiz/DiscussionGradingView';
 import QuizPackageForm from '@/components/quiz/QuizPackageForm';
+import type { DiscussionOverviewDTO } from '@/modules/quiz-discussion/quiz-discussion.service';
 
 export type EditQuizClientProps = {
   pkg: {
@@ -17,7 +19,7 @@ export type EditQuizClientProps = {
     passingScore: number;
     timeLimit: number | null;
     shuffleQuestions: boolean;
-    assignmentMode?: 'INDIVIDUAL' | 'GROUP';
+    assignmentMode?: 'INDIVIDUAL' | 'GROUP' | 'DISCUSSION';
     isActive: boolean;
     isHidden: boolean;
     openAt: string | null;
@@ -36,9 +38,10 @@ export type EditQuizClientProps = {
   courses: any[];
   classes: any[];
   initialTab?: string;
+  initialDiscussionOverview?: DiscussionOverviewDTO | null;
 };
 
-type TabType = 'variants' | 'assignments' | 'settings';
+type TabType = 'variants' | 'assignments' | 'grading' | 'settings';
 
 export default function EditQuizClient({
   pkg,
@@ -48,9 +51,18 @@ export default function EditQuizClient({
   availablePages,
   courses,
   classes,
-  initialTab = 'variants',
+  initialTab,
+  initialDiscussionOverview = null,
 }: EditQuizClientProps) {
+  const isDiscussion = pkg.assignmentMode === 'DISCUSSION';
+  const [discussionOverview, setDiscussionOverview] = useState<DiscussionOverviewDTO | null>(
+    initialDiscussionOverview
+  );
+
   const [activeTab, setActiveTab] = useState<TabType>(() => {
+    if (isDiscussion) {
+      return initialTab === 'settings' ? 'settings' : 'grading';
+    }
     if (initialTab === 'assignments' || initialTab === 'settings') {
       return initialTab;
     }
@@ -148,7 +160,12 @@ export default function EditQuizClient({
               </span>
 
               {/* Type Badge */}
-              {isStandalone ? (
+              {isDiscussion ? (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 sm:py-1 rounded-full text-[11px] sm:text-xs font-semibold bg-teal-50 text-teal-700 border border-teal-200 shrink-0">
+                  <span className="material-symbols-outlined text-[13px] sm:text-[15px]">forum</span>
+                  <span>Diskusi Kelas</span>
+                </span>
+              ) : isStandalone ? (
                 <span className="inline-flex items-center gap-1 px-2.5 py-0.5 sm:py-1 rounded-full text-[11px] sm:text-xs font-semibold bg-purple-50 text-purple-700 border border-purple-200 shrink-0">
                   <span className="material-symbols-outlined text-[13px] sm:text-[15px]">assignment</span>
                   <span>Tugas Mandiri</span>
@@ -161,6 +178,7 @@ export default function EditQuizClient({
               )}
 
               {/* Assignment Mode Badge */}
+              {!isDiscussion && (
               <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 sm:py-1 rounded-full text-[11px] sm:text-xs font-semibold border shrink-0 ${
                 pkg.assignmentMode === 'GROUP'
                   ? 'bg-purple-50 text-purple-700 border-purple-200'
@@ -171,6 +189,7 @@ export default function EditQuizClient({
                 </span>
                 <span>{pkg.assignmentMode === 'GROUP' ? 'Mode Kelompok' : 'Mode Individu'}</span>
               </span>
+              )}
 
               {/* Active Status Badge */}
               {pkg.isActive ? (
@@ -186,7 +205,7 @@ export default function EditQuizClient({
               )}
 
               {/* Draft / Hidden Badge */}
-              {pkg.isHidden && (
+              {!isDiscussion && pkg.isHidden && (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 sm:py-1 rounded-full text-[11px] sm:text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200 shrink-0">
                   <span className="material-symbols-outlined text-[13px] sm:text-[14px]">visibility_off</span>
                   <span>Draft</span>
@@ -206,13 +225,67 @@ export default function EditQuizClient({
               </p>
             ) : (
               <p className="text-[11px] sm:text-xs text-gray-400 italic">
-                Belum ada deskripsi untuk paket kuis ini.
+                Belum ada deskripsi untuk paket {isDiscussion ? 'diskusi' : 'kuis'} ini.
               </p>
             )}
           </div>
         </div>
 
         {/* 4 Mini Stat Widgets (Mobile responsive 2x2 grid) */}
+        {isDiscussion ? (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 pt-3 sm:pt-4 border-t border-gray-100">
+          <div className="bg-gray-50/80 p-2.5 sm:p-3.5 rounded-xl border border-gray-100 flex items-center gap-2 sm:gap-3 min-w-0">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-emerald-100/70 text-emerald-700 flex items-center justify-center shrink-0">
+              <span className="material-symbols-outlined text-base sm:text-xl">verified</span>
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="text-[10px] sm:text-xs font-semibold text-gray-500 uppercase tracking-wider truncate">KKM Lulus</div>
+              <div className="text-sm sm:text-base md:text-lg font-bold text-gray-900 truncate">
+                {pkg.passingScore} <span className="text-[10px] sm:text-xs text-gray-400 font-normal">/ 100</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-gray-50/80 p-2.5 sm:p-3.5 rounded-xl border border-gray-100 flex items-center gap-2 sm:gap-3 min-w-0">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-teal-100/70 text-teal-700 flex items-center justify-center shrink-0">
+              <span className="material-symbols-outlined text-base sm:text-xl">meeting_room</span>
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="text-[10px] sm:text-xs font-semibold text-gray-500 uppercase tracking-wider truncate">Kelas Ditugaskan</div>
+              <div className="text-sm sm:text-base md:text-lg font-bold text-gray-900 truncate">
+                {discussionOverview?.summary.assignedClassesCount ?? 0} Kelas
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-gray-50/80 p-2.5 sm:p-3.5 rounded-xl border border-gray-100 flex items-center gap-2 sm:gap-3 min-w-0">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-blue-100/70 text-blue-700 flex items-center justify-center shrink-0">
+              <span className="material-symbols-outlined text-base sm:text-xl">fact_check</span>
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="text-[10px] sm:text-xs font-semibold text-gray-500 uppercase tracking-wider truncate">Siswa Dinilai</div>
+              <div className="text-sm sm:text-base md:text-lg font-bold text-gray-900 truncate">
+                {discussionOverview?.summary.gradedStudentsCount ?? 0}{' '}
+                <span className="text-xs text-gray-500 font-medium">/ {discussionOverview?.summary.totalStudents ?? 0}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-gray-50/80 p-2.5 sm:p-3.5 rounded-xl border border-gray-100 flex items-center gap-2 sm:gap-3 min-w-0">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-amber-100/70 text-amber-700 flex items-center justify-center shrink-0">
+              <span className="material-symbols-outlined text-base sm:text-xl">analytics</span>
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="text-[10px] sm:text-xs font-semibold text-gray-500 uppercase tracking-wider truncate">Rata-rata Nilai</div>
+              <div className="text-sm sm:text-base md:text-lg font-bold text-gray-900 truncate">
+                {discussionOverview?.summary.averageScore !== null && discussionOverview?.summary.averageScore !== undefined
+                  ? discussionOverview.summary.averageScore
+                  : '-'}
+              </div>
+            </div>
+          </div>
+        </div>
+        ) : (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 pt-3 sm:pt-4 border-t border-gray-100">
           {/* Passing Score (KKM) */}
           <div className="bg-gray-50/80 p-2.5 sm:p-3.5 rounded-xl border border-gray-100 flex items-center gap-2 sm:gap-3 min-w-0">
@@ -270,6 +343,7 @@ export default function EditQuizClient({
             </div>
           </div>
         </div>
+        )}
       </div>
 
       {/* 3. SEGMENTED TABS NAVIGATION (Touch-optimized scroll) */}
@@ -279,47 +353,71 @@ export default function EditQuizClient({
           aria-label="Tabs"
           style={{ WebkitOverflowScrolling: 'touch' }}
         >
-          {/* Tab 1: Varian & Soal */}
-          <button
-            type="button"
-            onClick={() => handleTabChange('variants')}
-            className={`py-2.5 sm:py-3 px-3 sm:px-4 border-b-2 font-semibold text-xs sm:text-sm inline-flex items-center gap-1.5 sm:gap-2 whitespace-nowrap transition-colors shrink-0 min-h-[44px] ${
-              activeTab === 'variants'
-                ? 'border-blue-600 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
-          >
-            <span className="material-symbols-outlined text-base sm:text-lg">format_list_bulleted</span>
-            <span>Varian & Soal</span>
-            <span className={`px-1.5 sm:px-2 py-0.2 sm:py-0.5 rounded-full text-[10px] sm:text-xs font-semibold ${
-              activeTab === 'variants'
-                ? 'bg-blue-100 text-blue-700'
-                : 'bg-gray-100 text-gray-600'
-            }`}>
-              {totalVariants}
-            </span>
-          </button>
+          {isDiscussion ? (
+            <button
+              type="button"
+              onClick={() => handleTabChange('grading')}
+              className={`py-2.5 sm:py-3 px-3 sm:px-4 border-b-2 font-semibold text-xs sm:text-sm inline-flex items-center gap-1.5 sm:gap-2 whitespace-nowrap transition-colors shrink-0 min-h-[44px] ${
+                activeTab === 'grading'
+                  ? 'border-teal-600 text-teal-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <span className="material-symbols-outlined text-base sm:text-lg">fact_check</span>
+              <span>Assign Kelas &amp; Penilaian</span>
+              <span className={`px-1.5 sm:px-2 py-0.2 sm:py-0.5 rounded-full text-[10px] sm:text-xs font-semibold ${
+                activeTab === 'grading'
+                  ? 'bg-teal-100 text-teal-700'
+                  : 'bg-gray-100 text-gray-600'
+              }`}>
+                {discussionOverview?.summary.assignedClassesCount ?? 0}
+              </span>
+            </button>
+          ) : (
+            <>
+              {/* Tab 1: Varian & Soal */}
+              <button
+                type="button"
+                onClick={() => handleTabChange('variants')}
+                className={`py-2.5 sm:py-3 px-3 sm:px-4 border-b-2 font-semibold text-xs sm:text-sm inline-flex items-center gap-1.5 sm:gap-2 whitespace-nowrap transition-colors shrink-0 min-h-[44px] ${
+                  activeTab === 'variants'
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <span className="material-symbols-outlined text-base sm:text-lg">format_list_bulleted</span>
+                <span>Varian & Soal</span>
+                <span className={`px-1.5 sm:px-2 py-0.2 sm:py-0.5 rounded-full text-[10px] sm:text-xs font-semibold ${
+                  activeTab === 'variants'
+                    ? 'bg-blue-100 text-blue-700'
+                    : 'bg-gray-100 text-gray-600'
+                }`}>
+                  {totalVariants}
+                </span>
+              </button>
 
-          {/* Tab 2: Penugasan Siswa */}
-          <button
-            type="button"
-            onClick={() => handleTabChange('assignments')}
-            className={`py-2.5 sm:py-3 px-3 sm:px-4 border-b-2 font-semibold text-xs sm:text-sm inline-flex items-center gap-1.5 sm:gap-2 whitespace-nowrap transition-colors shrink-0 min-h-[44px] ${
-              activeTab === 'assignments'
-                ? 'border-blue-600 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
-          >
-            <span className="material-symbols-outlined text-base sm:text-lg">groups</span>
-            <span>{pkg.assignmentMode === 'GROUP' ? 'Penugasan Kelompok' : 'Penugasan Kelas'}</span>
-            <span className={`px-1.5 sm:px-2 py-0.2 sm:py-0.5 rounded-full text-[10px] sm:text-xs font-semibold ${
-              activeTab === 'assignments'
-                ? 'bg-blue-100 text-blue-700'
-                : 'bg-gray-100 text-gray-600'
-            }`}>
-              {classes.length}
-            </span>
-          </button>
+              {/* Tab 2: Penugasan Siswa */}
+              <button
+                type="button"
+                onClick={() => handleTabChange('assignments')}
+                className={`py-2.5 sm:py-3 px-3 sm:px-4 border-b-2 font-semibold text-xs sm:text-sm inline-flex items-center gap-1.5 sm:gap-2 whitespace-nowrap transition-colors shrink-0 min-h-[44px] ${
+                  activeTab === 'assignments'
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <span className="material-symbols-outlined text-base sm:text-lg">groups</span>
+                <span>{pkg.assignmentMode === 'GROUP' ? 'Penugasan Kelompok' : 'Penugasan Kelas'}</span>
+                <span className={`px-1.5 sm:px-2 py-0.2 sm:py-0.5 rounded-full text-[10px] sm:text-xs font-semibold ${
+                  activeTab === 'assignments'
+                    ? 'bg-blue-100 text-blue-700'
+                    : 'bg-gray-100 text-gray-600'
+                }`}>
+                  {classes.length}
+                </span>
+              </button>
+            </>
+          )}
 
           {/* Tab 3: Pengaturan Kuis */}
           <button
@@ -332,15 +430,28 @@ export default function EditQuizClient({
             }`}
           >
             <span className="material-symbols-outlined text-base sm:text-lg">tune</span>
-            <span>Pengaturan & Jadwal</span>
+            <span>{isDiscussion ? 'Pengaturan Diskusi' : 'Pengaturan & Jadwal'}</span>
           </button>
         </nav>
       </div>
 
       {/* 4. TAB CONTENTS */}
       <div className="space-y-4 sm:space-y-6">
+        {/* TAB DISKUSI: ASSIGN KELAS & PENILAIAN */}
+        {isDiscussion && activeTab === 'grading' && (
+          <div className="space-y-4 sm:space-y-5 animate-in fade-in duration-200">
+            <DiscussionGradingView
+              packageId={pkg.id}
+              passingScore={pkg.passingScore}
+              classes={classes}
+              initialOverview={discussionOverview}
+              onOverviewUpdate={setDiscussionOverview}
+            />
+          </div>
+        )}
+
         {/* TAB 1: VARIAN KUIS & BANK SOAL */}
-        {activeTab === 'variants' && (
+        {!isDiscussion && activeTab === 'variants' && (
           <div className="space-y-4 sm:space-y-5 animate-in fade-in duration-200">
             {/* Guidance Banner */}
             <div className="bg-blue-50/70 border border-blue-200/80 rounded-xl p-3.5 sm:p-5 flex items-start gap-2.5 sm:gap-3.5">

@@ -22,7 +22,7 @@ export async function getReportFilterPackages(scope: TeacherScope) {
         title: pkg.title,
         assignmentMode: (pkg as any).assignmentMode || 'INDIVIDUAL',
         pageTitle: page?.title || pkg.title,
-        categoryName: cat?.name || 'Tugas Mandiri',
+        categoryName: cat?.name || ((pkg as any).assignmentMode === 'DISCUSSION' ? 'Diskusi Kelas' : 'Tugas Mandiri'),
         categoryOrderIndex: cat?.orderIndex ?? 999999,
         pageOrderIndex: page?.orderIndex ?? 999999,
       };
@@ -115,9 +115,29 @@ export async function getPageById(id: string) {
   return await db.orm.public.Page.where({ id }).first();
 }
 
+function normalizePackagePayload(data: QuizFormValues) {
+  const mode = data.assignmentMode ?? 'INDIVIDUAL';
+  const isDiscussion = mode === 'DISCUSSION';
+  return {
+    courseId: data.courseId,
+    pageId: isDiscussion ? null : (data.pageId || null),
+    title: data.title,
+    description: data.description || null,
+    passingScore: data.passingScore,
+    timeLimit: isDiscussion ? null : (data.timeLimit || null),
+    shuffleQuestions: isDiscussion ? false : data.shuffleQuestions,
+    assignmentMode: mode,
+    isActive: data.isActive,
+    isHidden: isDiscussion ? true : data.isHidden,
+    openAt: isDiscussion ? null : (data.openAt || null),
+    closeAt: isDiscussion ? null : (data.closeAt || null),
+  };
+}
+
 export async function createQuizPackage(data: QuizFormValues) {
-  if (data.pageId) {
-    const existingPackage = await db.orm.public.QuizPackage.where({ pageId: data.pageId }).first();
+  const normalized = normalizePackagePayload(data);
+  if (normalized.pageId) {
+    const existingPackage = await db.orm.public.QuizPackage.where({ pageId: normalized.pageId }).first();
     if (existingPackage) {
       throw new Error('Halaman ini sudah memiliki kuis (One-to-One)');
     }
@@ -125,18 +145,7 @@ export async function createQuizPackage(data: QuizFormValues) {
 
   const newPackage = await db.orm.public.QuizPackage.create({
     id: randomUUID(),
-    courseId: data.courseId,
-    pageId: data.pageId || null,
-    title: data.title,
-    description: data.description || null,
-    passingScore: data.passingScore,
-    timeLimit: data.timeLimit || null,
-    shuffleQuestions: data.shuffleQuestions,
-    assignmentMode: data.assignmentMode ?? 'INDIVIDUAL',
-    isActive: data.isActive,
-    isHidden: data.isHidden,
-    openAt: data.openAt || null,
-    closeAt: data.closeAt || null,
+    ...normalized,
   });
   return newPackage;
 }
@@ -147,30 +156,45 @@ export async function updateQuizPackage(id: string, data: QuizFormValues) {
     throw new Error('Kuis tidak ditemukan');
   }
 
-  if (data.pageId && currentPackage.pageId !== data.pageId) {
-    const existingPackage = await db.orm.public.QuizPackage.where({ pageId: data.pageId }).first();
+  const prevMode = (currentPackage as { assignmentMode?: string }).assignmentMode || 'INDIVIDUAL';
+  const nextMode = data.assignmentMode ?? 'INDIVIDUAL';
+
+  if (prevMode === 'DISCUSSION' && nextMode !== 'DISCUSSION') {
+    const grades = await db.orm.public.DiscussionGrade.where({ quizPackageId: id }).all();
+    if (grades.some(g => g.score !== null && g.score !== undefined)) {
+      throw new Error('Tidak dapat mengubah mode karena diskusi ini sudah memiliki nilai siswa.');
+    }
+  }
+  if (prevMode !== 'DISCUSSION' && nextMode === 'DISCUSSION') {
+    const [variants, groups] = await Promise.all([
+      db.orm.public.QuizVariant.where({ quizPackageId: id }).all(),
+      db.orm.public.ClassGroup.where({ quizPackageId: id }).all(),
+    ]);
+    if (groups.length > 0) {
+      throw new Error('Tidak dapat mengubah ke mode Diskusi karena sudah memiliki data kelompok.');
+    }
+    if (variants.length > 0) {
+      const attempts = await db.orm.public.QuizAttempt.all();
+      const vIds = new Set(variants.map(v => v.id));
+      if (attempts.some(a => vIds.has(a.quizVariantId))) {
+        throw new Error('Tidak dapat mengubah ke mode Diskusi karena kuis sudah pernah dikerjakan siswa.');
+      }
+    }
+  }
+
+  const normalized = normalizePackagePayload(data);
+
+  if (normalized.pageId && currentPackage.pageId !== normalized.pageId) {
+    const existingPackage = await db.orm.public.QuizPackage.where({ pageId: normalized.pageId }).first();
     if (existingPackage) {
       throw new Error('Halaman tujuan sudah memiliki kuis');
     }
   }
 
-  await db.orm.public.QuizPackage.where({ id }).update({
-    courseId: data.courseId,
-    pageId: data.pageId || null,
-    title: data.title,
-    description: data.description || null,
-    passingScore: data.passingScore,
-    timeLimit: data.timeLimit || null,
-    shuffleQuestions: data.shuffleQuestions,
-    assignmentMode: data.assignmentMode ?? 'INDIVIDUAL',
-    isActive: data.isActive,
-    isHidden: data.isHidden,
-    openAt: data.openAt || null,
-    closeAt: data.closeAt || null,
-  });
+  await db.orm.public.QuizPackage.where({ id }).update(normalized);
 
   // Jika paket baru diubah ke mode GROUP, pastikan default anti-cheat longgar untuk kenyamanan diskusi kelompok
-  if ((currentPackage as any).assignmentMode !== 'GROUP' && data.assignmentMode === 'GROUP') {
+  if (prevMode !== 'GROUP' && nextMode === 'GROUP') {
     const variants = await db.orm.public.QuizVariant.where({ quizPackageId: id }).all();
     for (const v of variants) {
       const cfg = await db.orm.public.QuizAntiCheatConfig.where({ quizVariantId: v.id }).first();
@@ -184,7 +208,7 @@ export async function updateQuizPackage(id: string, data: QuizFormValues) {
     }
   }
 
-  return { id, ...data };
+  return { id, ...normalized };
 }
 
 export async function deleteQuizPackage(id: string) {
@@ -202,6 +226,22 @@ export async function deleteQuizPackage(id: string) {
   const assignments = await db.orm.public.QuizAssignment.where({ quizPackageId: id }).all();
   for (const assign of assignments) {
     await db.orm.public.QuizAssignment.where({ id: assign.id }).delete();
+  }
+
+  // Hapus penugasan, nilai diskusi, dan konfigurasi seleksi gradebook jika ada (arsip QuizCompletionRecord tetap tersimpan permanen)
+  const [discussionGrades, discussionClasses, gradebookSelections] = await Promise.all([
+    db.orm.public.DiscussionGrade.where({ quizPackageId: id }).all(),
+    db.orm.public.DiscussionClassAssignment.where({ quizPackageId: id }).all(),
+    db.orm.public.GradebookSelectedQuiz.where({ quizPackageId: id }).all(),
+  ]);
+  for (const g of discussionGrades) {
+    await db.orm.public.DiscussionGrade.where({ id: g.id }).delete();
+  }
+  for (const dc of discussionClasses) {
+    await db.orm.public.DiscussionClassAssignment.where({ id: dc.id }).delete();
+  }
+  for (const gs of gradebookSelections) {
+    await db.orm.public.GradebookSelectedQuiz.where({ id: gs.id }).delete();
   }
 
   // Hard delete paket kuis

@@ -1,6 +1,6 @@
 import { getSession } from '@/lib/session';
 import { redirect } from 'next/navigation';
-import { db } from '@/prisma/db';
+import { getSettingsProfileService } from '@/modules/auth/email-change.service';
 import StudentSettingsView from '@/components/student/StudentSettingsView';
 
 export const metadata = {
@@ -14,25 +14,23 @@ export default async function StudentSettingsPage() {
     redirect('/login');
   }
 
-  const user = await db.orm.public.User.where({ id: session.userId }).first();
-
-  let className = 'Siswa Aktif';
-  if (user?.classId) {
-    const classroom = await db.orm.public.Classroom.where({ id: user.classId }).first();
-    if (classroom) {
-      className = classroom.name;
-    }
+  const profile = await getSettingsProfileService(session.userId);
+  if (!profile) {
+    redirect('/login');
   }
 
   return (
     <StudentSettingsView
       user={{
-        id: session.userId,
-        name: user?.name || session.name || 'Siswa',
-        email: user?.email || session.email || '',
+        id: profile.user.id,
+        name: profile.user.name,
+        email: profile.user.email,
         role: 'MURID',
-        className,
+        className: profile.user.className,
+        emailChangeCount: profile.user.emailChangeCount,
+        emailChangedAt: profile.user.emailChangedAt,
       }}
+      pendingEmailChange={profile.pendingEmailChange}
     />
   );
 }

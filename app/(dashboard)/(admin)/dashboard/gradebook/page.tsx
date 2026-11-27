@@ -1,22 +1,30 @@
 import { getSession } from '@/lib/session';
-import { hasAnyPermission } from '@/lib/permissions';
+import { hasAnyPermission, hasPermission } from '@/lib/permissions';
 import { redirect } from 'next/navigation';
 import { getScopedClasses, getScopedCourses, resolveTeacherScope } from '@/modules/course/teacher-scope.service';
 import GradebookClient from './GradebookClient';
 
 export const dynamic = 'force-dynamic';
 
-export default async function GradebookPage() {
+export default async function GradebookPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ classId?: string; courseId?: string }>;
+}) {
   const session = await getSession();
-  if (!session || !hasAnyPermission(session, ['GRADEBOOK_VIEW', 'QUIZZES_GRADE'])) {
+  if (!session || !hasAnyPermission(session, ['GRADEBOOK_VIEW', 'GRADEBOOK_CONFIG', 'QUIZZES_GRADE'])) {
     redirect('/dashboard');
   }
 
-  const scope = await resolveTeacherScope(session);
+  const [{ classId, courseId }, scope] = await Promise.all([
+    searchParams,
+    resolveTeacherScope(session),
+  ]);
   const [classes, courses] = await Promise.all([
     getScopedClasses(scope),
     getScopedCourses(scope),
   ]);
+  const canConfigure = hasPermission(session, 'GRADEBOOK_CONFIG');
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6 animate-fade-in">
@@ -37,7 +45,13 @@ export default async function GradebookPage() {
         </div>
       )}
 
-      <GradebookClient classes={classes} courses={courses} />
+      <GradebookClient
+        classes={classes}
+        courses={courses}
+        initialClassId={classId}
+        initialCourseId={courseId}
+        canConfigure={canConfigure}
+      />
     </div>
   );
 }

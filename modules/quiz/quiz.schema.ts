@@ -8,7 +8,7 @@ export const quizFormSchema = z.object({
   passingScore: z.coerce.number().min(0).max(100, "Nilai maksimal 100").default(70),
   timeLimit: z.number().min(1, "Waktu minimal 1 menit").nullable().optional(),
   shuffleQuestions: z.boolean().default(false),
-  assignmentMode: z.enum(["INDIVIDUAL", "GROUP"]).default("INDIVIDUAL"),
+  assignmentMode: z.enum(["INDIVIDUAL", "GROUP", "DISCUSSION"]).default("INDIVIDUAL"),
   isActive: z.boolean().default(true),
   isHidden: z.boolean().default(false),
   openAt: z.string().nullable().optional(),

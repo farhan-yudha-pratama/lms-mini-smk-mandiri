@@ -1,4 +1,5 @@
 import { db } from '@/prisma/db';
+import { getEffectivePackagesForClassCourse } from './gradebook-config.service';
 
 export interface GradebookMatrixResponse {
   students: {
@@ -10,8 +11,20 @@ export interface GradebookMatrixResponse {
     id: string;
     title: string;
     isStandalone: boolean;
+    assignmentMode?: string;
     passingScore: number;
+    categoryName: string | null;
+    categoryOrderIndex: number;
+    pageOrderIndex: number;
+    isIncluded: boolean;
+    gradedStudentCount: number;
   }[];
+  config: {
+    mode: 'ALL' | 'CUSTOM';
+    selectedQuizIds: string[];
+    totalAvailableCount: number;
+    includedCount: number;
+  };
   matrix: Record<string, Record<string, {
     score: number | null;
     status: string | null;
@@ -21,23 +34,53 @@ export interface GradebookMatrixResponse {
 }
 
 export async function getGradebookMatrix(classId: string, courseId: string): Promise<GradebookMatrixResponse> {
-  // 1. Get all students in the class
-  const students = await db.orm.public.User.where({ classId, role: 'MURID' }).all();
+  // 1. Get all students & effective quiz selection for this (classId, courseId)
+  const [students, effective, classDiscussionGrades] = await Promise.all([
+    db.orm.public.User.where({ classId, role: 'MURID' }).all(),
+    getEffectivePackagesForClassCourse(classId, courseId),
+    db.orm.public.DiscussionGrade.where({ classroomId: classId }).all(),
+  ]);
+
+  const includedIdSet = new Set(effective.includedPackages.map(p => p.id));
+  const configSummary = {
+    mode: effective.mode,
+    selectedQuizIds: effective.selectedQuizIds,
+    totalAvailableCount: effective.candidateEntries.length,
+    includedCount: effective.includedPackages.length,
+  };
+
   if (!students.length) {
-    return { students: [], quizzes: [], matrix: {} };
+    return {
+      students: [],
+      quizzes: effective.candidateEntries.map(entry => ({
+        id: entry.pkg.id,
+        title: entry.pkg.title,
+        isStandalone: !entry.pkg.pageId,
+        assignmentMode: entry.assignmentMode,
+        passingScore: entry.pkg.passingScore || 70,
+        categoryName: entry.categoryName,
+        categoryOrderIndex: entry.categoryOrderIndex,
+        pageOrderIndex: entry.pageOrderIndex,
+        isIncluded: includedIdSet.has(entry.pkg.id),
+        gradedStudentCount: 0,
+      })),
+      config: configSummary,
+      matrix: {},
+    };
   }
   const studentIds = new Set(students.map(s => s.id));
 
-  // 2. Get all quizzes for this course
-  const allPackages = await db.orm.public.QuizPackage.where({ courseId }).all();
-  // Filter active/non-hidden if needed, or return all since it's admin view
-  
-  // Sort quizzes (maybe by creation date or order)
-  const quizzes = allPackages.map(p => ({
-    id: p.id,
-    title: p.title,
-    isStandalone: !p.pageId,
-    passingScore: p.passingScore || 70
+  const quizzes = effective.candidateEntries.map(entry => ({
+    id: entry.pkg.id,
+    title: entry.pkg.title,
+    isStandalone: !entry.pkg.pageId,
+    assignmentMode: entry.assignmentMode,
+    passingScore: entry.pkg.passingScore || 70,
+    categoryName: entry.categoryName,
+    categoryOrderIndex: entry.categoryOrderIndex,
+    pageOrderIndex: entry.pageOrderIndex,
+    isIncluded: includedIdSet.has(entry.pkg.id),
+    gradedStudentCount: 0,
   }));
 
   const packageIds = new Set(quizzes.map(q => q.id));
@@ -172,6 +215,19 @@ export async function getGradebookMatrix(classId: string, courseId: string): Pro
     }
   }
 
+  // Sertakan nilai diskusi kelas
+  for (const dg of classDiscussionGrades) {
+    if (!matrix[dg.studentId] || !packageIds.has(dg.quizPackageId)) continue;
+    if (dg.score === null || dg.score === undefined) continue;
+    const passingScore = pkgPassingMap.get(dg.quizPackageId) ?? 70;
+    matrix[dg.studentId][dg.quizPackageId] = {
+      score: dg.score,
+      status: dg.score >= passingScore ? 'COMPLETED' : 'GRADED',
+      attemptId: `discussion:${dg.quizPackageId}`,
+      needsReview: false,
+    };
+  }
+
   // Fallback: Untuk kuis/varian yang sudah dihapus secara permanen (decoupled),
   // ambil data nilai & kelulusan siswa dari snapshot QuizCompletionRecord
   const allCompletionRecords = await db.orm.public.QuizCompletionRecord.all();
@@ -188,9 +244,17 @@ export async function getGradebookMatrix(classId: string, courseId: string): Pro
     }
   }
 
+  for (const quiz of quizzes) {
+    quiz.gradedStudentCount = students.filter(s => {
+      const cell = matrix[s.id]?.[quiz.id];
+      return cell && cell.score !== null && (cell.status === 'COMPLETED' || cell.status === 'GRADED');
+    }).length;
+  }
+
   return {
     students: students.map(s => ({ id: s.id, name: s.name, email: s.email })),
     quizzes,
+    config: configSummary,
     matrix
   };
 }

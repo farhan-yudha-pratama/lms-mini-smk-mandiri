@@ -33,6 +33,7 @@ export interface QuizReportItem {
   essayCount: number;
   totalQuestions: number;
   isGroupTask?: boolean;
+  isDiscussion?: boolean;
   groupId?: string | null;
   groupName?: string | null;
   groupBaseScore?: number | null;
@@ -124,7 +125,7 @@ export async function getQuizReports(params: {
   classId?: string;
   packageId?: string;
   courseId?: string;
-  assignmentMode?: 'ALL' | 'INDIVIDUAL' | 'GROUP';
+  assignmentMode?: 'ALL' | 'INDIVIDUAL' | 'GROUP' | 'DISCUSSION';
   search?: string;
   page?: number;
   limit?: number;
@@ -134,8 +135,8 @@ export async function getQuizReports(params: {
 }): Promise<QuizReportsResponse> {
   const { classId, packageId, courseId, assignmentMode = 'ALL', search, page = 1, limit = 50, reviewFilter = 'ALL', teacherId, scope } = params;
 
-  // 1. Fetch reference collections including questions and class groups
-  const [classrooms, categories, pages, quizPackages, quizVariants, allStudents, allQuestions, courses, allStudentCourses, allAnswers, allClassGroups, allGroupMembers] = await Promise.all([
+  // 1. Fetch reference collections including questions, class groups, and discussion records
+  const [classrooms, categories, pages, quizPackages, quizVariants, allStudents, allQuestions, courses, allStudentCourses, allAnswers, allClassGroups, allGroupMembers, allDiscussionAssignments, allDiscussionGrades] = await Promise.all([
     db.orm.public.Classroom.all(),
     db.orm.public.MaterialCategory.all(),
     db.orm.public.Page.all(),
@@ -148,6 +149,8 @@ export async function getQuizReports(params: {
     db.orm.public.StudentAnswer.all(),
     db.orm.public.ClassGroup.all(),
     db.orm.public.ClassGroupMember.all(),
+    db.orm.public.DiscussionClassAssignment.all(),
+    db.orm.public.DiscussionGrade.all(),
   ]);
 
   const classGroupMap = new Map(allClassGroups.map(g => [g.id, g]));
@@ -414,6 +417,58 @@ export async function getQuizReports(params: {
           });
         }
       }
+    } else if ((pkg as any).assignmentMode === 'DISCUSSION') {
+      const isClassAssigned = allDiscussionAssignments.some(
+        a => a.quizPackageId === packageId && a.classroomId === classId
+      );
+      const classGrades = allDiscussionGrades.filter(
+        g => g.quizPackageId === packageId && g.classroomId === classId
+      );
+      if (!isClassAssigned && classGrades.length === 0) {
+        reportItems = [];
+      } else {
+        const gradeMap = new Map(classGrades.map(g => [g.studentId, g]));
+        const enrolledStudentIds = new Set(
+          resolvedCourseId
+            ? allStudentCourses.filter(cs => cs.courseId === resolvedCourseId).map(cs => cs.studentId)
+            : targetStudents.map(s => s.id)
+        );
+        const validStudents = targetStudents.filter(
+          s => s.isActive !== false && (enrolledStudentIds.has(s.id) || gradeMap.has(s.id))
+        );
+        reportItems = validStudents.map(student => {
+          const dg = gradeMap.get(student.id);
+          const score = dg?.score !== null && dg?.score !== undefined ? dg.score : null;
+          const isPassed = score !== null && score >= passingScore;
+          const status = score !== null ? (isPassed ? 'COMPLETED' : 'GRADED') : 'NOT_STARTED';
+          return {
+            id: `discussion:${packageId}:${student.id}`,
+            attemptId: null,
+            studentId: student.id,
+            studentName: student.name,
+            studentEmail: student.email,
+            classId: student.classId,
+            className,
+            packageId,
+            packageTitle: pkgTitle,
+            pageTitle: pkgTitle,
+            categoryName: 'Diskusi Kelas',
+            courseName,
+            passingScore,
+            score,
+            status: status as QuizReportItem['status'],
+            startedAt: null,
+            finishedAt: dg?.gradedAt || null,
+            assignedVariantId: null,
+            isPassed,
+            hasEssay: false,
+            needsReview: false,
+            essayCount: 0,
+            totalQuestions: 0,
+            isDiscussion: true,
+          };
+        });
+      }
     } else {
       const assignments = await db.orm.public.QuizAssignment.where({ quizPackageId: packageId }).all();
       const attemptStudentIds = new Set(relevantAttempts.map(a => a.studentId));
@@ -655,12 +710,125 @@ export async function getQuizReports(params: {
         });
       }
     }
+
+    // Sertakan penilaian Diskusi Kelas (DISCUSSION)
+    if (assignmentMode === 'ALL' || assignmentMode === 'DISCUSSION') {
+      const seenDiscussionKeys = new Set<string>();
+      const discussionPkgMap = new Map(
+        quizPackages
+          .filter(p => (p as { assignmentMode?: string }).assignmentMode === 'DISCUSSION')
+          .map(p => [p.id, p])
+      );
+      const isDiscussionAccessible = (pkg: typeof quizPackages[0], clsId: string) => {
+        if (packageId && pkg.id !== packageId) return false;
+        if (classId && clsId !== classId) return false;
+        const { candidateCourseIds } = resolvePackageCourseIds(pkg, pageMap, categoryMap);
+        if (courseId && !candidateCourseIds.includes(courseId)) return false;
+        if (scope && !scope.isUnrestricted) {
+          if (!isPackageAllowedForScope(scope, pkg, pageMap, categoryMap)) return false;
+          if (!isClassAllowedForCourse(scope, candidateCourseIds[0] || '', clsId)) return false;
+        }
+        return true;
+      };
+
+      for (const dg of allDiscussionGrades) {
+        const pkg = discussionPkgMap.get(dg.quizPackageId);
+        if (!pkg || dg.score === null || dg.score === undefined) continue;
+        if (!targetStudentIds.has(dg.studentId)) continue;
+        const student = studentMap.get(dg.studentId);
+        const clsId = student?.classId || dg.classroomId;
+        if (!isDiscussionAccessible(pkg, clsId)) continue;
+
+        const { primaryCourseId } = resolvePackageCourseIds(pkg, pageMap, categoryMap);
+        const courseName = primaryCourseId ? (courseMap.get(primaryCourseId) || 'Tanpa Mata Pelajaran') : 'Tanpa Mata Pelajaran';
+        const passingScore = pkg.passingScore || 70;
+        const isPassed = dg.score >= passingScore;
+        seenDiscussionKeys.add(`${pkg.id}:${dg.studentId}`);
+
+        reportItems.push({
+          id: `discussion:${pkg.id}:${dg.studentId}`,
+          attemptId: null,
+          studentId: dg.studentId,
+          studentName: student?.name || 'Murid',
+          studentEmail: student?.email || '-',
+          classId: clsId,
+          className: classMap.get(clsId) || 'Tanpa Kelas',
+          packageId: pkg.id,
+          packageTitle: pkg.title,
+          pageTitle: pkg.title,
+          categoryName: 'Diskusi Kelas',
+          courseName,
+          passingScore,
+          score: dg.score,
+          status: isPassed ? 'COMPLETED' : 'GRADED',
+          startedAt: null,
+          finishedAt: dg.gradedAt || null,
+          assignedVariantId: null,
+          isPassed,
+          hasEssay: false,
+          needsReview: false,
+          essayCount: 0,
+          totalQuestions: 0,
+          isDiscussion: true,
+        });
+      }
+
+      if (assignmentMode === 'DISCUSSION' || Boolean(packageId)) {
+        for (const assign of allDiscussionAssignments) {
+          const pkg = discussionPkgMap.get(assign.quizPackageId);
+          if (!pkg || !isDiscussionAccessible(pkg, assign.classroomId)) continue;
+          const { primaryCourseId } = resolvePackageCourseIds(pkg, pageMap, categoryMap);
+          const courseName = primaryCourseId ? (courseMap.get(primaryCourseId) || 'Tanpa Mata Pelajaran') : 'Tanpa Mata Pelajaran';
+          const enrolledIds = new Set(
+            primaryCourseId
+              ? allStudentCourses.filter(cs => cs.courseId === primaryCourseId).map(cs => cs.studentId)
+              : targetStudents.map(s => s.id)
+          );
+          const classStudents = targetStudents.filter(
+            s => s.classId === assign.classroomId && s.isActive !== false && enrolledIds.has(s.id)
+          );
+          for (const student of classStudents) {
+            const key = `${pkg.id}:${student.id}`;
+            if (seenDiscussionKeys.has(key)) continue;
+            seenDiscussionKeys.add(key);
+            reportItems.push({
+              id: `discussion:${pkg.id}:${student.id}`,
+              attemptId: null,
+              studentId: student.id,
+              studentName: student.name,
+              studentEmail: student.email,
+              classId: student.classId,
+              className: classMap.get(assign.classroomId) || 'Tanpa Kelas',
+              packageId: pkg.id,
+              packageTitle: pkg.title,
+              pageTitle: pkg.title,
+              categoryName: 'Diskusi Kelas',
+              courseName,
+              passingScore: pkg.passingScore || 70,
+              score: null,
+              status: 'NOT_STARTED',
+              startedAt: null,
+              finishedAt: null,
+              assignedVariantId: null,
+              isPassed: false,
+              hasEssay: false,
+              needsReview: false,
+              essayCount: 0,
+              totalQuestions: 0,
+              isDiscussion: true,
+            });
+          }
+        }
+      }
+    }
   }
 
   if (assignmentMode === 'GROUP') {
     reportItems = reportItems.filter(item => Boolean(item.isGroupTask));
+  } else if (assignmentMode === 'DISCUSSION') {
+    reportItems = reportItems.filter(item => Boolean(item.isDiscussion));
   } else if (assignmentMode === 'INDIVIDUAL') {
-    reportItems = reportItems.filter(item => !item.isGroupTask);
+    reportItems = reportItems.filter(item => !item.isGroupTask && !item.isDiscussion);
   }
 
   // 3. Search query filter
@@ -1760,6 +1928,8 @@ export async function getUnfinishedStudentsReport(params: {
     allCourseTeachers,
     allClassGroups,
     allGroupMembers,
+    allDiscussionAssignments,
+    allDiscussionGrades,
   ] = await Promise.all([
     db.orm.public.User.where({ role: 'MURID' }).all(),
     db.orm.public.Classroom.all(),
@@ -1774,7 +1944,16 @@ export async function getUnfinishedStudentsReport(params: {
     db.orm.public.CourseTeacher.all(),
     db.orm.public.ClassGroup.all(),
     db.orm.public.ClassGroupMember.all(),
+    db.orm.public.DiscussionClassAssignment.all(),
+    db.orm.public.DiscussionGrade.all(),
   ]);
+
+  const discussionAssignedClassSet = new Set(
+    allDiscussionAssignments.map(a => `${a.quizPackageId}:${a.classroomId}`)
+  );
+  const discussionGradeMap = new Map(
+    allDiscussionGrades.map(g => [`${g.studentId}:${g.quizPackageId}`, g])
+  );
 
   // Lookup maps
   const classMap = new Map(classrooms.map(c => [c.id, c.name]));
@@ -1887,6 +2066,13 @@ export async function getUnfinishedStudentsReport(params: {
     const studentPages = filteredPages.filter(p => studentCategoryIds.has(p.categoryId));
     const studentPageIds = new Set(studentPages.map(p => p.id));
     const studentPackages = targetPackages.filter(pkg => {
+      if ((pkg as { assignmentMode?: string }).assignmentMode === 'DISCUSSION') {
+        const isAssignedToClass = Boolean(
+          student.classId && discussionAssignedClassSet.has(`${pkg.id}:${student.classId}`)
+        );
+        const hasGrade = discussionGradeMap.has(`${student.id}:${pkg.id}`);
+        if (!isAssignedToClass && !hasGrade) return false;
+      }
       if (pkg.pageId && studentPageIds.has(pkg.pageId)) return true;
       if (!pkg.pageId) {
         const { candidateCourseIds } = resolvePackageCourseIds(pkg, pageMap, categoryObjMap);
@@ -1947,7 +2133,10 @@ export async function getUnfinishedStudentsReport(params: {
 
     for (const pkg of studentPackages) {
       let isDone = false;
-      if ((pkg as { assignmentMode?: string }).assignmentMode === 'GROUP') {
+      if ((pkg as { assignmentMode?: string }).assignmentMode === 'DISCUSSION') {
+        const dg = discussionGradeMap.get(`${student.id}:${pkg.id}`);
+        isDone = Boolean(dg && dg.score !== null && dg.score !== undefined);
+      } else if ((pkg as { assignmentMode?: string }).assignmentMode === 'GROUP') {
         const gm = groupMembersByStudentPkg.get(`${student.id}:${pkg.id}`);
         if (gm) {
           const hasOverride = gm.scoreOverride !== null && gm.scoreOverride !== undefined;
@@ -2129,6 +2318,8 @@ export async function getTaskRecapList(params: {
     allClassGroups,
     allGroupMembers,
     allClassrooms,
+    allDiscussionAssignments,
+    allDiscussionGrades,
   ] = await Promise.all([
     db.orm.public.QuizPackage.all(),
     db.orm.public.Page.all(),
@@ -2143,7 +2334,16 @@ export async function getTaskRecapList(params: {
     db.orm.public.ClassGroup.all(),
     db.orm.public.ClassGroupMember.all(),
     db.orm.public.Classroom.all(),
+    db.orm.public.DiscussionClassAssignment.all(),
+    db.orm.public.DiscussionGrade.all(),
   ]);
+
+  const discussionAssignedClassSet = new Set(
+    allDiscussionAssignments.map(a => `${a.quizPackageId}:${a.classroomId}`)
+  );
+  const discussionGradeMap = new Map(
+    allDiscussionGrades.map(g => [`${g.studentId}:${g.quizPackageId}`, g])
+  );
 
   const packageMap = new Map(allPackages.map(p => [p.id, p]));
   const pageMap = new Map(allPages.map(p => [p.id, p]));
@@ -2263,7 +2463,10 @@ export async function getTaskRecapList(params: {
     const cId = primaryCourseId;
     const courseName = cId ? (courseMap.get(cId) || 'Tanpa Mata Pelajaran') : 'Tanpa Mata Pelajaran';
     const passingScore = pkg.passingScore || 70;
-    const isGroupPackage = (pkg as { assignmentMode?: string }).assignmentMode === 'GROUP';
+    const pkgMode = (pkg as { assignmentMode?: string }).assignmentMode || 'INDIVIDUAL';
+    const isGroupPackage = pkgMode === 'GROUP';
+    const isDiscussionPackage = pkgMode === 'DISCUSSION';
+    const effectiveCatName = isDiscussionPackage ? 'Diskusi Kelas' : catName;
 
     // Filter students by course enrollment & teacher's per-course class assignment
     const enrolledStudentIds = cId
@@ -2275,6 +2478,14 @@ export async function getTaskRecapList(params: {
         const classAllowed = candidateCourseIds.some(cid => isClassAllowedForCourse(scope, cid, s.classId));
         if (!classAllowed) return false;
       }
+      if (isDiscussionPackage) {
+        const isAssignedClass = Boolean(s.classId && discussionAssignedClassSet.has(`${pkg.id}:${s.classId}`));
+        const dg = discussionGradeMap.get(`${s.id}:${pkg.id}`);
+        const hasGrade = Boolean(dg && dg.score !== null && dg.score !== undefined);
+        if (!isAssignedClass && !hasGrade) return false;
+        if (enrolledStudentIds && !enrolledStudentIds.has(s.id) && !hasGrade) return false;
+        return s.isActive !== false || hasGrade;
+      }
       if (enrolledStudentIds && !enrolledStudentIds.has(s.id)) {
         return isGroupPackage
           ? groupInfoByStudentPkg.has(`${s.id}:${pkg.id}`)
@@ -2283,9 +2494,43 @@ export async function getTaskRecapList(params: {
       return true;
     });
 
-    // Build student attempt list — cross-reference ALL pkgStudents with attempts (and ClassGroup for GROUP tasks)
+    if (isDiscussionPackage && pkgStudents.length === 0) continue;
+
+    // Build student attempt list — cross-reference ALL pkgStudents with attempts (and ClassGroup / Discussion)
     const studentAttempts: QuizReportItem[] = pkgStudents.map(student => {
       const key = `${student.id}:${pkg.id}`;
+      if (isDiscussionPackage) {
+        const dg = discussionGradeMap.get(key);
+        const score = dg?.score !== null && dg?.score !== undefined ? dg.score : null;
+        const isPassed = score !== null && score >= passingScore;
+        const status = score !== null ? (isPassed ? 'COMPLETED' : 'GRADED') : 'NOT_STARTED';
+        return {
+          id: `discussion:${pkg.id}:${student.id}`,
+          attemptId: null,
+          studentId: student.id,
+          studentName: student.name,
+          studentEmail: student.email,
+          classId: student.classId || null,
+          className: student.classId ? (classMap.get(student.classId) || 'Tanpa Kelas') : 'Tanpa Kelas',
+          packageId: pkg.id,
+          packageTitle: pkg.title,
+          pageTitle: pkg.title,
+          categoryName: effectiveCatName,
+          courseName,
+          passingScore,
+          score,
+          status: status as QuizReportItem['status'],
+          startedAt: null,
+          finishedAt: dg?.gradedAt || null,
+          assignedVariantId: null,
+          isPassed,
+          hasEssay: false,
+          needsReview: false,
+          essayCount: 0,
+          totalQuestions: 0,
+          isDiscussion: true,
+        };
+      }
       const groupInfo = isGroupPackage ? groupInfoByStudentPkg.get(key) || null : null;
       const attempt = isGroupPackage ? (groupInfo?.attempt || null) : (attemptLookup.get(key) || null);
       const hasOverride = Boolean(
@@ -2324,7 +2569,7 @@ export async function getTaskRecapList(params: {
         packageId: pkg.id,
         packageTitle: pkg.title,
         pageTitle: page?.title || pkg.title,
-        categoryName: catName,
+        categoryName: effectiveCatName,
         courseName,
         passingScore,
         score,
@@ -2357,7 +2602,7 @@ export async function getTaskRecapList(params: {
       packageId: pkg.id,
       packageTitle: pkg.title,
       pageTitle: page?.title || pkg.title,
-      categoryName: catName,
+      categoryName: effectiveCatName,
       courseName,
       orderIndex: (category?.orderIndex || 0) * 1000 + (page?.orderIndex || 999),
       passingScore,

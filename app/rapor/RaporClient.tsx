@@ -67,7 +67,11 @@ export default function RaporClient({
     for (const rec of visibleRecords) {
       const key =
         rec.categoryName ||
-        (rec.sourceType === 'GROUP_TASK' ? 'Tugas Kelompok' : 'Tugas Mandiri / Lainnya');
+        (rec.sourceType === 'GROUP_TASK'
+          ? 'Tugas Kelompok'
+          : rec.sourceType === 'DISCUSSION'
+            ? 'Diskusi Kelas'
+            : 'Tugas Mandiri / Lainnya');
       if (!grouped[key]) grouped[key] = [];
       grouped[key].push(rec);
     }
@@ -201,14 +205,18 @@ export default function RaporClient({
                             className={`text-[10px] font-black uppercase px-2 py-1 border-2 border-black ${
                               item.sourceType === 'GROUP_TASK'
                                 ? 'bg-[#FDE047] text-black'
-                                : 'bg-[#092328] text-white'
+                                : item.sourceType === 'DISCUSSION'
+                                  ? 'bg-[#CCFBF1] text-black'
+                                  : 'bg-[#092328] text-white'
                             }`}
                           >
                             {item.sourceType === 'GROUP_TASK'
                               ? 'Tugas Kelompok'
-                              : item.sourceType === 'MATERIAL_QUIZ'
-                                ? 'Kuis Materi'
-                                : 'Tugas Mandiri'}
+                              : item.sourceType === 'DISCUSSION'
+                                ? 'Diskusi Kelas'
+                                : item.sourceType === 'MATERIAL_QUIZ'
+                                  ? 'Kuis Materi'
+                                  : 'Tugas Mandiri'}
                           </span>
                           {item.groupName && (
                             <span className="bg-[#092328] text-[#8BBB92] text-[10px] font-black uppercase px-2 py-1 border-2 border-black">
@@ -256,30 +264,42 @@ export default function RaporClient({
                           </div>
                         )}
 
-                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-sm font-bold bg-gray-50 border-4 border-black p-3">
-                          <div className="flex flex-col">
-                            <span className="text-gray-500 text-[10px] uppercase">KKM / Passing</span>
-                            <span>{item.passingScore}</span>
-                          </div>
-                          <div className="flex flex-col">
-                            <span className="text-gray-500 text-[10px] uppercase">Benar / Total</span>
-                            <span>
-                              {item.correctAnswers} / {item.totalQuestions}
+                        {item.sourceType === 'DISCUSSION' ? (
+                          <div className="text-sm font-bold bg-gray-50 border-4 border-black p-3 flex items-center justify-between">
+                            <div>
+                              <span className="text-gray-500 text-[10px] uppercase block">KKM / Passing</span>
+                              <span>{item.passingScore}</span>
+                            </div>
+                            <span className="text-xs font-black uppercase bg-[#EAF4ED] border-2 border-black px-2.5 py-1">
+                              Penilaian Diskusi Kelas oleh Guru
                             </span>
                           </div>
-                          <div className="flex flex-col">
-                            <span className="text-gray-500 text-[10px] uppercase">Soal Essay</span>
-                            <span>{item.essayCount} soal</span>
+                        ) : (
+                          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-sm font-bold bg-gray-50 border-4 border-black p-3">
+                            <div className="flex flex-col">
+                              <span className="text-gray-500 text-[10px] uppercase">KKM / Passing</span>
+                              <span>{item.passingScore}</span>
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="text-gray-500 text-[10px] uppercase">Benar / Total</span>
+                              <span>
+                                {item.correctAnswers} / {item.totalQuestions}
+                              </span>
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="text-gray-500 text-[10px] uppercase">Soal Essay</span>
+                              <span>{item.essayCount} soal</span>
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="text-gray-500 text-[10px] uppercase">Waktu Pengerjaan</span>
+                              <span>
+                                {item.timeTakenSeconds
+                                  ? `${Math.floor(item.timeTakenSeconds / 60)}m ${item.timeTakenSeconds % 60}s`
+                                  : '-'}
+                              </span>
+                            </div>
                           </div>
-                          <div className="flex flex-col">
-                            <span className="text-gray-500 text-[10px] uppercase">Waktu Pengerjaan</span>
-                            <span>
-                              {item.timeTakenSeconds
-                                ? `${Math.floor(item.timeTakenSeconds / 60)}m ${item.timeTakenSeconds % 60}s`
-                                : '-'}
-                            </span>
-                          </div>
-                        </div>
+                        )}
                       </div>
                     </div>
                   );

@@ -34,6 +34,12 @@ enum PageAccessStatus {
 enum PackageAssignmentMode {
   INDIVIDUAL
   GROUP
+  DISCUSSION
+}
+
+enum GradebookSelectionMode {
+  ALL
+  CUSTOM
 }
 
 enum GroupRuleMode {
@@ -56,6 +62,10 @@ model Classroom {
   completionRecords  QuizCompletionRecord[]
   teacherClasses     CourseTeacherClass[]
   classGroups        ClassGroup[]
+  discussionClassAssignments DiscussionClassAssignment[]
+  discussionGrades           DiscussionGrade[]
+  gradebookConfigs           GradebookClassConfig[]
+  gradebookSelectedQuizzes   GradebookSelectedQuiz[]
 }
 
 model User {
@@ -70,6 +80,8 @@ model User {
   classroom            Classroom?        @relation(fields: [classId], references: [id])
   failedLoginAttempts  Int               @default(0)
   lockedUntil          TimestamptzString?
+  emailChangeCount     Int               @default(0)
+  emailChangedAt       TimestamptzString?
   createdAt            TimestamptzString @default(now())
   updatedAt            temporal.updatedAtString()
 
@@ -86,6 +98,12 @@ model User {
   teacherClasses  CourseTeacherClass[]
   createdClassGroups ClassGroup[] @relation("GroupCreator")
   groupMemberships   ClassGroupMember[]
+  emailChangeVerifications EmailChangeVerification[]
+  passwordResetTokens      PasswordResetToken[]
+  assignedDiscussionClasses DiscussionClassAssignment[] @relation("DiscussionClassAssigner")
+  discussionGrades          DiscussionGrade[]           @relation("DiscussionStudent")
+  gradedDiscussionGrades    DiscussionGrade[]           @relation("DiscussionGrader")
+  updatedGradebookConfigs   GradebookClassConfig[]      @relation("GradebookConfigUpdater")
 }
 
 model MaterialCategory {
@@ -191,6 +209,9 @@ model QuizPackage {
   variants        QuizVariant[]
   assignments     QuizAssignment[]
   classGroups     ClassGroup[]
+  discussionClassAssignments DiscussionClassAssignment[]
+  discussionGrades           DiscussionGrade[]
+  gradebookSelectedQuizzes   GradebookSelectedQuiz[]
 }
 
 // Konfigurasi Anti-Cheat terpisah per Varian Kuis
@@ -333,6 +354,7 @@ enum HistorySourceType {
   MATERIAL_QUIZ
   ASSIGNMENT
   GROUP_TASK
+  DISCUSSION
 }
 
 /// Tabel denormalisasi (cache agregasi nilai per murid).
@@ -383,6 +405,8 @@ model QuizCompletionRecord {
   sourceType          HistorySourceType
   sourceId            String            // ID QuizAttempt atau AssignmentAttempt
   sourceTitle         String            // Snapshot judul kuis / nama tugas
+  quizPackageId       String?
+  courseId            String?
 
   // Konteks materi (hanya diisi jika sourceType = MATERIAL_QUIZ)
   categoryName        String?
@@ -409,6 +433,9 @@ model QuizCompletionRecord {
 
   student             User              @relation(fields: [studentId], references: [id])
   classroom           Classroom?        @relation(fields: [classroomId], references: [id])
+
+  @@index([quizPackageId])
+  @@index([classroomId, courseId])
 }
 
 
@@ -435,6 +462,8 @@ model Course {
   projects    StudentProject[]
   teacherClasses CourseTeacherClass[]
   classGroups ClassGroup[]
+  gradebookConfigs         GradebookClassConfig[]
+  gradebookSelectedQuizzes GradebookSelectedQuiz[]
 }
 
 model CourseTeacher {
@@ -580,4 +609,121 @@ model ClassGroupMember {
 
   @@unique([groupId, studentId])
   @@index([studentId])
+}
+
+// ============================================================
+// Email Change Verification (OTP via SMTP Brevo)
+// ============================================================
+model EmailChangeVerification {
+  id        String             @id @default(uuid())
+  userId    String
+  newEmail  String
+  otpHash   String
+  otpSalt   String
+  attempts  Int                @default(0)
+  expiresAt TimestamptzString
+  usedAt    TimestamptzString?
+  createdAt TimestamptzString  @default(now())
+
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([newEmail])
+}
+
+// ============================================================
+// Forgot Password (Single-Use Expiring Reset Token)
+// ============================================================
+model PasswordResetToken {
+  id        String             @id @default(uuid())
+  userId    String
+  tokenHash String             @unique
+  expiresAt TimestamptzString
+  usedAt    TimestamptzString?
+  createdAt TimestamptzString  @default(now())
+
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// ============================================================
+// Mode Penilaian Diskusi Kelas (DISCUSSION)
+// ============================================================
+model DiscussionClassAssignment {
+  id            String            @id @default(uuid())
+  quizPackageId String
+  classroomId   String
+  assignedById  String?
+  assignedAt    TimestamptzString @default(now())
+
+  package       QuizPackage       @relation(fields: [quizPackageId], references: [id], onDelete: Cascade)
+  classroom     Classroom         @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+  assignedBy    User?             @relation("DiscussionClassAssigner", fields: [assignedById], references: [id], onDelete: SetNull)
+
+  @@unique([quizPackageId, classroomId])
+  @@index([quizPackageId])
+  @@index([classroomId])
+}
+
+model DiscussionGrade {
+  id            String            @id @default(uuid())
+  quizPackageId String
+  classroomId   String
+  studentId     String
+  score         Float?
+  note          String?
+  gradedById    String?
+  gradedAt      TimestamptzString?
+  createdAt     TimestamptzString @default(now())
+  updatedAt     temporal.updatedAtString()
+
+  package       QuizPackage       @relation(fields: [quizPackageId], references: [id], onDelete: Cascade)
+  classroom     Classroom         @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+  student       User              @relation("DiscussionStudent", fields: [studentId], references: [id], onDelete: Cascade)
+  gradedBy      User?             @relation("DiscussionGrader", fields: [gradedById], references: [id], onDelete: SetNull)
+
+  @@unique([quizPackageId, studentId])
+  @@index([quizPackageId, classroomId])
+  @@index([studentId])
+}
+
+// ============================================================
+// Konfigurasi Seleksi Kuis per Kelas & Mata Pelajaran (Gradebook)
+// ============================================================
+model GradebookClassConfig {
+  id          String                 @id @default(uuid())
+  classroomId String
+  courseId    String
+  mode        GradebookSelectionMode @default(ALL)
+  updatedById String?
+  createdAt   TimestamptzString      @default(now())
+  updatedAt   temporal.updatedAtString()
+
+  classroom       Classroom               @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+  course          Course                  @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  updatedBy       User?                   @relation("GradebookConfigUpdater", fields: [updatedById], references: [id], onDelete: SetNull)
+  selectedQuizzes GradebookSelectedQuiz[]
+
+  @@unique([classroomId, courseId])
+  @@index([classroomId])
+  @@index([courseId])
+}
+
+model GradebookSelectedQuiz {
+  id            String            @id @default(uuid())
+  configId      String
+  classroomId   String
+  courseId      String
+  quizPackageId String
+  createdAt     TimestamptzString @default(now())
+
+  config    GradebookClassConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
+  classroom Classroom            @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+  course    Course               @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  package   QuizPackage          @relation(fields: [quizPackageId], references: [id], onDelete: Cascade)
+
+  @@unique([configId, quizPackageId])
+  @@index([classroomId, courseId])
+  @@index([quizPackageId])
 }

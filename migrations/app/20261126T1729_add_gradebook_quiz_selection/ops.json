@@ -1,0 +1,932 @@
+[
+  {
+    "id": "table.gradebookClassConfig",
+    "label": "Create table \"gradebookClassConfig\"",
+    "summary": "Creates table \"gradebookClassConfig\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "gradebookClassConfig"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"gradebookClassConfig\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"gradebookClassConfig\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"gradebookClassConfig\"",
+        "sql": "CREATE TABLE \"public\".\"gradebookClassConfig\" (\n  \"classroomId\" text NOT NULL,\n  \"courseId\" text NOT NULL,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"id\" text NOT NULL,\n  \"mode\" text DEFAULT 'ALL' NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  \"updatedById\" text,\n  PRIMARY KEY (\"id\"),\n  CONSTRAINT \"gradebookClassConfig_mode_check_c8c124a8\" CHECK (\"mode\" IN ('ALL', 'CUSTOM'))\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"gradebookClassConfig\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"gradebookClassConfig\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.gradebookSelectedQuiz",
+    "label": "Create table \"gradebookSelectedQuiz\"",
+    "summary": "Creates table \"gradebookSelectedQuiz\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "gradebookSelectedQuiz"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"gradebookSelectedQuiz\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"gradebookSelectedQuiz\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"gradebookSelectedQuiz\"",
+        "sql": "CREATE TABLE \"public\".\"gradebookSelectedQuiz\" (\n  \"classroomId\" text NOT NULL,\n  \"configId\" text NOT NULL,\n  \"courseId\" text NOT NULL,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"id\" text NOT NULL,\n  \"quizPackageId\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"gradebookSelectedQuiz\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"gradebookSelectedQuiz\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.quizCompletionRecord.courseId",
+    "label": "Add column \"courseId\" to \"quizCompletionRecord\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "courseId",
+        "table": "quizCompletionRecord"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"courseId\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "quizCompletionRecord",
+          "courseId"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"courseId\"",
+        "sql": "ALTER TABLE \"public\".\"quizCompletionRecord\" ADD COLUMN \"courseId\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"courseId\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "quizCompletionRecord",
+          "courseId"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.quizCompletionRecord.quizPackageId",
+    "label": "Add column \"quizPackageId\" to \"quizCompletionRecord\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "quizPackageId",
+        "table": "quizCompletionRecord"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"quizPackageId\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "quizCompletionRecord",
+          "quizPackageId"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"quizPackageId\"",
+        "sql": "ALTER TABLE \"public\".\"quizCompletionRecord\" ADD COLUMN \"quizPackageId\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"quizPackageId\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "quizCompletionRecord",
+          "quizPackageId"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.gradebookClassConfig.gradebookClassConfig_classroomId_courseId_key",
+    "label": "Add unique constraint on \"gradebookClassConfig\" (classroomId, courseId)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "gradebookClassConfig_classroomId_courseId_key",
+        "table": "gradebookClassConfig"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"gradebookClassConfig_classroomId_courseId_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "gradebookClassConfig_classroomId_courseId_key",
+          "public",
+          "\"public\".\"gradebookClassConfig\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"gradebookClassConfig_classroomId_courseId_key\"",
+        "sql": "ALTER TABLE \"public\".\"gradebookClassConfig\" ADD CONSTRAINT \"gradebookClassConfig_classroomId_courseId_key\" UNIQUE (\"classroomId\", \"courseId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"gradebookClassConfig_classroomId_courseId_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "gradebookClassConfig_classroomId_courseId_key",
+          "public",
+          "\"public\".\"gradebookClassConfig\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.gradebookSelectedQuiz.gradebookSelectedQuiz_configId_quizPackageId_key",
+    "label": "Add unique constraint on \"gradebookSelectedQuiz\" (configId, quizPackageId)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "gradebookSelectedQuiz_configId_quizPackageId_key",
+        "table": "gradebookSelectedQuiz"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"gradebookSelectedQuiz_configId_quizPackageId_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "gradebookSelectedQuiz_configId_quizPackageId_key",
+          "public",
+          "\"public\".\"gradebookSelectedQuiz\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"gradebookSelectedQuiz_configId_quizPackageId_key\"",
+        "sql": "ALTER TABLE \"public\".\"gradebookSelectedQuiz\" ADD CONSTRAINT \"gradebookSelectedQuiz_configId_quizPackageId_key\" UNIQUE (\"configId\", \"quizPackageId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"gradebookSelectedQuiz_configId_quizPackageId_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "gradebookSelectedQuiz_configId_quizPackageId_key",
+          "public",
+          "\"public\".\"gradebookSelectedQuiz\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.gradebookClassConfig.gradebookClassConfig_classroomId_idx_e4a392d3",
+    "label": "Create index \"gradebookClassConfig_classroomId_idx_e4a392d3\" on \"gradebookClassConfig\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "gradebookClassConfig_classroomId_idx_e4a392d3",
+        "table": "gradebookClassConfig"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"gradebookClassConfig_classroomId_idx_e4a392d3\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"gradebookClassConfig_classroomId_idx_e4a392d3\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"gradebookClassConfig_classroomId_idx_e4a392d3\"",
+        "sql": "CREATE INDEX \"gradebookClassConfig_classroomId_idx_e4a392d3\" ON \"public\".\"gradebookClassConfig\" (\"classroomId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"gradebookClassConfig_classroomId_idx_e4a392d3\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"gradebookClassConfig_classroomId_idx_e4a392d3\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.gradebookClassConfig.gradebookClassConfig_courseId_idx_12f72d2a",
+    "label": "Create index \"gradebookClassConfig_courseId_idx_12f72d2a\" on \"gradebookClassConfig\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "gradebookClassConfig_courseId_idx_12f72d2a",
+        "table": "gradebookClassConfig"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"gradebookClassConfig_courseId_idx_12f72d2a\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"gradebookClassConfig_courseId_idx_12f72d2a\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"gradebookClassConfig_courseId_idx_12f72d2a\"",
+        "sql": "CREATE INDEX \"gradebookClassConfig_courseId_idx_12f72d2a\" ON \"public\".\"gradebookClassConfig\" (\"courseId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"gradebookClassConfig_courseId_idx_12f72d2a\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"gradebookClassConfig_courseId_idx_12f72d2a\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.gradebookClassConfig.gradebookClassConfig_updatedById_idx_d0517c24",
+    "label": "Create index \"gradebookClassConfig_updatedById_idx_d0517c24\" on \"gradebookClassConfig\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "gradebookClassConfig_updatedById_idx_d0517c24",
+        "table": "gradebookClassConfig"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"gradebookClassConfig_updatedById_idx_d0517c24\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"gradebookClassConfig_updatedById_idx_d0517c24\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"gradebookClassConfig_updatedById_idx_d0517c24\"",
+        "sql": "CREATE INDEX \"gradebookClassConfig_updatedById_idx_d0517c24\" ON \"public\".\"gradebookClassConfig\" (\"updatedById\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"gradebookClassConfig_updatedById_idx_d0517c24\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"gradebookClassConfig_updatedById_idx_d0517c24\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.gradebookSelectedQuiz.gradebookSelectedQuiz_classroomId_courseId_idx_420419d7",
+    "label": "Create index \"gradebookSelectedQuiz_classroomId_courseId_idx_420419d7\" on \"gradebookSelectedQuiz\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "gradebookSelectedQuiz_classroomId_courseId_idx_420419d7",
+        "table": "gradebookSelectedQuiz"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"gradebookSelectedQuiz_classroomId_courseId_idx_420419d7\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"gradebookSelectedQuiz_classroomId_courseId_idx_420419d7\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"gradebookSelectedQuiz_classroomId_courseId_idx_420419d7\"",
+        "sql": "CREATE INDEX \"gradebookSelectedQuiz_classroomId_courseId_idx_420419d7\" ON \"public\".\"gradebookSelectedQuiz\" (\"classroomId\", \"courseId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"gradebookSelectedQuiz_classroomId_courseId_idx_420419d7\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"gradebookSelectedQuiz_classroomId_courseId_idx_420419d7\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.gradebookSelectedQuiz.gradebookSelectedQuiz_classroomId_idx_e4a392d3",
+    "label": "Create index \"gradebookSelectedQuiz_classroomId_idx_e4a392d3\" on \"gradebookSelectedQuiz\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "gradebookSelectedQuiz_classroomId_idx_e4a392d3",
+        "table": "gradebookSelectedQuiz"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"gradebookSelectedQuiz_classroomId_idx_e4a392d3\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"gradebookSelectedQuiz_classroomId_idx_e4a392d3\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"gradebookSelectedQuiz_classroomId_idx_e4a392d3\"",
+        "sql": "CREATE INDEX \"gradebookSelectedQuiz_classroomId_idx_e4a392d3\" ON \"public\".\"gradebookSelectedQuiz\" (\"classroomId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"gradebookSelectedQuiz_classroomId_idx_e4a392d3\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"gradebookSelectedQuiz_classroomId_idx_e4a392d3\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.gradebookSelectedQuiz.gradebookSelectedQuiz_configId_idx_4b01acb6",
+    "label": "Create index \"gradebookSelectedQuiz_configId_idx_4b01acb6\" on \"gradebookSelectedQuiz\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "gradebookSelectedQuiz_configId_idx_4b01acb6",
+        "table": "gradebookSelectedQuiz"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"gradebookSelectedQuiz_configId_idx_4b01acb6\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"gradebookSelectedQuiz_configId_idx_4b01acb6\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"gradebookSelectedQuiz_configId_idx_4b01acb6\"",
+        "sql": "CREATE INDEX \"gradebookSelectedQuiz_configId_idx_4b01acb6\" ON \"public\".\"gradebookSelectedQuiz\" (\"configId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"gradebookSelectedQuiz_configId_idx_4b01acb6\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"gradebookSelectedQuiz_configId_idx_4b01acb6\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.gradebookSelectedQuiz.gradebookSelectedQuiz_courseId_idx_12f72d2a",
+    "label": "Create index \"gradebookSelectedQuiz_courseId_idx_12f72d2a\" on \"gradebookSelectedQuiz\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "gradebookSelectedQuiz_courseId_idx_12f72d2a",
+        "table": "gradebookSelectedQuiz"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"gradebookSelectedQuiz_courseId_idx_12f72d2a\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"gradebookSelectedQuiz_courseId_idx_12f72d2a\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"gradebookSelectedQuiz_courseId_idx_12f72d2a\"",
+        "sql": "CREATE INDEX \"gradebookSelectedQuiz_courseId_idx_12f72d2a\" ON \"public\".\"gradebookSelectedQuiz\" (\"courseId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"gradebookSelectedQuiz_courseId_idx_12f72d2a\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"gradebookSelectedQuiz_courseId_idx_12f72d2a\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.gradebookSelectedQuiz.gradebookSelectedQuiz_quizPackageId_idx_5e8f85e9",
+    "label": "Create index \"gradebookSelectedQuiz_quizPackageId_idx_5e8f85e9\" on \"gradebookSelectedQuiz\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "gradebookSelectedQuiz_quizPackageId_idx_5e8f85e9",
+        "table": "gradebookSelectedQuiz"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"gradebookSelectedQuiz_quizPackageId_idx_5e8f85e9\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"gradebookSelectedQuiz_quizPackageId_idx_5e8f85e9\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"gradebookSelectedQuiz_quizPackageId_idx_5e8f85e9\"",
+        "sql": "CREATE INDEX \"gradebookSelectedQuiz_quizPackageId_idx_5e8f85e9\" ON \"public\".\"gradebookSelectedQuiz\" (\"quizPackageId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"gradebookSelectedQuiz_quizPackageId_idx_5e8f85e9\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"gradebookSelectedQuiz_quizPackageId_idx_5e8f85e9\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.quizCompletionRecord.quizCompletionRecord_classroomId_courseId_idx_420419d7",
+    "label": "Create index \"quizCompletionRecord_classroomId_courseId_idx_420419d7\" on \"quizCompletionRecord\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "quizCompletionRecord_classroomId_courseId_idx_420419d7",
+        "table": "quizCompletionRecord"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"quizCompletionRecord_classroomId_courseId_idx_420419d7\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"quizCompletionRecord_classroomId_courseId_idx_420419d7\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"quizCompletionRecord_classroomId_courseId_idx_420419d7\"",
+        "sql": "CREATE INDEX \"quizCompletionRecord_classroomId_courseId_idx_420419d7\" ON \"public\".\"quizCompletionRecord\" (\"classroomId\", \"courseId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"quizCompletionRecord_classroomId_courseId_idx_420419d7\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"quizCompletionRecord_classroomId_courseId_idx_420419d7\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.quizCompletionRecord.quizCompletionRecord_quizPackageId_idx_5e8f85e9",
+    "label": "Create index \"quizCompletionRecord_quizPackageId_idx_5e8f85e9\" on \"quizCompletionRecord\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "quizCompletionRecord_quizPackageId_idx_5e8f85e9",
+        "table": "quizCompletionRecord"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"quizCompletionRecord_quizPackageId_idx_5e8f85e9\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"quizCompletionRecord_quizPackageId_idx_5e8f85e9\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"quizCompletionRecord_quizPackageId_idx_5e8f85e9\"",
+        "sql": "CREATE INDEX \"quizCompletionRecord_quizPackageId_idx_5e8f85e9\" ON \"public\".\"quizCompletionRecord\" (\"quizPackageId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"quizCompletionRecord_quizPackageId_idx_5e8f85e9\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"quizCompletionRecord_quizPackageId_idx_5e8f85e9\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.gradebookClassConfig.gradebookClassConfig_classroomId_fkey",
+    "label": "Add foreign key \"gradebookClassConfig_classroomId_fkey\" on \"gradebookClassConfig\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "gradebookClassConfig_classroomId_fkey",
+        "table": "gradebookClassConfig"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"gradebookClassConfig_classroomId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "gradebookClassConfig_classroomId_fkey",
+          "public",
+          "\"public\".\"gradebookClassConfig\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"gradebookClassConfig_classroomId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"gradebookClassConfig\"\nADD CONSTRAINT \"gradebookClassConfig_classroomId_fkey\"\nFOREIGN KEY (\"classroomId\")\nREFERENCES \"public\".\"classroom\" (\"id\")\nON DELETE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"gradebookClassConfig_classroomId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "gradebookClassConfig_classroomId_fkey",
+          "public",
+          "\"public\".\"gradebookClassConfig\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.gradebookClassConfig.gradebookClassConfig_courseId_fkey",
+    "label": "Add foreign key \"gradebookClassConfig_courseId_fkey\" on \"gradebookClassConfig\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "gradebookClassConfig_courseId_fkey",
+        "table": "gradebookClassConfig"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"gradebookClassConfig_courseId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "gradebookClassConfig_courseId_fkey",
+          "public",
+          "\"public\".\"gradebookClassConfig\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"gradebookClassConfig_courseId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"gradebookClassConfig\"\nADD CONSTRAINT \"gradebookClassConfig_courseId_fkey\"\nFOREIGN KEY (\"courseId\")\nREFERENCES \"public\".\"course\" (\"id\")\nON DELETE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"gradebookClassConfig_courseId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "gradebookClassConfig_courseId_fkey",
+          "public",
+          "\"public\".\"gradebookClassConfig\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.gradebookClassConfig.gradebookClassConfig_updatedById_fkey",
+    "label": "Add foreign key \"gradebookClassConfig_updatedById_fkey\" on \"gradebookClassConfig\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "gradebookClassConfig_updatedById_fkey",
+        "table": "gradebookClassConfig"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"gradebookClassConfig_updatedById_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "gradebookClassConfig_updatedById_fkey",
+          "public",
+          "\"public\".\"gradebookClassConfig\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"gradebookClassConfig_updatedById_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"gradebookClassConfig\"\nADD CONSTRAINT \"gradebookClassConfig_updatedById_fkey\"\nFOREIGN KEY (\"updatedById\")\nREFERENCES \"public\".\"user\" (\"id\")\nON DELETE SET NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"gradebookClassConfig_updatedById_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "gradebookClassConfig_updatedById_fkey",
+          "public",
+          "\"public\".\"gradebookClassConfig\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.gradebookSelectedQuiz.gradebookSelectedQuiz_configId_fkey",
+    "label": "Add foreign key \"gradebookSelectedQuiz_configId_fkey\" on \"gradebookSelectedQuiz\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "gradebookSelectedQuiz_configId_fkey",
+        "table": "gradebookSelectedQuiz"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"gradebookSelectedQuiz_configId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "gradebookSelectedQuiz_configId_fkey",
+          "public",
+          "\"public\".\"gradebookSelectedQuiz\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"gradebookSelectedQuiz_configId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"gradebookSelectedQuiz\"\nADD CONSTRAINT \"gradebookSelectedQuiz_configId_fkey\"\nFOREIGN KEY (\"configId\")\nREFERENCES \"public\".\"gradebookClassConfig\" (\"id\")\nON DELETE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"gradebookSelectedQuiz_configId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "gradebookSelectedQuiz_configId_fkey",
+          "public",
+          "\"public\".\"gradebookSelectedQuiz\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.gradebookSelectedQuiz.gradebookSelectedQuiz_classroomId_fkey",
+    "label": "Add foreign key \"gradebookSelectedQuiz_classroomId_fkey\" on \"gradebookSelectedQuiz\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "gradebookSelectedQuiz_classroomId_fkey",
+        "table": "gradebookSelectedQuiz"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"gradebookSelectedQuiz_classroomId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "gradebookSelectedQuiz_classroomId_fkey",
+          "public",
+          "\"public\".\"gradebookSelectedQuiz\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"gradebookSelectedQuiz_classroomId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"gradebookSelectedQuiz\"\nADD CONSTRAINT \"gradebookSelectedQuiz_classroomId_fkey\"\nFOREIGN KEY (\"classroomId\")\nREFERENCES \"public\".\"classroom\" (\"id\")\nON DELETE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"gradebookSelectedQuiz_classroomId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "gradebookSelectedQuiz_classroomId_fkey",
+          "public",
+          "\"public\".\"gradebookSelectedQuiz\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.gradebookSelectedQuiz.gradebookSelectedQuiz_courseId_fkey",
+    "label": "Add foreign key \"gradebookSelectedQuiz_courseId_fkey\" on \"gradebookSelectedQuiz\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "gradebookSelectedQuiz_courseId_fkey",
+        "table": "gradebookSelectedQuiz"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"gradebookSelectedQuiz_courseId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "gradebookSelectedQuiz_courseId_fkey",
+          "public",
+          "\"public\".\"gradebookSelectedQuiz\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"gradebookSelectedQuiz_courseId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"gradebookSelectedQuiz\"\nADD CONSTRAINT \"gradebookSelectedQuiz_courseId_fkey\"\nFOREIGN KEY (\"courseId\")\nREFERENCES \"public\".\"course\" (\"id\")\nON DELETE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"gradebookSelectedQuiz_courseId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "gradebookSelectedQuiz_courseId_fkey",
+          "public",
+          "\"public\".\"gradebookSelectedQuiz\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.gradebookSelectedQuiz.gradebookSelectedQuiz_quizPackageId_fkey",
+    "label": "Add foreign key \"gradebookSelectedQuiz_quizPackageId_fkey\" on \"gradebookSelectedQuiz\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "gradebookSelectedQuiz_quizPackageId_fkey",
+        "table": "gradebookSelectedQuiz"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"gradebookSelectedQuiz_quizPackageId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "gradebookSelectedQuiz_quizPackageId_fkey",
+          "public",
+          "\"public\".\"gradebookSelectedQuiz\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"gradebookSelectedQuiz_quizPackageId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"gradebookSelectedQuiz\"\nADD CONSTRAINT \"gradebookSelectedQuiz_quizPackageId_fkey\"\nFOREIGN KEY (\"quizPackageId\")\nREFERENCES \"public\".\"quizPackage\" (\"id\")\nON DELETE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"gradebookSelectedQuiz_quizPackageId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "gradebookSelectedQuiz_quizPackageId_fkey",
+          "public",
+          "\"public\".\"gradebookSelectedQuiz\""
+        ]
+      }
+    ]
+  }
+]

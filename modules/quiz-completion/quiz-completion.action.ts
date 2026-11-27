@@ -58,6 +58,7 @@ export async function getQuizArchivesAction(params: {
   courseId?: string;
   categoryName?: string;
   search?: string;
+  includeExcluded?: boolean;
   page?: number;
   limit?: number;
 }): Promise<{ success: boolean; data?: QuizArchivesResponse; message?: string }> {

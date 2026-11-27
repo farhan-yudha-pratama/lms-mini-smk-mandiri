@@ -11,29 +11,37 @@ type AuditAction =
   | "ASSIGN_TEACHER_COURSE" | "UPDATE_TEACHER_COURSE_CLASSES" | "REMOVE_TEACHER_COURSE"
   | "REMOVE_STUDENT_COURSE" | "REMOVE_CLASS_STUDENTS_COURSE"
   | "UPDATE_USER_PERMISSIONS"
-  | "CREATE_PERMISSION_PACKAGE" | "UPDATE_PERMISSION_PACKAGE" | "DELETE_PERMISSION_PACKAGE";
+  | "CREATE_PERMISSION_PACKAGE" | "UPDATE_PERMISSION_PACKAGE" | "DELETE_PERMISSION_PACKAGE"
+  | "REQUEST_EMAIL_CHANGE" | "CHANGE_EMAIL"
+  | "REQUEST_PASSWORD_RESET" | "RESET_PASSWORD_SELF"
+  | "ASSIGN_DISCUSSION_CLASS" | "UNASSIGN_DISCUSSION_CLASS" | "GRADE_DISCUSSION"
+  | "UPDATE_GRADEBOOK_CONFIG";
 
 export interface AuditDetailsV2 { v: 2; message: string; meta?: Record<string, unknown> }
 
-export async function logAudit({ action, message, meta }: {
-  action: AuditAction; message: string; meta?: Record<string, unknown>;
+export async function logAudit({ action, message, meta, userId }: {
+  action: AuditAction; message: string; meta?: Record<string, unknown>; userId?: string;
 }) {
   try {
-    const session = await getSession();
-    if (!session || !session.userId) return;
+    let resolvedUserId = userId;
+    if (!resolvedUserId) {
+      const session = await getSession();
+      resolvedUserId = session?.userId;
+    }
+    if (!resolvedUserId) return;
 
     let ipAddress = "Unknown";
     try {
       const reqHeaders = await headers();
       ipAddress = reqHeaders.get("x-forwarded-for") || reqHeaders.get("x-real-ip") || "Unknown";
-    } catch (e) {
+    } catch {
       console.warn("Could not retrieve IP address for audit log");
     }
 
     const details: AuditDetailsV2 = { v: 2, message, meta };
 
     await db.orm.public.AuditLog.create({
-      userId: session.userId,
+      userId: resolvedUserId,
       action,
       details: JSON.stringify(details),
       ipAddress,

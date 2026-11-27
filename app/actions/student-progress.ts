@@ -34,10 +34,13 @@ export async function getStudentDetailedProgress() {
   const accesses = await db.orm.public.PageAccess.where({ studentId }).all();
   const sequences = await db.orm.public.PageSequence.all();
 
-  // 5. Get QuizPackages for these courses, filtering out hidden
+  // 5. Get QuizPackages for these courses, filtering out hidden & discussion
   const allQuizPackages = await db.orm.public.QuizPackage.all();
   const quizPackages = allQuizPackages.filter(qp => 
-    qp.courseId && enrolledCourseIds.includes(qp.courseId) && !qp.isHidden
+    qp.courseId &&
+    enrolledCourseIds.includes(qp.courseId) &&
+    !qp.isHidden &&
+    (qp as { assignmentMode?: string }).assignmentMode !== 'DISCUSSION'
   );
   
   const allQuizVariants = await db.orm.public.QuizVariant.all();

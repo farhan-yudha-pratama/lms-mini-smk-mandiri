@@ -5,6 +5,7 @@ import { getSession } from '@/lib/session';
 import { hasAnyPermission } from '@/lib/permissions';
 import { redirect } from 'next/navigation';
 import { isPackageAllowedForScope, resolveTeacherScope } from '@/modules/course/teacher-scope.service';
+import { getDiscussionPackageMetricsMap } from '@/modules/quiz-discussion/quiz-discussion.service';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,12 +17,13 @@ export default async function QuizzesPage() {
 
   const scope = await resolveTeacherScope(session);
 
-  const [allPackages, courses, pages, categories, variants] = await Promise.all([
+  const [allPackages, courses, pages, categories, variants, discussionMetrics] = await Promise.all([
     db.orm.public.QuizPackage.all(),
     db.orm.public.Course.all(),
     db.orm.public.Page.all(),
     db.orm.public.MaterialCategory.all(),
     db.orm.public.QuizVariant.all(),
+    getDiscussionPackageMetricsMap(scope),
   ]);
 
   const pageMap = new Map(pages.map(p => [p.id, p]));
@@ -37,18 +39,21 @@ export default async function QuizzesPage() {
     const resolvedCourseId = pkg.courseId || category?.courseId || null;
     const course = courses.find(c => c.id === resolvedCourseId);
     const pkgVariants = variants.filter(v => v.quizPackageId === pkg.id);
+    const dMetrics = discussionMetrics.get(pkg.id);
     
     return {
       ...pkg,
       courseId: resolvedCourseId,
       courseName: course?.name || 'Mata Pelajaran Umum',
-      assignmentMode: (pkg as { assignmentMode?: 'INDIVIDUAL' | 'GROUP' }).assignmentMode || 'INDIVIDUAL',
+      assignmentMode: (pkg as { assignmentMode?: 'INDIVIDUAL' | 'GROUP' | 'DISCUSSION' }).assignmentMode || 'INDIVIDUAL',
       pageTitle: page?.title || null,
       pageOrderIndex: page !== null && page !== undefined ? page.orderIndex : null,
       categoryId: category?.id || null,
       categoryName: category?.name || null,
       categoryOrderIndex: category !== null && category !== undefined ? category.orderIndex : null,
-      variantsCount: pkgVariants.length
+      variantsCount: pkgVariants.length,
+      discussionClassesCount: dMetrics?.assignedClassesCount ?? 0,
+      discussionGradedCount: dMetrics?.gradedCount ?? 0,
     };
   });
 

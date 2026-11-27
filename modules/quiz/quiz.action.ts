@@ -39,7 +39,7 @@ export async function createQuizPackageAction(formData: FormData) {
       passingScore: formData.get('passingScore'),
       timeLimit: formData.get('timeLimit') ? Number(formData.get('timeLimit')) : null,
       shuffleQuestions: formData.get('shuffleQuestions') === 'true',
-      assignmentMode: (formData.get('assignmentMode') as 'INDIVIDUAL' | 'GROUP') || 'INDIVIDUAL',
+      assignmentMode: (formData.get('assignmentMode') as 'INDIVIDUAL' | 'GROUP' | 'DISCUSSION') || 'INDIVIDUAL',
       isActive: formData.get('isActive') === 'true',
       isHidden: formData.get('isHidden') === 'true',
       openAt: formData.get('openAt') || null,
@@ -53,7 +53,7 @@ export async function createQuizPackageAction(formData: FormData) {
     const created = await createQuizPackage(validatedData);
     
     revalidatePath(`/dashboard/quizzes`);
-    return { success: true, id: created.id };
+    return { success: true, id: created.id, assignmentMode: validatedData.assignmentMode };
   } catch (error) {
     if (error instanceof z.ZodError) {
       return { success: false, errors: error.issues };
@@ -74,7 +74,7 @@ export async function updateQuizPackageAction(id: string, formData: FormData) {
       passingScore: formData.get('passingScore'),
       timeLimit: formData.get('timeLimit') ? Number(formData.get('timeLimit')) : null,
       shuffleQuestions: formData.get('shuffleQuestions') === 'true',
-      assignmentMode: (formData.get('assignmentMode') as 'INDIVIDUAL' | 'GROUP') || 'INDIVIDUAL',
+      assignmentMode: (formData.get('assignmentMode') as 'INDIVIDUAL' | 'GROUP' | 'DISCUSSION') || 'INDIVIDUAL',
       isActive: formData.get('isActive') === 'true',
       isHidden: formData.get('isHidden') === 'true',
       openAt: formData.get('openAt') || null,
